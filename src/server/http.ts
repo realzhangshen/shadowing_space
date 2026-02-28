@@ -84,11 +84,26 @@ export async function fetchWithProxy(
   }, timeoutMs);
 
   try {
-    return (await undiciFetch(input, {
-      ...init,
+    const headers: Record<string, string> = {
+      ...(init.headers as Record<string, string> | undefined),
+      Connection: "close"
+    };
+
+    const res = await undiciFetch(input, {
+      method: init.method,
+      headers,
+      body: init.body as string | undefined,
       signal: controller.signal,
       dispatcher
-    } as Parameters<typeof undiciFetch>[1])) as unknown as Response;
+    });
+
+    // Wrap undici response to match global Response interface
+    const bodyText = await res.text();
+    return new Response(bodyText, {
+      status: res.status,
+      statusText: res.statusText,
+      headers: Object.fromEntries(res.headers.entries())
+    });
   } finally {
     clearTimeout(timeout);
   }

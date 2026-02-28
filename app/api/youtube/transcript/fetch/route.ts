@@ -69,7 +69,7 @@ export async function POST(request: Request): Promise<Response> {
       trackTokenSecret: env.trackTokenSecret,
       trackTokenTtlSeconds: env.trackTokenTtlSeconds,
       logger,
-      proxyUrl: env.youtubeProxyUrl || undefined
+      proxyUrl: env.pickYoutubeProxyUrl()
     });
 
     logger.info("request.succeeded", {

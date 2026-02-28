@@ -11,6 +11,16 @@ function readString(rawValue: string | undefined, fallback: string): string {
   return trimmed ? trimmed : fallback;
 }
 
+function parseProxyUrls(raw: string | undefined): string[] {
+  if (!raw?.trim()) return [];
+  return raw
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+const youtubeProxyUrls = parseProxyUrls(process.env.YOUTUBE_PROXY_URLS);
+
 export const env = {
   youtubeFetchTimeoutMs: readPositiveInteger(
     process.env.YOUTUBE_FETCH_TIMEOUT_MS ?? process.env.HTTP_FETCH_TIMEOUT_MS,
@@ -20,5 +30,8 @@ export const env = {
   transcriptRateLimitWindowMs: readPositiveInteger(process.env.TRANSCRIPT_RATE_LIMIT_WINDOW_MS, 60_000),
   trackTokenSecret: readString(process.env.TRACK_TOKEN_SECRET, "shadowing-dev-secret"),
   trackTokenTtlSeconds: readPositiveInteger(process.env.TRACK_TOKEN_TTL_SECONDS, 86_400),
-  youtubeProxyUrl: process.env.YOUTUBE_PROXY_URL ?? ""
+  pickYoutubeProxyUrl(): string | undefined {
+    if (youtubeProxyUrls.length === 0) return undefined;
+    return youtubeProxyUrls[Math.floor(Math.random() * youtubeProxyUrls.length)];
+  }
 };
