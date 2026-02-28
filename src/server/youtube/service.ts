@@ -5,7 +5,14 @@ import { mergeSegments, parseTranscriptPayload } from "@/server/youtube/segments
 import { parseTrackToken } from "@/server/youtube/trackToken";
 import { buildTrackSummaries, type CaptionTrack } from "@/server/youtube/tracks";
 import { parseStrictYouTubeVideoId } from "@/server/youtube/url";
-import { fetchCaptionPayload, fetchInnertubePlayer } from "@/server/youtube/watchPage";
+import {
+  extractInnertubeApiKey,
+  extractPlayerResponseFromHtml,
+  fetchCaptionPayload,
+  fetchInnertubePlayer,
+  fetchInnertubePlayerWithKey,
+  fetchWatchPage
+} from "@/server/youtube/watchPage";
 
 type PlayerResponse = {
   videoDetails?: {
@@ -27,6 +34,13 @@ function asPlayerResponse(data: unknown): PlayerResponse {
     throw new AppError("Unable to parse YouTube player metadata", 502);
   }
   return data as PlayerResponse;
+}
+
+function hasCaptionTracks(data: unknown): boolean {
+  if (typeof data !== "object" || data === null) return false;
+  const player = data as PlayerResponse;
+  const tracks = player.captions?.playerCaptionsTracklistRenderer?.captionTracks;
+  return Array.isArray(tracks) && tracks.length > 0;
 }
 
 function parseDurationSec(value: string | undefined): number | undefined {
@@ -83,8 +97,9 @@ export async function fetchTranscriptMetadata(params: {
   trackTokenSecret: string;
   trackTokenTtlSeconds: number;
   logger?: RequestLogger;
+  proxyUrl?: string;
 }): Promise<FetchTranscriptResponse> {
-  const { url, preferredLanguage, timeoutMs, trackTokenSecret, trackTokenTtlSeconds, logger } = params;
+  const { url, preferredLanguage, timeoutMs, trackTokenSecret, trackTokenTtlSeconds, logger, proxyUrl } = params;
   logger?.debug("youtube.fetch_metadata.start", { url, preferredLanguage });
 
   const videoId = parseStrictYouTubeVideoId(url);
@@ -92,8 +107,57 @@ export async function fetchTranscriptMetadata(params: {
     throw new AppError("Only single YouTube video URLs are supported", 422);
   }
 
-  const innertubeData = await fetchInnertubePlayer(videoId, timeoutMs, logger);
-  const playerResponse = asPlayerResponse(innertubeData);
+  let playerData: unknown = null;
+
+  // Strategy 1: Parse ytInitialPlayerResponse from watch page HTML
+  let html = "";
+  try {
+    html = await fetchWatchPage(videoId, timeoutMs, logger, proxyUrl);
+    playerData = extractPlayerResponseFromHtml(html);
+    if (hasCaptionTracks(playerData)) {
+      logger?.info("youtube.fetch_metadata.strategy", { strategy: "html_player_response", videoId });
+    }
+  } catch (error) {
+    logger?.warn("youtube.fetch_metadata.watch_page_failed", {
+      videoId,
+      message: error instanceof Error ? error.message : "unknown"
+    });
+  }
+
+  // Strategy 2: Extract API key from page, call Innertube with key
+  if (!hasCaptionTracks(playerData)) {
+    const apiKey = html ? extractInnertubeApiKey(html) : null;
+    if (apiKey) {
+      try {
+        playerData = await fetchInnertubePlayerWithKey(videoId, apiKey, timeoutMs, logger, proxyUrl);
+        if (hasCaptionTracks(playerData)) {
+          logger?.info("youtube.fetch_metadata.strategy", { strategy: "innertube_with_key", videoId });
+        }
+      } catch (error) {
+        logger?.warn("youtube.fetch_metadata.innertube_with_key_failed", {
+          videoId,
+          message: error instanceof Error ? error.message : "unknown"
+        });
+      }
+    }
+  }
+
+  // Strategy 3: Direct Innertube (original approach, final fallback)
+  if (!hasCaptionTracks(playerData)) {
+    try {
+      playerData = await fetchInnertubePlayer(videoId, timeoutMs, logger, proxyUrl);
+      if (hasCaptionTracks(playerData)) {
+        logger?.info("youtube.fetch_metadata.strategy", { strategy: "innertube_direct", videoId });
+      }
+    } catch (error) {
+      logger?.warn("youtube.fetch_metadata.innertube_direct_failed", {
+        videoId,
+        message: error instanceof Error ? error.message : "unknown"
+      });
+    }
+  }
+
+  const playerResponse = asPlayerResponse(playerData);
   const rawTracks = playerResponse.captions?.playerCaptionsTracklistRenderer?.captionTracks ?? [];
   if (rawTracks.length === 0) {
     throw new AppError("No caption tracks available for this video", 404);
@@ -140,8 +204,9 @@ export async function resolveTranscriptSegments(params: {
   timeoutMs: number;
   trackTokenSecret: string;
   logger?: RequestLogger;
+  proxyUrl?: string;
 }): Promise<ResolveTranscriptResponse> {
-  const { videoId, trackToken, timeoutMs, trackTokenSecret, logger } = params;
+  const { videoId, trackToken, timeoutMs, trackTokenSecret, logger, proxyUrl } = params;
   logger?.debug("youtube.resolve_segments.start", {
     videoId,
     trackTokenPrefix: trackToken.slice(0, 10)
@@ -186,7 +251,7 @@ export async function resolveTranscriptSegments(params: {
       rawPayload = await fetchCaptionPayload(candidateUrl, timeoutMs, logger, {
         attempt,
         ...candidateMeta
-      });
+      }, proxyUrl);
     } catch (error) {
       if (error instanceof AppError) {
         lastFetchError = error;

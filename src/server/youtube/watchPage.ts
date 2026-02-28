@@ -1,22 +1,39 @@
 import { AppError } from "@/server/errors";
 import type { RequestLogger } from "@/server/logger";
-import { describeFetchError, fetchWithTimeout, SHARED_HEADERS } from "@/server/http";
+import { describeFetchError, fetchWithProxy, fetchWithTimeout, SHARED_HEADERS } from "@/server/http";
+
+export function extractInnertubeApiKey(html: string): string | null {
+  const match = html.match(/"INNERTUBE_API_KEY":\s*"([^"]+)"/);
+  return match?.[1] ?? null;
+}
+
+export function extractPlayerResponseFromHtml(html: string): unknown | null {
+  const match = html.match(/ytInitialPlayerResponse\s*=\s*({.+?})\s*;\s*(?:var\s|<\/script)/);
+  if (!match?.[1]) return null;
+  try {
+    return JSON.parse(match[1]);
+  } catch {
+    return null;
+  }
+}
 
 export async function fetchWatchPage(
   videoId: string,
   timeoutMs: number,
-  logger?: RequestLogger
+  logger?: RequestLogger,
+  proxyUrl?: string
 ): Promise<string> {
   const watchUrl = `https://www.youtube.com/watch?v=${videoId}&hl=en`;
 
   let response: Response;
   try {
-    response = await fetchWithTimeout(
+    response = await fetchWithProxy(
       watchUrl,
       {
         headers: SHARED_HEADERS
       },
-      timeoutMs
+      timeoutMs,
+      proxyUrl
     );
   } catch (error) {
     throw new AppError(describeFetchError(error, "Unable to reach YouTube watch page"), 502);
@@ -45,16 +62,18 @@ export async function fetchCaptionPayload(
   url: string,
   timeoutMs: number,
   logger?: RequestLogger,
-  logContext: Record<string, unknown> = {}
+  logContext: Record<string, unknown> = {},
+  proxyUrl?: string
 ): Promise<string> {
   let response: Response;
   try {
-    response = await fetchWithTimeout(
+    response = await fetchWithProxy(
       url,
       {
         headers: SHARED_HEADERS
       },
-      timeoutMs
+      timeoutMs,
+      proxyUrl
     );
   } catch (error) {
     throw new AppError(describeFetchError(error, "Failed to fetch caption payload"), 502);
@@ -82,13 +101,14 @@ export async function fetchCaptionPayload(
 export async function fetchInnertubePlayer(
   videoId: string,
   timeoutMs: number,
-  logger?: RequestLogger
+  logger?: RequestLogger,
+  proxyUrl?: string
 ): Promise<unknown> {
   const url = "https://www.youtube.com/youtubei/v1/player";
 
   let response: Response;
   try {
-    response = await fetchWithTimeout(
+    response = await fetchWithProxy(
       url,
       {
         method: "POST",
@@ -106,7 +126,8 @@ export async function fetchInnertubePlayer(
           videoId
         })
       },
-      timeoutMs
+      timeoutMs,
+      proxyUrl
     );
   } catch (error) {
     throw new AppError(describeFetchError(error, "Unable to reach YouTube Innertube API"), 502);
@@ -117,6 +138,56 @@ export async function fetchInnertubePlayer(
   }
 
   logger?.debug("youtube.innertube_player.response", {
+    videoId,
+    status: response.status,
+    contentType: response.headers.get("content-type")
+  });
+
+  const json: unknown = await response.json();
+  return json;
+}
+
+export async function fetchInnertubePlayerWithKey(
+  videoId: string,
+  apiKey: string,
+  timeoutMs: number,
+  logger?: RequestLogger,
+  proxyUrl?: string
+): Promise<unknown> {
+  const url = `https://www.youtube.com/youtubei/v1/player?key=${encodeURIComponent(apiKey)}`;
+
+  let response: Response;
+  try {
+    response = await fetchWithProxy(
+      url,
+      {
+        method: "POST",
+        headers: {
+          ...SHARED_HEADERS,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          context: {
+            client: {
+              clientName: "WEB",
+              clientVersion: "2.20240101.00.00"
+            }
+          },
+          videoId
+        })
+      },
+      timeoutMs,
+      proxyUrl
+    );
+  } catch (error) {
+    throw new AppError(describeFetchError(error, "Unable to reach YouTube Innertube API (with key)"), 502);
+  }
+
+  if (!response.ok) {
+    throw new AppError(`Unable to reach YouTube Innertube API with key (HTTP ${response.status})`, 502);
+  }
+
+  logger?.debug("youtube.innertube_player_with_key.response", {
     videoId,
     status: response.status,
     contentType: response.headers.get("content-type")

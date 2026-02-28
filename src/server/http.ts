@@ -65,3 +65,31 @@ export async function fetchWithTimeout(
     clearTimeout(timeout);
   }
 }
+
+export async function fetchWithProxy(
+  input: string,
+  init: RequestInit,
+  timeoutMs: number,
+  proxyUrl?: string
+): Promise<Response> {
+  if (!proxyUrl) {
+    return fetchWithTimeout(input, init, timeoutMs);
+  }
+
+  const { ProxyAgent, fetch: undiciFetch } = await import("undici");
+  const dispatcher = new ProxyAgent(proxyUrl);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => {
+    controller.abort();
+  }, timeoutMs);
+
+  try {
+    return (await undiciFetch(input, {
+      ...init,
+      signal: controller.signal,
+      dispatcher
+    } as Parameters<typeof undiciFetch>[1])) as unknown as Response;
+  } finally {
+    clearTimeout(timeout);
+  }
+}

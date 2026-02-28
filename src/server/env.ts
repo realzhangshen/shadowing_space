@@ -19,5 +19,6 @@ export const env = {
   transcriptRateLimitMaxRequests: readPositiveInteger(process.env.TRANSCRIPT_RATE_LIMIT_MAX_REQUESTS, 30),
   transcriptRateLimitWindowMs: readPositiveInteger(process.env.TRANSCRIPT_RATE_LIMIT_WINDOW_MS, 60_000),
   trackTokenSecret: readString(process.env.TRACK_TOKEN_SECRET, "shadowing-dev-secret"),
-  trackTokenTtlSeconds: readPositiveInteger(process.env.TRACK_TOKEN_TTL_SECONDS, 86_400)
+  trackTokenTtlSeconds: readPositiveInteger(process.env.TRACK_TOKEN_TTL_SECONDS, 86_400),
+  youtubeProxyUrl: process.env.YOUTUBE_PROXY_URL ?? ""
 };
