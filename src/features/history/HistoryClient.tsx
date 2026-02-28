@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { clearAllData, deleteVideo, listHistory } from "@/features/storage/repository";
+import { clearAllData, deleteRecordingsForVideo, deleteVideo, listHistory } from "@/features/storage/repository";
 import type { HistoryItem } from "@/types/models";
 
 function formatTime(timestamp: number): string {
@@ -14,11 +14,18 @@ function formatTime(timestamp: number): string {
   });
 }
 
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 export function HistoryClient(): JSX.Element {
   const router = useRouter();
   const [items, setItems] = useState<HistoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | undefined>();
+  const [storageUsage, setStorageUsage] = useState<string | undefined>();
 
   const refresh = async () => {
     setError(undefined);
@@ -27,6 +34,13 @@ export function HistoryClient(): JSX.Element {
     try {
       const next = await listHistory();
       setItems(next);
+
+      if (navigator.storage?.estimate) {
+        const estimate = await navigator.storage.estimate();
+        if (estimate.usage !== undefined) {
+          setStorageUsage(formatBytes(estimate.usage));
+        }
+      }
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "Failed to load history.");
     } finally {
@@ -51,6 +65,19 @@ export function HistoryClient(): JSX.Element {
     }
   };
 
+  const handleClearRecordings = async (videoId: string, title: string) => {
+    if (!window.confirm(`Clear all recordings for "${title}"? Progress will be kept.`)) {
+      return;
+    }
+
+    try {
+      await deleteRecordingsForVideo(videoId);
+      await refresh();
+    } catch (clearError) {
+      setError(clearError instanceof Error ? clearError.message : "Failed to clear recordings.");
+    }
+  };
+
   const handleReset = async () => {
     if (!window.confirm("Delete ALL local data? This cannot be undone.")) {
       return;
@@ -69,9 +96,12 @@ export function HistoryClient(): JSX.Element {
       <div className="dashboard-header">
         <div>
           <h2>Dashboard</h2>
-          <p className="muted">Your studied videos and practice progress.</p>
+          <p className="muted">
+            Your studied videos and practice progress.
+            {storageUsage ? ` · Storage: ${storageUsage}` : ""}
+          </p>
         </div>
-        <Link href="/" className="btn primary inline-btn">
+        <Link href="/import" className="btn primary inline-btn">
           + Import New Video
         </Link>
       </div>
@@ -81,8 +111,9 @@ export function HistoryClient(): JSX.Element {
 
       {!isLoading && items.length === 0 ? (
         <div className="card empty-state">
-          <p>No videos yet.</p>
-          <Link href="/" className="btn primary inline-btn">
+          <h3>Welcome to Shadowing Lab!</h3>
+          <p className="muted">Import a YouTube video to start practicing your English pronunciation with shadowing.</p>
+          <Link href="/import" className="btn primary inline-btn">
             Import your first video
           </Link>
         </div>
@@ -120,8 +151,11 @@ export function HistoryClient(): JSX.Element {
                 </p>
 
                 {item.segmentCount > 0 ? (
-                  <div className="progress-bar">
-                    <div className="progress-fill" style={{ width: `${progressPct}%` }} />
+                  <div className="progress-row">
+                    <div className="progress-bar">
+                      <div className="progress-fill" style={{ width: `${progressPct}%` }} />
+                    </div>
+                    <span className="progress-pct">{progressPct}%</span>
                   </div>
                 ) : null}
 
@@ -129,7 +163,7 @@ export function HistoryClient(): JSX.Element {
                   {progress
                     ? `Sentence ${progress.currentIndex + 1} / ${item.segmentCount}`
                     : `${item.segmentCount} sentences`}
-                  {item.recordingCount > 0 ? ` · ${item.recordingCount} recorded` : ""}
+                  {item.recordingCount > 0 ? ` · ${item.recordingCount} recorded (${formatBytes(item.recordingSizeBytes)})` : ""}
                 </p>
               </div>
 
@@ -149,6 +183,15 @@ export function HistoryClient(): JSX.Element {
                 >
                   Continue
                 </button>
+                {item.recordingCount > 0 ? (
+                  <button
+                    className="btn secondary"
+                    type="button"
+                    onClick={() => void handleClearRecordings(item.video.id, item.video.title)}
+                  >
+                    Clear Recordings
+                  </button>
+                ) : null}
                 <button
                   className="btn secondary"
                   type="button"

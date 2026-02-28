@@ -207,9 +207,15 @@ textarea {
 
 .practice-layout {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 1rem;
-  max-width: 800px;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  max-width: 1200px;
+}
+
+@media (max-width: 768px) {
+  .practice-layout {
+    grid-template-columns: 1fr;
+  }
 }
 
 .main-practice {
@@ -226,7 +232,8 @@ textarea {
   flex-wrap: wrap;
 }
 
-.youtube-shell {
+.youtube-shell-wrap {
+  position: relative;
   width: 100%;
   min-height: 320px;
   border-radius: 14px;
@@ -235,8 +242,20 @@ textarea {
   background: #dbe8fa;
 }
 
+.youtube-shell {
+  width: 100%;
+  min-height: 320px;
+}
+
+.youtube-pause-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  cursor: default;
+}
+
 .segment-card {
-  margin-top: 0.6rem;
+  margin-top: 0;
 }
 
 .segment-header {
@@ -247,17 +266,18 @@ textarea {
 }
 
 .segment-current {
-  font-size: 1.15rem;
+  font-size: 1.25rem;
+  font-weight: 500;
   line-height: 1.55;
-  padding: 0.8rem;
+  padding: 1rem;
   border-radius: 12px;
-  border: 1px solid #d7e1ef;
-  background: #fcfeff;
+  border: 2px solid #7eadf4;
+  background: #edf4ff;
 }
 
 .segment-list {
   margin-top: 0.7rem;
-  max-height: 300px;
+  flex: 1;
   overflow: auto;
   display: flex;
   flex-direction: column;
@@ -297,7 +317,7 @@ textarea {
 .segment-actions {
   display: flex;
   gap: 0.25rem;
-  opacity: 0.4;
+  opacity: 0.7;
   transition: opacity 0.15s;
 }
 
@@ -387,6 +407,12 @@ textarea {
   box-shadow: var(--shadow);
   display: flex;
   flex-direction: column;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.video-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 36px rgba(18, 33, 55, 0.12);
 }
 
 .video-card-thumb {
@@ -426,7 +452,21 @@ textarea {
   margin: 0.35rem 0 0;
 }
 
+.progress-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.progress-pct {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--primary);
+  white-space: nowrap;
+}
+
 .progress-bar {
+  flex: 1;
   height: 5px;
   background: #e4ecf5;
   border-radius: 3px;

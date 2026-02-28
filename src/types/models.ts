@@ -47,4 +47,5 @@ export type HistoryItem = {
   progress?: ProgressRecord;
   segmentCount: number;
   recordingCount: number;
+  recordingSizeBytes: number;
 };

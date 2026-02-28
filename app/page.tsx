@@ -1,5 +1,5 @@
-import { ImportClient } from "@/features/import/ImportClient";
+import { HistoryClient } from "@/features/history/HistoryClient";
 
 export default function HomePage(): JSX.Element {
-  return <ImportClient />;
+  return <HistoryClient />;
 }

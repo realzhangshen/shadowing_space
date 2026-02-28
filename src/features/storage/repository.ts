@@ -158,6 +158,15 @@ export async function deleteVideo(videoId: string): Promise<void> {
   });
 }
 
+export async function deleteRecordingsForVideo(videoId: string): Promise<void> {
+  await db.transaction("rw", [db.tracks, db.recordings], async () => {
+    const tracks = await db.tracks.where("videoId").equals(videoId).toArray();
+    for (const track of tracks) {
+      await db.recordings.where("trackId").equals(track.id).delete();
+    }
+  });
+}
+
 export async function getRecordedSegmentIndices(trackId: string): Promise<Set<number>> {
   const recordings = await db.recordings.where("trackId").equals(trackId).toArray();
   return new Set(recordings.map((r) => r.segmentIndex));
@@ -190,8 +199,10 @@ export async function listHistory(): Promise<HistoryItem[]> {
   }
 
   const recordingCountByTrack = new Map<string, number>();
+  const recordingSizeByTrack = new Map<string, number>();
   for (const recording of allRecordings) {
     recordingCountByTrack.set(recording.trackId, (recordingCountByTrack.get(recording.trackId) ?? 0) + 1);
+    recordingSizeByTrack.set(recording.trackId, (recordingSizeByTrack.get(recording.trackId) ?? 0) + recording.blob.size);
   }
 
   const items = videos.map((video) => {
@@ -218,13 +229,15 @@ export async function listHistory(): Promise<HistoryItem[]> {
 
     const segmentCount = activeTrack ? segmentCountByTrack.get(activeTrack.id) ?? 0 : 0;
     const recordingCount = activeTrack ? recordingCountByTrack.get(activeTrack.id) ?? 0 : 0;
+    const recordingSizeBytes = activeTrack ? recordingSizeByTrack.get(activeTrack.id) ?? 0 : 0;
 
     return {
       video,
       activeTrack,
       progress: activeProgress,
       segmentCount,
-      recordingCount
+      recordingCount,
+      recordingSizeBytes
     } satisfies HistoryItem;
   });
 

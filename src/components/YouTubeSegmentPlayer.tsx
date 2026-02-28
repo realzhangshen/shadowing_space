@@ -84,6 +84,7 @@ export const YouTubeSegmentPlayer = forwardRef<YouTubeSegmentPlayerHandle, YouTu
     const playerRef = useRef<YT.Player | null>(null);
     const endTimerRef = useRef<number | null>(null);
     const [isReady, setIsReady] = useState(false);
+    const [isPaused, setIsPaused] = useState(true);
 
     const clearEndTimer = () => {
       if (endTimerRef.current) {
@@ -115,6 +116,10 @@ export const YouTubeSegmentPlayer = forwardRef<YouTubeSegmentPlayerHandle, YouTu
               },
               onError: () => {
                 onPlayerError?.("YouTube player error. Please refresh and try again.");
+              },
+              onStateChange: (event: YT.PlayerEvent) => {
+                const playing = event.data === window.YT!.PlayerState.PLAYING || event.data === window.YT!.PlayerState.BUFFERING;
+                setIsPaused(!playing);
               }
             }
           });
@@ -196,6 +201,11 @@ export const YouTubeSegmentPlayer = forwardRef<YouTubeSegmentPlayerHandle, YouTu
       [isReady]
     );
 
-    return <div id={elementId} className="youtube-shell" aria-label="YouTube player" />;
+    return (
+      <div className="youtube-shell-wrap">
+        <div id={elementId} className="youtube-shell" />
+        {isPaused && <div className="youtube-pause-overlay" />}
+      </div>
+    );
   }
 );

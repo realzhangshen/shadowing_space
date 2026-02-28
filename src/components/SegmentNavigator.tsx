@@ -1,11 +1,11 @@
+"use client";
+
+import { useEffect, useRef } from "react";
 import type { SegmentRecord } from "@/types/models";
 
 type SegmentNavigatorProps = {
   segments: SegmentRecord[];
   currentIndex: number;
-  onSelect: (index: number) => void;
-  onPrev: () => void;
-  onNext: () => void;
   onPlayOriginal: (index: number) => void;
   onToggleRecording: (index: number) => void;
   onPlayRecording: (index: number) => void;
@@ -17,9 +17,6 @@ type SegmentNavigatorProps = {
 export function SegmentNavigator({
   segments,
   currentIndex,
-  onSelect,
-  onPrev,
-  onNext,
   onPlayOriginal,
   onToggleRecording,
   onPlayRecording,
@@ -28,9 +25,14 @@ export function SegmentNavigator({
   recordingIndex
 }: SegmentNavigatorProps): JSX.Element {
   const current = segments[currentIndex];
+  const activeRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    activeRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [currentIndex]);
 
   return (
-    <section className="card segment-card">
+    <section className="segment-card">
       <div className="segment-header">
         <h3>Sentences</h3>
         <p className="muted">
@@ -40,20 +42,6 @@ export function SegmentNavigator({
 
       <p className="segment-current">{current?.text ?? "No segment"}</p>
 
-      <div className="actions-row">
-        <button className="btn secondary" type="button" onClick={onPrev} disabled={currentIndex <= 0}>
-          Prev
-        </button>
-        <button
-          className="btn secondary"
-          type="button"
-          onClick={onNext}
-          disabled={currentIndex >= segments.length - 1}
-        >
-          Next
-        </button>
-      </div>
-
       <div className="segment-list" role="list" aria-label="Sentence list">
         {segments.map((segment, index) => {
           const isActive = index === currentIndex;
@@ -61,27 +49,23 @@ export function SegmentNavigator({
           const isRecordingThis = isRecording && recordingIndex === index;
 
           return (
-            <button
+            <div
               key={segment.id}
+              ref={isActive ? activeRef : undefined}
               role="listitem"
-              type="button"
+              tabIndex={0}
               className={isActive ? "segment-item active" : "segment-item"}
-              onClick={() => onSelect(index)}
+              onClick={() => onPlayOriginal(index)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  onPlayOriginal(index);
+                }
+              }}
             >
               <span className="segment-index">{index + 1}</span>
               <p className="segment-text">{segment.text}</p>
               <span className="segment-actions" onClick={(e) => e.stopPropagation()}>
-                <button
-                  type="button"
-                  className="icon-btn"
-                  title="Play original"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onPlayOriginal(index);
-                  }}
-                >
-                  ▶
-                </button>
                 <button
                   type="button"
                   className={isRecordingThis ? "icon-btn recording-active" : "icon-btn"}
@@ -91,7 +75,7 @@ export function SegmentNavigator({
                     onToggleRecording(index);
                   }}
                 >
-                  ●
+                  🎙
                 </button>
                 <button
                   type="button"
@@ -106,7 +90,7 @@ export function SegmentNavigator({
                   🎧
                 </button>
               </span>
-            </button>
+            </div>
           );
         })}
       </div>
