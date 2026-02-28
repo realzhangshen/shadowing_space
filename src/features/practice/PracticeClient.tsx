@@ -44,6 +44,7 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
   const playerRef = useRef<YouTubeSegmentPlayerHandle | null>(null);
   const recordingAudioRef = useRef<HTMLAudioElement | null>(null);
   const recordingAudioUrlRef = useRef<string | null>(null);
+  const recordingTargetRef = useRef<number>(0);
 
   const {
     currentIndex,
@@ -209,20 +210,22 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
 
   const recorder = useRecorder({
     onComplete: async ({ blob, durationMs, mimeType }) => {
-      if (!currentSegment) {
+      const targetIndex = recordingTargetRef.current;
+      const targetSegment = segments[targetIndex];
+      if (!targetSegment) {
         return;
       }
 
       await saveLatestRecording({
         trackId,
-        segmentIndex: currentSegment.index,
+        segmentIndex: targetSegment.index,
         blob,
         durationMs,
         mimeType
       });
 
       setLatestRecordingReady(true);
-      setRecordingReadySet((prev) => new Set(prev).add(currentSegment.index));
+      setRecordingReadySet((prev) => new Set(prev).add(targetSegment.index));
       setPlaybackMode("attempt");
     },
     onError: (message) => {
@@ -241,17 +244,32 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
     if (recorder.isRecording) {
       await recorder.stop();
     } else {
+      recordingTargetRef.current = currentIndex;
       await recorder.start();
     }
-  }, [recorder, setMicrophoneError]);
+  }, [currentIndex, recorder, setMicrophoneError]);
 
   const goPrev = useCallback(() => {
-    setCurrentIndex(Math.max(0, currentIndex - 1));
-  }, [currentIndex, setCurrentIndex]);
+    const newIndex = Math.max(0, currentIndex - 1);
+    setCurrentIndex(newIndex);
+    const seg = segments[newIndex];
+    if (seg) {
+      clearRecordingAudio();
+      playerRef.current?.playSegment(seg.startMs, seg.endMs, playbackSpeed);
+      setPlaybackMode("source");
+    }
+  }, [clearRecordingAudio, currentIndex, playbackSpeed, segments, setCurrentIndex, setPlaybackMode]);
 
   const goNext = useCallback(() => {
-    setCurrentIndex(Math.min(segments.length - 1, currentIndex + 1));
-  }, [currentIndex, segments.length, setCurrentIndex]);
+    const newIndex = Math.min(segments.length - 1, currentIndex + 1);
+    setCurrentIndex(newIndex);
+    const seg = segments[newIndex];
+    if (seg) {
+      clearRecordingAudio();
+      playerRef.current?.playSegment(seg.startMs, seg.endMs, playbackSpeed);
+      setPlaybackMode("source");
+    }
+  }, [clearRecordingAudio, currentIndex, playbackSpeed, segments, setCurrentIndex, setPlaybackMode]);
 
   // Index-aware callbacks for inline icons
   const playOriginalForIndex = useCallback(
@@ -279,6 +297,7 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
       if (recorder.isRecording && currentIndex === index) {
         void recorder.stop();
       } else if (!recorder.isRecording) {
+        recordingTargetRef.current = index;
         void recorder.start();
       }
     },

@@ -247,12 +247,6 @@ textarea {
   min-height: 320px;
 }
 
-.youtube-pause-overlay {
-  position: absolute;
-  inset: 0;
-  z-index: 10;
-  cursor: default;
-}
 
 .segment-card {
   margin-top: 0;

@@ -7,7 +7,7 @@ import { buildTrackId, mapSegments, mapTracks, saveImportBundle } from "@/featur
 import type { FetchTranscriptResponse, TrackSummary } from "@/types/api";
 import type { VideoRecord } from "@/types/models";
 
-const DEFAULT_YOUTUBE_URL = "https://www.youtube.com/watch?v=FRI78tq9Eik";
+const DEFAULT_YOUTUBE_URL = "";
 
 function withRequestId(message: string, requestId?: string): string {
   if (!requestId) {
