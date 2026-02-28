@@ -10,6 +10,7 @@
     "test": "node --import tsx --test src/server/*.test.ts src/server/youtube/*.test.ts"
   },
   "dependencies": {
+    "@vercel/analytics": "^1.6.1",
     "dexie": "^4.0.11",
     "dexie-react-hooks": "^1.1.7",
     "next": "^15.1.0",
