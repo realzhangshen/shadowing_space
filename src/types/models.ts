@@ -46,4 +46,5 @@ export type HistoryItem = {
   activeTrack?: TrackRecord;
   progress?: ProgressRecord;
   segmentCount: number;
+  recordingCount: number;
 };

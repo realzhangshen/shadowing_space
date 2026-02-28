@@ -325,6 +325,51 @@ function looksLikeTranscriptXml(payload: string): boolean {
   return /<(text|p)\b[^>]*(start|t|begin|dur|d|end)\s*=/i.test(payload);
 }
 
+const SENTENCE_END = /[.?!。？！]\s*$/;
+const MAX_MERGED_DURATION_MS = 15_000;
+
+function flush(buffer: SegmentDTO[], index: number): SegmentDTO {
+  return {
+    index,
+    startMs: buffer[0].startMs,
+    endMs: buffer[buffer.length - 1].endMs,
+    text: buffer.map((s) => s.text).join(" ")
+  };
+}
+
+export function mergeSegments(segments: SegmentDTO[]): SegmentDTO[] {
+  if (segments.length === 0) return [];
+
+  const merged: SegmentDTO[] = [];
+  let buffer: SegmentDTO[] = [segments[0]];
+
+  for (let i = 1; i < segments.length; i++) {
+    const current = segments[i];
+    const bufferStart = buffer[0].startMs;
+    const wouldExceed = current.endMs - bufferStart > MAX_MERGED_DURATION_MS;
+
+    if (wouldExceed) {
+      merged.push(flush(buffer, merged.length));
+      buffer = [current];
+      continue;
+    }
+
+    const lastText = buffer[buffer.length - 1].text;
+    if (SENTENCE_END.test(lastText)) {
+      merged.push(flush(buffer, merged.length));
+      buffer = [current];
+    } else {
+      buffer.push(current);
+    }
+  }
+
+  if (buffer.length > 0) {
+    merged.push(flush(buffer, merged.length));
+  }
+
+  return merged;
+}
+
 export function parseTranscriptPayload(rawPayload: string): { parsed: boolean; segments: SegmentDTO[] } {
   const trimmed = rawPayload.trim();
   if (!trimmed) {

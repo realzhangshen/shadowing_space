@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 
 const links = [
   { href: "/", label: "Import" },
-  { href: "/history", label: "History" }
+  { href: "/history", label: "Dashboard" }
 ];
 
 export function AppHeader(): JSX.Element {

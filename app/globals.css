@@ -209,6 +209,7 @@ textarea {
   display: grid;
   grid-template-columns: 1fr;
   gap: 1rem;
+  max-width: 800px;
 }
 
 .main-practice {
@@ -246,7 +247,7 @@ textarea {
 }
 
 .segment-current {
-  font-size: 1.05rem;
+  font-size: 1.15rem;
   line-height: 1.55;
   padding: 0.8rem;
   border-radius: 12px;
@@ -269,10 +270,12 @@ textarea {
   padding: 0.55rem;
   text-align: left;
   display: grid;
-  grid-template-columns: 1.6rem 1fr;
-  gap: 0.6rem;
+  grid-template-columns: 1.8rem 1fr auto;
+  gap: 0.5rem;
   background: #fff;
   cursor: pointer;
+  align-items: center;
+  font-size: inherit;
 }
 
 .segment-item.active {
@@ -280,47 +283,186 @@ textarea {
   background: #edf4ff;
 }
 
-.segment-item span {
+.segment-index {
   color: var(--muted);
+  font-size: 0.85rem;
 }
 
-.segment-item p {
+.segment-text {
   margin: 0;
   line-height: 1.4;
+  font-size: 0.95rem;
 }
 
-.side-panel {
-  display: grid;
-  gap: 0.8rem;
-}
-
-.shortcut-list {
-  padding-left: 1rem;
-  margin: 0;
-  display: grid;
-  gap: 0.3rem;
-}
-
-.history-list {
-  margin-top: 0.9rem;
+.segment-actions {
   display: flex;
-  flex-direction: column;
-  gap: 0.7rem;
+  gap: 0.25rem;
+  opacity: 0.4;
+  transition: opacity 0.15s;
 }
 
-.history-item {
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 0.75rem;
-  background: #fff;
+.segment-item:hover .segment-actions,
+.segment-item.active .segment-actions {
+  opacity: 1;
+}
+
+.icon-btn {
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 0.2rem 0.35rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+  line-height: 1;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.icon-btn:hover {
+  background: #edf4ff;
+  border-color: #c9daf6;
+}
+
+.icon-btn:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+}
+
+.icon-btn.recording-active {
+  color: var(--danger);
+  animation: pulse-record 1s infinite;
+}
+
+@keyframes pulse-record {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.shortcuts-hint {
+  font-size: 0.8rem;
+  margin: 0;
+}
+
+.resume-indicator {
+  background: #edf8f0;
+  color: var(--success);
+  border: 1px solid #b6dfc4;
+  border-radius: 8px;
+  padding: 0.45rem 0.75rem;
+  font-size: 0.88rem;
+  font-weight: 500;
+  animation: fade-out 3s forwards;
+}
+
+@keyframes fade-out {
+  0%, 70% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* Dashboard */
+
+.dashboard-header {
   display: flex;
   justify-content: space-between;
-  gap: 0.8rem;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1rem;
   flex-wrap: wrap;
 }
 
-.history-item h3 {
-  margin: 0 0 0.35rem;
+.dashboard-header h2 {
+  margin: 0 0 0.25rem;
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1rem;
+}
+
+.video-card {
+  background: var(--card);
+  border: 1px solid rgba(213, 222, 234, 0.92);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+}
+
+.video-card-thumb {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  display: block;
+  background: #dbe8fa;
+}
+
+.video-card-thumb-placeholder {
+  background: linear-gradient(135deg, #dbe8fa, #e8eef8);
+}
+
+.video-card-body {
+  padding: 0.8rem 1rem 0.4rem;
+  flex: 1;
+}
+
+.video-card-title {
+  margin: 0 0 0.3rem;
+  font-size: 1rem;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.video-card-meta {
+  font-size: 0.82rem;
+  margin: 0 0 0.5rem;
+}
+
+.video-card-stats {
+  font-size: 0.82rem;
+  margin: 0.35rem 0 0;
+}
+
+.progress-bar {
+  height: 5px;
+  background: #e4ecf5;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #1674f5, #4e9bff);
+  border-radius: 3px;
+  transition: width 0.3s;
+}
+
+.video-card-actions {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem 0.8rem;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 2.5rem 1rem;
+}
+
+.reset-link {
+  text-align: center;
+  margin-top: 1.5rem;
+}
+
+.text-btn {
+  background: none;
+  border: none;
+  font: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
 }
 
 .muted {
@@ -338,8 +480,3 @@ textarea {
   margin: 0.6rem 0 0;
 }
 
-@media (min-width: 960px) {
-  .practice-layout {
-    grid-template-columns: 1.65fr 1fr;
-  }
-}

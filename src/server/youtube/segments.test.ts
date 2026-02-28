@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { parseTranscriptPayload } from "@/server/youtube/segments";
+import { mergeSegments, parseTranscriptPayload } from "@/server/youtube/segments";
 
 test("parseTranscriptPayload parses json3", () => {
   const payload = JSON.stringify({
@@ -86,3 +86,54 @@ test("parseTranscriptPayload treats empty payload as unsupported", () => {
   assert.equal(result.parsed, false);
   assert.equal(result.segments.length, 0);
 });
+
+// mergeSegments tests
+
+test("mergeSegments returns empty array for empty input", () => {
+  assert.deepEqual(mergeSegments([]), []);
+});
+
+test("mergeSegments returns single segment unchanged", () => {
+  const input = [{ index: 0, startMs: 0, endMs: 2000, text: "Hello world" }];
+  const result = mergeSegments(input);
+  assert.deepEqual(result, [{ index: 0, startMs: 0, endMs: 2000, text: "Hello world" }]);
+});
+
+test("mergeSegments merges adjacent segments without sentence-ending punctuation", () => {
+  const input = [
+    { index: 0, startMs: 0, endMs: 2000, text: "Hello" },
+    { index: 1, startMs: 2000, endMs: 4000, text: "world" },
+    { index: 2, startMs: 4000, endMs: 6000, text: "today" }
+  ];
+  const result = mergeSegments(input);
+  assert.deepEqual(result, [
+    { index: 0, startMs: 0, endMs: 6000, text: "Hello world today" }
+  ]);
+});
+
+test("mergeSegments splits on sentence-ending punctuation", () => {
+  const input = [
+    { index: 0, startMs: 0, endMs: 2000, text: "Hello world." },
+    { index: 1, startMs: 2000, endMs: 4000, text: "How are you?" },
+    { index: 2, startMs: 4000, endMs: 6000, text: "I am fine" }
+  ];
+  const result = mergeSegments(input);
+  assert.deepEqual(result, [
+    { index: 0, startMs: 0, endMs: 2000, text: "Hello world." },
+    { index: 1, startMs: 2000, endMs: 4000, text: "How are you?" },
+    { index: 2, startMs: 4000, endMs: 6000, text: "I am fine" }
+  ]);
+});
+
+test("mergeSegments force-splits when duration exceeds 15 seconds", () => {
+  const input = [
+    { index: 0, startMs: 0, endMs: 5000, text: "one" },
+    { index: 1, startMs: 5000, endMs: 10000, text: "two" },
+    { index: 2, startMs: 10000, endMs: 16000, text: "three" }
+  ];
+  const result = mergeSegments(input);
+  assert.equal(result.length, 2);
+  assert.deepEqual(result[0], { index: 0, startMs: 0, endMs: 10000, text: "one two" });
+  assert.deepEqual(result[1], { index: 1, startMs: 10000, endMs: 16000, text: "three" });
+});
+

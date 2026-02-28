@@ -145,12 +145,31 @@ export async function getPracticeSession(videoId: string, trackId: string): Prom
   };
 }
 
+export async function deleteVideo(videoId: string): Promise<void> {
+  await db.transaction("rw", [db.videos, db.tracks, db.segments, db.progress, db.recordings], async () => {
+    const tracks = await db.tracks.where("videoId").equals(videoId).toArray();
+    for (const track of tracks) {
+      await db.segments.where("trackId").equals(track.id).delete();
+      await db.recordings.where("trackId").equals(track.id).delete();
+      await db.progress.delete(track.id);
+    }
+    await db.tracks.where("videoId").equals(videoId).delete();
+    await db.videos.delete(videoId);
+  });
+}
+
+export async function getRecordedSegmentIndices(trackId: string): Promise<Set<number>> {
+  const recordings = await db.recordings.where("trackId").equals(trackId).toArray();
+  return new Set(recordings.map((r) => r.segmentIndex));
+}
+
 export async function listHistory(): Promise<HistoryItem[]> {
-  const [videos, tracks, progressItems, allSegments] = await Promise.all([
+  const [videos, tracks, progressItems, allSegments, allRecordings] = await Promise.all([
     db.videos.toArray(),
     db.tracks.toArray(),
     db.progress.toArray(),
-    db.segments.toArray()
+    db.segments.toArray(),
+    db.recordings.toArray()
   ]);
 
   const tracksByVideo = new Map<string, TrackRecord[]>();
@@ -168,6 +187,11 @@ export async function listHistory(): Promise<HistoryItem[]> {
   const segmentCountByTrack = new Map<string, number>();
   for (const segment of allSegments) {
     segmentCountByTrack.set(segment.trackId, (segmentCountByTrack.get(segment.trackId) ?? 0) + 1);
+  }
+
+  const recordingCountByTrack = new Map<string, number>();
+  for (const recording of allRecordings) {
+    recordingCountByTrack.set(recording.trackId, (recordingCountByTrack.get(recording.trackId) ?? 0) + 1);
   }
 
   const items = videos.map((video) => {
@@ -193,12 +217,14 @@ export async function listHistory(): Promise<HistoryItem[]> {
     }
 
     const segmentCount = activeTrack ? segmentCountByTrack.get(activeTrack.id) ?? 0 : 0;
+    const recordingCount = activeTrack ? recordingCountByTrack.get(activeTrack.id) ?? 0 : 0;
 
     return {
       video,
       activeTrack,
       progress: activeProgress,
-      segmentCount
+      segmentCount,
+      recordingCount
     } satisfies HistoryItem;
   });
 

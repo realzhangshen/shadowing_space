@@ -3,8 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ABPanel } from "@/components/ABPanel";
-import { RecorderPanel } from "@/components/RecorderPanel";
 import { SegmentNavigator } from "@/components/SegmentNavigator";
 import { YouTubeSegmentPlayer, type YouTubeSegmentPlayerHandle } from "@/components/YouTubeSegmentPlayer";
 import { useShortcuts } from "@/hooks/useShortcuts";
@@ -13,6 +11,7 @@ import { fetchTranscriptSegments } from "@/lib/apiClient";
 import {
   getLatestRecording,
   getPracticeSession,
+  getRecordedSegmentIndices,
   mapSegments,
   saveLatestRecording,
   saveSegmentsForTrack,
@@ -42,6 +41,8 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | undefined>();
   const [latestRecordingReady, setLatestRecordingReady] = useState(false);
+  const [recordingReadySet, setRecordingReadySet] = useState<Set<number>>(new Set());
+  const [resumeMessage, setResumeMessage] = useState<string | undefined>();
 
   const playerRef = useRef<YouTubeSegmentPlayerHandle | null>(null);
   const recordingAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -88,15 +89,7 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
     setError(undefined);
 
     try {
-      console.log("[debug] loadSession", { videoId, trackId });
       const initial = await getPracticeSession(videoId, trackId);
-      console.log("[debug] getPracticeSession result", {
-        hasVideo: Boolean(initial.video),
-        hasTrack: Boolean(initial.track),
-        trackCount: initial.tracks.length,
-        segmentCount: initial.segments.length,
-        trackIds: initial.tracks.map((t) => t.id)
-      });
       if (!initial.video || !initial.track) {
         throw new Error("No local session found. Please import the video again.");
       }
@@ -125,6 +118,16 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
         segments: usableSegments
       });
       await loadRecordingState(trackId, safeIndex);
+
+      // Load recording indices
+      const indices = await getRecordedSegmentIndices(trackId);
+      setRecordingReadySet(indices);
+
+      // Show resume indicator
+      if (safeIndex > 0) {
+        setResumeMessage(`Resumed from sentence #${safeIndex + 1}`);
+        setTimeout(() => setResumeMessage(undefined), 3000);
+      }
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "Failed to load practice session.");
       setSession(null);
@@ -222,6 +225,7 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
       });
 
       setLatestRecordingReady(true);
+      setRecordingReadySet((prev) => new Set(prev).add(currentSegment.index));
       setPlaybackMode("attempt");
     },
     onError: (message) => {
@@ -251,6 +255,66 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
   const goNext = useCallback(() => {
     setCurrentIndex(Math.min(segments.length - 1, currentIndex + 1));
   }, [currentIndex, segments.length, setCurrentIndex]);
+
+  // Index-aware callbacks for inline icons
+  const playOriginalForIndex = useCallback(
+    (index: number) => {
+      setCurrentIndex(index);
+      const seg = segments[index];
+      if (!seg) return;
+      clearRecordingAudio();
+      playerRef.current?.playSegment(seg.startMs, seg.endMs, playbackSpeed);
+      setPlaybackMode("source");
+    },
+    [clearRecordingAudio, playbackSpeed, segments, setCurrentIndex, setPlaybackMode]
+  );
+
+  const toggleRecordingForIndex = useCallback(
+    (index: number) => {
+      // If recording on a different index, stop first
+      if (recorder.isRecording && currentIndex !== index) {
+        void recorder.stop();
+      }
+      setCurrentIndex(index);
+      setMicrophoneError(undefined);
+      playerRef.current?.pause();
+
+      if (recorder.isRecording && currentIndex === index) {
+        void recorder.stop();
+      } else if (!recorder.isRecording) {
+        void recorder.start();
+      }
+    },
+    [currentIndex, recorder, setCurrentIndex, setMicrophoneError]
+  );
+
+  const playRecordingForIndex = useCallback(
+    async (index: number) => {
+      setCurrentIndex(index);
+      const recording = await getLatestRecording(trackId, index);
+      if (!recording) return;
+
+      playerRef.current?.pause();
+      clearRecordingAudio();
+
+      const url = URL.createObjectURL(recording.blob);
+      const audio = new Audio(url);
+      recordingAudioRef.current = audio;
+      recordingAudioUrlRef.current = url;
+
+      audio.onended = () => {
+        clearRecordingAudio();
+      };
+
+      audio.play().catch(() => {
+        setError("Failed to play your recording.");
+        clearRecordingAudio();
+      });
+
+      setPlaybackMode("attempt");
+    },
+    [clearRecordingAudio, setCurrentIndex, setPlaybackMode, trackId]
+  );
 
   const switchTrack = useCallback(
     (nextTrack: TrackRecord) => {
@@ -329,7 +393,7 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
 
           <div className="actions-row">
             <Link href="/history" className="btn secondary inline-btn">
-              History
+              Dashboard
             </Link>
             <Link href="/" className="btn secondary inline-btn">
               Import
@@ -339,12 +403,14 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
 
         <YouTubeSegmentPlayer videoId={session.video.youtubeVideoId} ref={playerRef} onPlayerError={setPlayerError} />
 
+        {resumeMessage ? <p className="resume-indicator">{resumeMessage}</p> : null}
+
         <div className="actions-row">
           <button className="btn primary" type="button" onClick={toggleOriginal}>
-            {playbackMode === "source" ? "Pause Sentence (Space)" : "Play Sentence (Space)"}
+            {playbackMode === "source" ? "Pause (Space)" : "Play (Space)"}
           </button>
           <button className="btn secondary" type="button" onClick={playOriginal}>
-            Replay Sentence (A)
+            Replay (A)
           </button>
         </div>
 
@@ -362,8 +428,13 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
           ))}
         </div>
 
+        <p className="muted shortcuts-hint">
+          Space: play/pause · R: record · A: replay · B: playback · ←/→: prev/next
+        </p>
+
         {error ? <p className="error-text">{error}</p> : null}
         {playerError ? <p className="error-text">{playerError}</p> : null}
+        {microphoneError ? <p className="error-text">{microphoneError}</p> : null}
 
         <SegmentNavigator
           segments={segments}
@@ -371,37 +442,14 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
           onSelect={setCurrentIndex}
           onPrev={goPrev}
           onNext={goNext}
+          onPlayOriginal={playOriginalForIndex}
+          onToggleRecording={toggleRecordingForIndex}
+          onPlayRecording={(i) => void playRecordingForIndex(i)}
+          recordingReadySet={recordingReadySet}
+          isRecording={isRecording}
+          recordingIndex={isRecording ? currentIndex : null}
         />
       </section>
-
-      <aside className="side-panel">
-        <RecorderPanel
-          isRecording={isRecording}
-          totalAttempts={latestRecordingReady ? 1 : 0}
-          microphoneError={microphoneError}
-          onToggleRecording={() => {
-            void toggleRecording();
-          }}
-        />
-        <ABPanel
-          hasRecording={latestRecordingReady}
-          onPlayOriginal={playOriginal}
-          onPlayRecording={() => {
-            void playRecording();
-          }}
-        />
-
-        <section className="card">
-          <h3>Shortcuts</h3>
-          <ul className="shortcut-list">
-            <li>Space: play/pause current sentence</li>
-            <li>R: start/stop recording</li>
-            <li>A: replay original</li>
-            <li>B: replay my recording</li>
-            <li>← / →: previous/next sentence</li>
-          </ul>
-        </section>
-      </aside>
     </div>
   );
 }
