@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Analytics } from "@vercel/analytics/next";
 import { AppHeader } from "@/components/AppHeader";
 import "./globals.css";
 
@@ -15,6 +16,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }):
           <AppHeader />
           <main className="page-wrap">{children}</main>
         </div>
+        <Analytics />
       </body>
     </html>
   );
