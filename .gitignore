@@ -6,3 +6,5 @@ out
 coverage
 .vscode
 *.sqlite
+tsconfig.tsbuildinfo
+.claude
