@@ -481,66 +481,14 @@ textarea {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 1rem;
+  gap: 0.5rem;
   padding: 0.6rem 0;
+  flex-wrap: wrap;
 }
 
-.control-btn {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.2rem;
-  background: var(--primary-muted);
-  border: 1px solid var(--line);
-  border-radius: 50%;
-  width: 56px;
-  height: 56px;
-  justify-content: center;
-  cursor: pointer;
-  color: var(--text);
-  transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
-}
-
-.control-btn:hover {
-  background: var(--bg-active);
-  border-color: var(--line-strong);
-  transform: scale(1.05);
-}
-
-.control-btn:disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
-  transform: none;
-}
-
-.control-btn-record {
-  width: 64px;
-  height: 64px;
-  background: var(--primary);
-  border-color: transparent;
-  color: var(--primary-text);
-}
-
-.control-btn-record:hover {
-  background: var(--primary-hover);
-  border-color: transparent;
-}
-
-.control-btn-record.recording {
+.control-bar .btn.primary.recording {
   background: var(--danger);
   animation: pulse-record 1s infinite;
-}
-
-.control-icon {
-  font-size: 1.1rem;
-  line-height: 1;
-}
-
-.control-label {
-  font-size: 0.6rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
 }
 
 .auto-advance-toggle {
@@ -563,34 +511,11 @@ textarea {
   50% { opacity: 0.4; }
 }
 
-/* Video actions row */
+/* Transcript toggle in segment header */
 
-.video-actions-row {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 0.6rem;
-  padding: 0.5rem 0;
-  border-top: 1px solid var(--line);
-  margin-top: 0.2rem;
-}
-
-.toggle-transcript-btn {
-  background: var(--primary-muted);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 0.5rem 0.9rem;
-  font: inherit;
-  font-weight: 600;
-  font-size: 0.85rem;
-  cursor: pointer;
-  color: var(--text-secondary);
-  transition: background 0.15s ease, border-color 0.15s ease;
-}
-
-.toggle-transcript-btn:hover {
-  background: var(--bg-active);
-  border-color: var(--line-strong);
+.transcript-toggle {
+  font-weight: 500;
+  font-size: 0.8rem;
 }
 
 .shortcuts-hint {

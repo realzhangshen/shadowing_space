@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { usePracticeStore } from "@/store/practiceStore";
 import type { SegmentRecord } from "@/types/models";
 
 type SegmentNavigatorProps = {
@@ -9,17 +8,20 @@ type SegmentNavigatorProps = {
   currentIndex: number;
   onSelectSegment: (index: number) => void;
   recordingReadySet: Set<number>;
+  transcriptHidden: boolean;
+  onToggleTranscriptHidden: () => void;
 };
 
 export function SegmentNavigator({
   segments,
   currentIndex,
   onSelectSegment,
-  recordingReadySet
+  recordingReadySet,
+  transcriptHidden,
+  onToggleTranscriptHidden
 }: SegmentNavigatorProps): JSX.Element {
   const current = segments[currentIndex];
   const activeRef = useRef<HTMLDivElement | null>(null);
-  const transcriptHidden = usePracticeStore((s) => s.transcriptHidden);
 
   useEffect(() => {
     activeRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -34,6 +36,14 @@ export function SegmentNavigator({
       <div className="segment-header">
         <h3>Sentences</h3>
         <div className="segment-header-right">
+          <button
+            type="button"
+            className="transcript-toggle icon-btn"
+            onClick={onToggleTranscriptHidden}
+            title={transcriptHidden ? "Show sentences" : "Hide sentences"}
+          >
+            {transcriptHidden ? "Show" : "Hide"}
+          </button>
           <p className="muted">
             {Math.min(currentIndex + 1, segments.length)} / {segments.length}
           </p>

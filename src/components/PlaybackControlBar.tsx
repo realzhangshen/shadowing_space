@@ -7,6 +7,10 @@ type PlaybackControlBarProps = {
   onToggleOriginal: () => void;
   onToggleRecording: () => void;
   onPlayRecording: () => void;
+  onPrev: () => void;
+  onNext: () => void;
+  prevDisabled: boolean;
+  nextDisabled: boolean;
 };
 
 export function PlaybackControlBar({
@@ -15,39 +19,58 @@ export function PlaybackControlBar({
   hasRecording,
   onToggleOriginal,
   onToggleRecording,
-  onPlayRecording
+  onPlayRecording,
+  onPrev,
+  onNext,
+  prevDisabled,
+  nextDisabled
 }: PlaybackControlBarProps): JSX.Element {
   return (
     <div className="control-bar">
       <button
         type="button"
-        className="control-btn"
+        className="btn secondary"
+        onClick={onPrev}
+        disabled={prevDisabled}
+      >
+        ← Prev
+      </button>
+
+      <button
+        type="button"
+        className="btn secondary"
         title={isPlaying ? "Pause" : "Play"}
         onClick={onToggleOriginal}
       >
-        <span className="control-icon">{isPlaying ? "\u23F8" : "\u25B6"}</span>
-        <span className="control-label">{isPlaying ? "Pause" : "Play"}</span>
+        {isPlaying ? "⏸ Pause" : "▶ Play"}
       </button>
 
       <button
         type="button"
-        className={isRecording ? "control-btn control-btn-record recording" : "control-btn control-btn-record"}
+        className={isRecording ? "btn primary recording" : "btn primary"}
         title={isRecording ? "Stop recording" : "Record"}
         onClick={onToggleRecording}
       >
-        <span className="control-icon">{isRecording ? "\u23F9" : "\uD83C\uDFA4"}</span>
-        <span className="control-label">{isRecording ? "Stop" : "Record"}</span>
+        {isRecording ? "⏹ Stop" : "🎤 Record"}
       </button>
 
       <button
         type="button"
-        className="control-btn"
+        className="btn secondary"
         title="Play recording"
         disabled={!hasRecording}
         onClick={onPlayRecording}
       >
-        <span className="control-icon">{"\uD83C\uDFA7"}</span>
-        <span className="control-label">Replay</span>
+        🎧 Replay
+      </button>
+
+      <button
+        type="button"
+        className="btn secondary"
+        onClick={onNext}
+        disabled={nextDisabled}
+      >
+        Next →
       </button>
     </div>
   );

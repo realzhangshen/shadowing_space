@@ -356,19 +356,11 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
           onToggleOriginal={toggleOriginal}
           onToggleRecording={() => void toggleRecording()}
           onPlayRecording={() => void playRecording()}
+          onPrev={goPrev}
+          onNext={goNext}
+          prevDisabled={currentIndex <= 0}
+          nextDisabled={currentIndex >= segments.length - 1}
         />
-
-        {/* Unified action area below video controls */}
-        <div className="video-actions-row">
-          <button
-            type="button"
-            className="toggle-transcript-btn"
-            onClick={toggleTranscriptHidden}
-            title={transcriptHidden ? "Show transcript" : "Hide transcript"}
-          >
-            {transcriptHidden ? "Show Sentences" : "Hide Sentences"}
-          </button>
-        </div>
 
         {resumeMessage ? <p className="resume-indicator">{resumeMessage}</p> : null}
 
@@ -390,20 +382,6 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
           </label>
         </div>
 
-        <div className="actions-row">
-          <button className="btn secondary" type="button" onClick={goPrev} disabled={currentIndex <= 0}>
-            Prev
-          </button>
-          <button
-            className="btn secondary"
-            type="button"
-            onClick={goNext}
-            disabled={currentIndex >= segments.length - 1}
-          >
-            Next
-          </button>
-        </div>
-
         <p className="muted shortcuts-hint">
           Space: play/pause · R: record · A: replay · B: playback · T: toggle text · &larr;/&rarr;: prev/next
         </p>
@@ -419,6 +397,8 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
           currentIndex={currentIndex}
           onSelectSegment={selectSegment}
           recordingReadySet={recordingReadySet}
+          transcriptHidden={transcriptHidden}
+          onToggleTranscriptHidden={toggleTranscriptHidden}
         />
       </section>
     </div>
