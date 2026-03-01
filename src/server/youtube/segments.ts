@@ -127,6 +127,22 @@ function decodeXmlEntities(value: string): string {
   });
 }
 
+const MAX_ENTITY_DECODE_PASSES = 4;
+
+function decodeNestedXmlEntities(value: string): string {
+  let decoded = value;
+
+  for (let pass = 0; pass < MAX_ENTITY_DECODE_PASSES; pass += 1) {
+    const next = decodeXmlEntities(decoded);
+    if (next === decoded) {
+      break;
+    }
+    decoded = next;
+  }
+
+  return decoded;
+}
+
 function parseXmlAttributes(rawAttributes: string): Record<string, string> {
   const parsed: Record<string, string> = {};
   const pattern = /([a-zA-Z_:][\w:.-]*)=(?:"([^"]*)"|'([^']*)')/g;
@@ -157,7 +173,9 @@ function normalizeJson3Segments(events: TranscriptEvent[]): SegmentDTO[] {
       continue;
     }
 
-    const text = normalizeText(event.segs.map((item) => item.utf8 ?? item.text ?? "").join(""));
+    const text = normalizeText(
+      decodeNestedXmlEntities(event.segs.map((item) => item.utf8 ?? item.text ?? "").join(""))
+    );
     if (!text) {
       continue;
     }
@@ -193,7 +211,7 @@ function normalizeXmlSegments(xml: string): SegmentDTO[] {
       continue;
     }
 
-    const text = normalizeText(decodeXmlEntities((match[3] ?? "").replace(/<[^>]+>/g, " ")));
+    const text = normalizeText(decodeNestedXmlEntities((match[3] ?? "").replace(/<[^>]+>/g, " ")));
     if (!text) {
       match = textPattern.exec(xml);
       continue;
@@ -283,7 +301,7 @@ function normalizeVttSegments(vttText: string): SegmentDTO[] {
       continue;
     }
 
-    const text = normalizeText(decodeXmlEntities(cueLines.join(" ").replace(/<[^>]+>/g, " ")));
+    const text = normalizeText(decodeNestedXmlEntities(cueLines.join(" ").replace(/<[^>]+>/g, " ")));
     if (!text) {
       continue;
     }

@@ -50,6 +50,30 @@ test("parseTranscriptPayload parses json3 when timestamps are numeric strings", 
   ]);
 });
 
+test("parseTranscriptPayload decodes nested html entities in json3 text", () => {
+  const payload = JSON.stringify({
+    events: [
+      {
+        tStartMs: 1000,
+        dDurationMs: 2000,
+        segs: [{ utf8: "Don&amp;#39;t &amp;amp; go" }]
+      }
+    ]
+  });
+
+  const result = parseTranscriptPayload(payload);
+
+  assert.equal(result.parsed, true);
+  assert.deepEqual(result.segments, [
+    {
+      index: 0,
+      startMs: 1000,
+      endMs: 3000,
+      text: "Don't & go"
+    }
+  ]);
+});
+
 test("parseTranscriptPayload parses xml", () => {
   const payload = `<transcript><text start="1.2" dur="2">Hello &amp; <b>team</b></text></transcript>`;
   const result = parseTranscriptPayload(payload);
@@ -60,6 +84,19 @@ test("parseTranscriptPayload parses xml", () => {
     startMs: 1200,
     endMs: 3200,
     text: "Hello & team"
+  });
+});
+
+test("parseTranscriptPayload decodes nested html entities in xml text", () => {
+  const payload = `<transcript><text start="1.2" dur="2">Don&amp;#39;t stop</text></transcript>`;
+  const result = parseTranscriptPayload(payload);
+
+  assert.equal(result.parsed, true);
+  assert.deepEqual(result.segments[0], {
+    index: 0,
+    startMs: 1200,
+    endMs: 3200,
+    text: "Don't stop"
   });
 });
 
@@ -136,4 +173,3 @@ test("mergeSegments force-splits when duration exceeds 15 seconds", () => {
   assert.deepEqual(result[0], { index: 0, startMs: 0, endMs: 10000, text: "one two" });
   assert.deepEqual(result[1], { index: 1, startMs: 10000, endMs: 16000, text: "three" });
 });
-
