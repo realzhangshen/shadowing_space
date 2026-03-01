@@ -1,18 +1,29 @@
-@import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Space+Grotesk:wght@400;500;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");
 
 :root {
   color-scheme: light;
-  --bg: #f4f7fb;
-  --bg-accent: radial-gradient(circle at top left, #d8ebff 0%, #f6f9fd 40%, #fef8ef 100%);
-  --card: rgba(255, 255, 255, 0.92);
-  --text: #122137;
-  --muted: #5e6c84;
-  --line: #d5deea;
-  --primary: #1674f5;
-  --primary-strong: #1159bc;
-  --danger: #bf2f2f;
-  --success: #187d4a;
-  --shadow: 0 10px 30px rgba(18, 33, 55, 0.08);
+  --bg: #f7f7f4;
+  --bg-surface: #ffffff;
+  --bg-elevated: #eeeee8;
+  --bg-hover: rgba(38, 37, 30, 0.06);
+  --bg-active: rgba(38, 37, 30, 0.10);
+  --card: #ffffff;
+  --card-border: rgba(38, 37, 30, 0.12);
+  --text: #26251e;
+  --text-secondary: rgba(38, 37, 30, 0.55);
+  --muted: rgba(38, 37, 30, 0.40);
+  --line: rgba(38, 37, 30, 0.13);
+  --line-strong: rgba(38, 37, 30, 0.22);
+  --primary: #26251e;
+  --primary-hover: #3a3930;
+  --primary-text: #f7f7f4;
+  --primary-muted: rgba(38, 37, 30, 0.08);
+  --danger: #c53030;
+  --danger-muted: rgba(197, 48, 48, 0.08);
+  --success: #2f855a;
+  --success-muted: rgba(47, 133, 90, 0.08);
+  --shadow: 0 1px 3px rgba(38, 37, 30, 0.06), 0 4px 16px rgba(38, 37, 30, 0.05);
+  --shadow-elevated: 0 4px 24px rgba(38, 37, 30, 0.12);
 }
 
 * {
@@ -21,14 +32,22 @@
 
 body {
   margin: 0;
-  font-family: "Space Grotesk", "Segoe UI", sans-serif;
-  background: var(--bg-accent);
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: var(--bg);
   color: var(--text);
   min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  font-size: 15px;
+  line-height: 1.6;
 }
 
 a {
-  color: inherit;
+  color: var(--text-secondary);
+  transition: color 0.15s ease;
+}
+
+a:hover {
+  color: var(--text);
 }
 
 .app-bg {
@@ -37,19 +56,24 @@ a {
   padding: 1.2rem;
 }
 
+/* Navigation */
+
 .topbar {
   display: flex;
   justify-content: space-between;
-  align-items: flex-end;
+  align-items: center;
   gap: 1rem;
   margin-bottom: 1.2rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--line);
 }
 
 .topbar h1 {
   margin: 0.1rem 0 0;
-  font-family: "Fraunces", Georgia, serif;
-  font-size: clamp(1.4rem, 3vw, 2.1rem);
-  font-weight: 700;
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: clamp(1.3rem, 2.5vw, 1.75rem);
+  font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
 .eyebrow {
@@ -71,28 +95,40 @@ a {
   padding: 0.45rem 0.95rem;
   text-decoration: none;
   font-weight: 500;
-  background: #ffffff;
+  background: transparent;
+  color: var(--text-secondary);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.nav-link:hover {
+  background: var(--bg-hover);
+  color: var(--text);
 }
 
 .nav-link.active {
-  background: #122137;
-  color: #fff;
-  border-color: #122137;
+  background: var(--primary);
+  color: var(--primary-text);
+  border-color: var(--primary);
 }
+
+/* Page layout */
 
 .page-wrap {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  animation: fadeSlideUp 0.3s ease;
 }
+
+/* Cards */
 
 .card {
   background: var(--card);
-  border: 1px solid rgba(213, 222, 234, 0.92);
-  backdrop-filter: blur(6px);
-  border-radius: 18px;
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
   padding: 1rem;
   box-shadow: var(--shadow);
+  animation: fadeSlideUp 0.3s ease;
 }
 
 .card h2,
@@ -100,6 +136,8 @@ a {
   margin-top: 0;
   margin-bottom: 0.75rem;
 }
+
+/* Forms */
 
 .field {
   display: flex;
@@ -121,16 +159,28 @@ a {
 input,
 textarea,
 select {
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-strong);
   border-radius: 10px;
   padding: 0.7rem 0.75rem;
   font: inherit;
-  background: #fff;
+  background: var(--bg-surface);
+  color: var(--text);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: var(--text);
+  box-shadow: 0 0 0 3px var(--primary-muted);
 }
 
 textarea {
   resize: vertical;
 }
+
+/* Action rows */
 
 .actions-row {
   display: flex;
@@ -143,6 +193,8 @@ textarea {
   margin-top: 0.2rem;
 }
 
+/* Buttons */
+
 .btn {
   border: 0;
   border-radius: 10px;
@@ -151,38 +203,61 @@ textarea {
   font-weight: 600;
   cursor: pointer;
   text-decoration: none;
+  transition: background 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.btn:hover {
+  transform: translateY(-1px);
 }
 
 .btn:disabled {
   cursor: not-allowed;
   opacity: 0.5;
+  transform: none;
 }
 
 .btn.primary {
-  background: linear-gradient(135deg, #1674f5, #4e9bff);
-  color: #fff;
+  background: var(--primary);
+  color: var(--primary-text);
+}
+
+.btn.primary:hover {
+  background: var(--primary-hover);
 }
 
 .btn.secondary {
-  background: #f0f5ff;
-  color: #12325f;
-  border: 1px solid #c9daf6;
+  background: var(--bg-elevated);
+  color: var(--text);
+  border: 1px solid var(--line-strong);
+}
+
+.btn.secondary:hover {
+  background: #e5e5de;
+  border-color: var(--text);
+  color: var(--text);
 }
 
 .btn.danger {
-  background: #bf2f2f;
-  color: #fff;
+  background: var(--danger-muted);
+  color: var(--danger);
+}
+
+.btn.danger:hover {
+  background: rgba(197, 48, 48, 0.15);
 }
 
 .btn.active-speed {
-  border-color: #2b5eaa;
-  color: #1e4f96;
+  border: 1px solid var(--text);
+  color: var(--text);
+  background: var(--bg-active);
 }
 
 .inline-btn {
   display: inline-flex;
   align-items: center;
 }
+
+/* Track list */
 
 .track-list {
   display: flex;
@@ -196,14 +271,22 @@ textarea {
   gap: 0.6rem;
   border: 1px solid var(--line);
   border-radius: 12px;
-  padding: 0.6rem;
-  background: #fff;
+  padding: 0.7rem 0.8rem;
+  background: var(--bg-surface);
   align-items: center;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.track-item:hover {
+  border-color: var(--line-strong);
+  background: var(--bg-hover);
 }
 
 .track-item small {
   color: var(--muted);
 }
+
+/* Practice layout */
 
 .practice-layout {
   display: grid;
@@ -234,6 +317,16 @@ textarea {
     flex: 0 1 auto;
     overflow: visible;
   }
+
+  .topbar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .app-bg {
+    padding: 0.8rem;
+  }
 }
 
 .main-practice {
@@ -258,7 +351,7 @@ textarea {
   border-radius: 14px;
   overflow: hidden;
   border: 1px solid var(--line);
-  background: #dbe8fa;
+  background: var(--bg-elevated);
 }
 
 .youtube-shell {
@@ -266,6 +359,7 @@ textarea {
   min-height: 320px;
 }
 
+/* Segment card */
 
 .segment-card {
   margin-top: 0;
@@ -288,8 +382,8 @@ textarea {
   line-height: 1.55;
   padding: 1rem;
   border-radius: 12px;
-  border: 2px solid #7eadf4;
-  background: #edf4ff;
+  border: 1px solid var(--line-strong);
+  background: var(--bg-elevated);
 }
 
 .segment-list {
@@ -310,15 +404,21 @@ textarea {
   display: grid;
   grid-template-columns: 2.2rem 1fr;
   gap: 0.5rem;
-  background: #fff;
+  background: var(--bg-surface);
   cursor: pointer;
   align-items: center;
   font-size: inherit;
+  color: var(--text);
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.segment-item:hover {
+  background: var(--bg-hover);
 }
 
 .segment-item.active {
-  border-color: #7eadf4;
-  background: #edf4ff;
+  border-color: var(--text);
+  background: var(--bg-hover);
 }
 
 .segment-index {
@@ -361,12 +461,13 @@ textarea {
   cursor: pointer;
   font-size: 0.85rem;
   line-height: 1;
-  transition: background 0.15s, border-color 0.15s;
+  color: var(--text-secondary);
+  transition: background 0.15s ease, border-color 0.15s ease;
 }
 
 .icon-btn:hover {
-  background: #edf4ff;
-  border-color: #c9daf6;
+  background: var(--bg-hover);
+  border-color: var(--line);
 }
 
 .icon-btn:disabled {
@@ -389,19 +490,20 @@ textarea {
   flex-direction: column;
   align-items: center;
   gap: 0.2rem;
-  background: #f0f5ff;
-  border: 1px solid #c9daf6;
+  background: var(--primary-muted);
+  border: 1px solid var(--line);
   border-radius: 50%;
   width: 56px;
   height: 56px;
   justify-content: center;
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+  color: var(--text);
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
 }
 
 .control-btn:hover {
-  background: #dbe8fa;
-  border-color: #7eadf4;
+  background: var(--bg-active);
+  border-color: var(--line-strong);
   transform: scale(1.05);
 }
 
@@ -414,18 +516,18 @@ textarea {
 .control-btn-record {
   width: 64px;
   height: 64px;
-  background: linear-gradient(135deg, #1674f5, #4e9bff);
+  background: var(--primary);
   border-color: transparent;
-  color: #fff;
+  color: var(--primary-text);
 }
 
 .control-btn-record:hover {
-  background: linear-gradient(135deg, #1159bc, #1674f5);
+  background: var(--primary-hover);
   border-color: transparent;
 }
 
 .control-btn-record.recording {
-  background: linear-gradient(135deg, #bf2f2f, #e05555);
+  background: var(--danger);
   animation: pulse-record 1s infinite;
 }
 
@@ -461,7 +563,8 @@ textarea {
   50% { opacity: 0.4; }
 }
 
-/* Unified action area below video controls */
+/* Video actions row */
+
 .video-actions-row {
   display: flex;
   justify-content: center;
@@ -473,31 +576,34 @@ textarea {
 }
 
 .toggle-transcript-btn {
-  background: #f0f5ff;
-  border: 1px solid #c9daf6;
+  background: var(--primary-muted);
+  border: 1px solid var(--line);
   border-radius: 10px;
   padding: 0.5rem 0.9rem;
   font: inherit;
   font-weight: 600;
   font-size: 0.85rem;
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
+  color: var(--text-secondary);
+  transition: background 0.15s ease, border-color 0.15s ease;
 }
 
 .toggle-transcript-btn:hover {
-  background: #dbe8fa;
-  border-color: #7eadf4;
+  background: var(--bg-active);
+  border-color: var(--line-strong);
 }
 
 .shortcuts-hint {
   font-size: 0.8rem;
+  font-family: "JetBrains Mono", monospace;
   margin: 0;
+  color: var(--muted);
 }
 
 .resume-indicator {
-  background: #edf8f0;
+  background: var(--success-muted);
   color: var(--success);
-  border: 1px solid #b6dfc4;
+  border: 1px solid rgba(47, 133, 90, 0.25);
   border-radius: 8px;
   padding: 0.45rem 0.75rem;
   font-size: 0.88rem;
@@ -533,18 +639,19 @@ textarea {
 
 .video-card {
   background: var(--card);
-  border: 1px solid rgba(213, 222, 234, 0.92);
-  border-radius: 16px;
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
   overflow: hidden;
   box-shadow: var(--shadow);
   display: flex;
   flex-direction: column;
-  transition: transform 0.15s, box-shadow 0.15s;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
 }
 
 .video-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 14px 36px rgba(18, 33, 55, 0.12);
+  box-shadow: var(--shadow-elevated);
+  border-color: var(--line-strong);
 }
 
 .video-card-thumb {
@@ -552,11 +659,11 @@ textarea {
   aspect-ratio: 16 / 9;
   object-fit: cover;
   display: block;
-  background: #dbe8fa;
+  background: var(--bg-surface);
 }
 
 .video-card-thumb-placeholder {
-  background: linear-gradient(135deg, #dbe8fa, #e8eef8);
+  background: linear-gradient(135deg, var(--bg-elevated), var(--bg));
 }
 
 .video-card-body {
@@ -593,29 +700,31 @@ textarea {
 .progress-pct {
   font-size: 0.78rem;
   font-weight: 600;
-  color: var(--primary);
+  color: var(--text-secondary);
   white-space: nowrap;
 }
 
 .progress-bar {
   flex: 1;
-  height: 5px;
-  background: #e4ecf5;
+  height: 6px;
+  background: var(--bg-elevated);
   border-radius: 3px;
   overflow: hidden;
 }
 
 .progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #1674f5, #4e9bff);
+  background: var(--primary);
   border-radius: 3px;
-  transition: width 0.3s;
+  transition: width 0.3s ease;
 }
 
 .video-card-actions {
   display: flex;
   gap: 0.5rem;
-  padding: 0.5rem 1rem 0.8rem;
+  border-top: 1px solid var(--line);
+  margin-top: auto;
+  padding: 0.6rem 1rem 0.8rem;
 }
 
 .empty-state {
@@ -635,6 +744,12 @@ textarea {
   cursor: pointer;
   text-decoration: underline;
   padding: 0;
+  color: var(--text-secondary);
+  transition: color 0.15s ease;
+}
+
+.text-btn:hover {
+  color: var(--text);
 }
 
 .muted {
@@ -673,7 +788,7 @@ textarea {
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 0.5rem 0.7rem;
-  background: #fafbfd;
+  background: var(--bg-elevated);
 }
 
 .error-details summary {
@@ -704,3 +819,9 @@ textarea {
   margin: 0.6rem 0 0;
 }
 
+/* Animations */
+
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}

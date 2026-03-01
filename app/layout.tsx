@@ -5,7 +5,7 @@ import { AppHeader } from "@/components/AppHeader";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Shadowing Lab",
+  title: "Shadowing Space",
   description: "YouTube-based English shadowing practice app"
 };
 

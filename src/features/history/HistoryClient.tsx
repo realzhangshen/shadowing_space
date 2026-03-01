@@ -111,7 +111,7 @@ export function HistoryClient(): JSX.Element {
 
       {!isLoading && items.length === 0 ? (
         <div className="card empty-state">
-          <h3>Welcome to Shadowing Lab!</h3>
+          <h3>Welcome to Shadowing Space!</h3>
           <p className="muted">Import a YouTube video to start practicing your English pronunciation with shadowing.</p>
           <Link href="/import" className="btn primary inline-btn">
             Import your first video

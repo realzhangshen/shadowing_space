@@ -13,7 +13,7 @@ export function AppHeader(): JSX.Element {
   return (
     <header className="topbar">
       <div>
-        <p className="eyebrow">Shadowing Lab</p>
+        <p className="eyebrow">Shadowing Space</p>
         <h1>English Shadowing Practice</h1>
       </div>
 
