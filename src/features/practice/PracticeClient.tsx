@@ -56,6 +56,8 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
     autoAdvance,
     microphoneError,
     playerError,
+    transcriptHidden,
+    toggleTranscriptHidden,
     setCurrentIndex,
     setPlaybackMode,
     setPlaybackSpeed,
@@ -359,6 +361,18 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
           onToggleRecording={() => void toggleRecording()}
           onPlayRecording={() => void playRecording()}
         />
+
+        {/* Unified action area below video controls */}
+        <div className="video-actions-row">
+          <button
+            type="button"
+            className="toggle-transcript-btn"
+            onClick={toggleTranscriptHidden}
+            title={transcriptHidden ? "Show transcript" : "Hide transcript"}
+          >
+            {transcriptHidden ? "Show Sentences" : "Hide Sentences"}
+          </button>
+        </div>
 
         {resumeMessage ? <p className="resume-indicator">{resumeMessage}</p> : null}
 

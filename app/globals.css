@@ -210,11 +210,29 @@ textarea {
   grid-template-columns: 1fr 1fr;
   gap: 1.5rem;
   max-width: 1200px;
+  height: calc(100vh - 8rem);
+  min-height: 600px;
 }
 
 @media (max-width: 768px) {
   .practice-layout {
     grid-template-columns: 1fr;
+    height: auto;
+    min-height: auto;
+  }
+
+  .main-practice {
+    overflow: visible;
+  }
+
+  .segment-card {
+    overflow: visible;
+    display: block;
+  }
+
+  .segment-list {
+    flex: 0 1 auto;
+    overflow: visible;
   }
 }
 
@@ -222,6 +240,7 @@ textarea {
   display: flex;
   flex-direction: column;
   gap: 0.9rem;
+  overflow: hidden;
 }
 
 .practice-head {
@@ -250,6 +269,10 @@ textarea {
 
 .segment-card {
   margin-top: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
 }
 
 .segment-header {
@@ -272,10 +295,11 @@ textarea {
 .segment-list {
   margin-top: 0.7rem;
   flex: 1;
-  overflow: auto;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 0.45rem;
+  min-height: 0;
 }
 
 .segment-item {
@@ -435,6 +459,34 @@ textarea {
 @keyframes pulse-record {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.4; }
+}
+
+/* Unified action area below video controls */
+.video-actions-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0;
+  border-top: 1px solid var(--line);
+  margin-top: 0.2rem;
+}
+
+.toggle-transcript-btn {
+  background: #f0f5ff;
+  border: 1px solid #c9daf6;
+  border-radius: 10px;
+  padding: 0.5rem 0.9rem;
+  font: inherit;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.toggle-transcript-btn:hover {
+  background: #dbe8fa;
+  border-color: #7eadf4;
 }
 
 .shortcuts-hint {

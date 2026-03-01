@@ -20,7 +20,6 @@ export function SegmentNavigator({
   const current = segments[currentIndex];
   const activeRef = useRef<HTMLDivElement | null>(null);
   const transcriptHidden = usePracticeStore((s) => s.transcriptHidden);
-  const toggleTranscriptHidden = usePracticeStore((s) => s.toggleTranscriptHidden);
 
   useEffect(() => {
     activeRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -35,14 +34,6 @@ export function SegmentNavigator({
       <div className="segment-header">
         <h3>Sentences</h3>
         <div className="segment-header-right">
-          <button
-            type="button"
-            className="icon-btn"
-            title={transcriptHidden ? "Show transcript" : "Hide transcript"}
-            onClick={toggleTranscriptHidden}
-          >
-            {transcriptHidden ? "\uD83D\uDE48" : "\uD83D\uDC41\uFE0F"}
-          </button>
           <p className="muted">
             {Math.min(currentIndex + 1, segments.length)} / {segments.length}
           </p>
