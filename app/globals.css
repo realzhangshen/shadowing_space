@@ -284,7 +284,7 @@ textarea {
   padding: 0.55rem;
   text-align: left;
   display: grid;
-  grid-template-columns: 1.8rem 1fr auto;
+  grid-template-columns: 2.2rem 1fr;
   gap: 0.5rem;
   background: #fff;
   cursor: pointer;
@@ -308,16 +308,25 @@ textarea {
   font-size: 0.95rem;
 }
 
-.segment-actions {
+.segment-header-right {
   display: flex;
-  gap: 0.25rem;
-  opacity: 0.7;
-  transition: opacity 0.15s;
+  align-items: center;
+  gap: 0.5rem;
 }
 
-.segment-item:hover .segment-actions,
-.segment-item.active .segment-actions {
-  opacity: 1;
+.recording-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--success);
+  margin-right: 2px;
+  vertical-align: middle;
+}
+
+.segment-blurred {
+  filter: blur(6px);
+  user-select: none;
 }
 
 .icon-btn {
@@ -341,9 +350,86 @@ textarea {
   cursor: not-allowed;
 }
 
-.icon-btn.recording-active {
-  color: var(--danger);
+/* Playback control bar */
+
+.control-bar {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.6rem 0;
+}
+
+.control-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  background: #f0f5ff;
+  border: 1px solid #c9daf6;
+  border-radius: 50%;
+  width: 56px;
+  height: 56px;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+}
+
+.control-btn:hover {
+  background: #dbe8fa;
+  border-color: #7eadf4;
+  transform: scale(1.05);
+}
+
+.control-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.control-btn-record {
+  width: 64px;
+  height: 64px;
+  background: linear-gradient(135deg, #1674f5, #4e9bff);
+  border-color: transparent;
+  color: #fff;
+}
+
+.control-btn-record:hover {
+  background: linear-gradient(135deg, #1159bc, #1674f5);
+  border-color: transparent;
+}
+
+.control-btn-record.recording {
+  background: linear-gradient(135deg, #bf2f2f, #e05555);
   animation: pulse-record 1s infinite;
+}
+
+.control-icon {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.control-label {
+  font-size: 0.6rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.auto-advance-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+  cursor: pointer;
+  margin-left: auto;
+}
+
+.auto-advance-toggle input {
+  margin: 0;
+  cursor: pointer;
 }
 
 @keyframes pulse-record {

@@ -76,10 +76,11 @@ export type YouTubeSegmentPlayerHandle = {
 type YouTubeSegmentPlayerProps = {
   videoId: string;
   onPlayerError?: (message: string) => void;
+  onPlayStateChange?: (playing: boolean) => void;
 };
 
 export const YouTubeSegmentPlayer = forwardRef<YouTubeSegmentPlayerHandle, YouTubeSegmentPlayerProps>(
-  function YouTubeSegmentPlayer({ videoId, onPlayerError }, ref) {
+  function YouTubeSegmentPlayer({ videoId, onPlayerError, onPlayStateChange }, ref) {
     const elementId = useId().replace(/[:]/g, "");
     const playerRef = useRef<YT.Player | null>(null);
     const endTimerRef = useRef<number | null>(null);
@@ -115,6 +116,9 @@ export const YouTubeSegmentPlayer = forwardRef<YouTubeSegmentPlayerHandle, YouTu
               },
               onError: () => {
                 onPlayerError?.("YouTube player error. Please refresh and try again.");
+              },
+              onStateChange: (event: YT.PlayerEvent) => {
+                onPlayStateChange?.(event.data === window.YT.PlayerState.PLAYING);
               }
             }
           });

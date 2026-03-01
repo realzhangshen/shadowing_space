@@ -9,6 +9,7 @@ type ShortcutHandlers = {
   onPlayAttempt: () => void;
   onPrevSegment: () => void;
   onNextSegment: () => void;
+  onToggleTranscript: () => void;
 };
 
 function isEditableTarget(target: EventTarget | null): boolean {
@@ -55,6 +56,10 @@ export function useShortcuts(handlers: ShortcutHandlers): void {
         case "arrowright":
           event.preventDefault();
           handlers.onNextSegment();
+          break;
+        case "t":
+          event.preventDefault();
+          handlers.onToggleTranscript();
           break;
         default:
           break;

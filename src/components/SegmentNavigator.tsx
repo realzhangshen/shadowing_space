@@ -1,52 +1,69 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { usePracticeStore } from "@/store/practiceStore";
 import type { SegmentRecord } from "@/types/models";
 
 type SegmentNavigatorProps = {
   segments: SegmentRecord[];
   currentIndex: number;
-  onPlayOriginal: (index: number) => void;
-  onToggleRecording: (index: number) => void;
-  onPlayRecording: (index: number) => void;
+  onSelectSegment: (index: number) => void;
   recordingReadySet: Set<number>;
-  isRecording: boolean;
-  recordingIndex: number | null;
 };
 
 export function SegmentNavigator({
   segments,
   currentIndex,
-  onPlayOriginal,
-  onToggleRecording,
-  onPlayRecording,
-  recordingReadySet,
-  isRecording,
-  recordingIndex
+  onSelectSegment,
+  recordingReadySet
 }: SegmentNavigatorProps): JSX.Element {
   const current = segments[currentIndex];
   const activeRef = useRef<HTMLDivElement | null>(null);
+  const transcriptHidden = usePracticeStore((s) => s.transcriptHidden);
+  const toggleTranscriptHidden = usePracticeStore((s) => s.toggleTranscriptHidden);
 
   useEffect(() => {
     activeRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }, [currentIndex]);
 
+  const recordedCount = recordingReadySet.size;
+  const totalCount = segments.length;
+  const pct = totalCount > 0 ? Math.round((recordedCount / totalCount) * 100) : 0;
+
   return (
     <section className="segment-card">
       <div className="segment-header">
         <h3>Sentences</h3>
-        <p className="muted">
-          {Math.min(currentIndex + 1, segments.length)} / {segments.length}
-        </p>
+        <div className="segment-header-right">
+          <button
+            type="button"
+            className="icon-btn"
+            title={transcriptHidden ? "Show transcript" : "Hide transcript"}
+            onClick={toggleTranscriptHidden}
+          >
+            {transcriptHidden ? "\uD83D\uDE48" : "\uD83D\uDC41\uFE0F"}
+          </button>
+          <p className="muted">
+            {Math.min(currentIndex + 1, segments.length)} / {segments.length}
+          </p>
+        </div>
       </div>
 
-      <p className="segment-current">{current?.text ?? "No segment"}</p>
+      <div className="progress-row">
+        <span className="progress-pct">{recordedCount}/{totalCount} recorded</span>
+        <div className="progress-bar">
+          <div className="progress-fill" style={{ width: `${pct}%` }} />
+        </div>
+      </div>
+
+      <p className={transcriptHidden ? "segment-current segment-blurred" : "segment-current"}>
+        {current?.text ?? "No segment"}
+      </p>
 
       <div className="segment-list" role="list" aria-label="Sentence list">
         {segments.map((segment, index) => {
           const isActive = index === currentIndex;
           const hasRecording = recordingReadySet.has(index);
-          const isRecordingThis = isRecording && recordingIndex === index;
 
           return (
             <div
@@ -55,41 +72,21 @@ export function SegmentNavigator({
               role="listitem"
               tabIndex={0}
               className={isActive ? "segment-item active" : "segment-item"}
-              onClick={() => onPlayOriginal(index)}
+              onClick={() => onSelectSegment(index)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
                   e.preventDefault();
-                  onPlayOriginal(index);
+                  onSelectSegment(index);
                 }
               }}
             >
-              <span className="segment-index">{index + 1}</span>
-              <p className="segment-text">{segment.text}</p>
-              <span className="segment-actions" onClick={(e) => e.stopPropagation()}>
-                <button
-                  type="button"
-                  className={isRecordingThis ? "icon-btn recording-active" : "icon-btn"}
-                  title={isRecordingThis ? "Stop recording" : "Record"}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onToggleRecording(index);
-                  }}
-                >
-                  🎙
-                </button>
-                <button
-                  type="button"
-                  className="icon-btn"
-                  title="Play recording"
-                  disabled={!hasRecording}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onPlayRecording(index);
-                  }}
-                >
-                  🎧
-                </button>
+              <span className="segment-index">
+                {hasRecording ? <span className="recording-dot" /> : null}
+                {index + 1}
               </span>
+              <p className={transcriptHidden ? "segment-text segment-blurred" : "segment-text"}>
+                {segment.text}
+              </p>
             </div>
           );
         })}

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { PlaybackControlBar } from "@/components/PlaybackControlBar";
 import { SegmentNavigator } from "@/components/SegmentNavigator";
 import { YouTubeSegmentPlayer, type YouTubeSegmentPlayerHandle } from "@/components/YouTubeSegmentPlayer";
 import { useShortcuts } from "@/hooks/useShortcuts";
@@ -51,12 +52,16 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
     playbackMode,
     playbackSpeed,
     isRecording,
+    isPlaying,
+    autoAdvance,
     microphoneError,
     playerError,
     setCurrentIndex,
     setPlaybackMode,
     setPlaybackSpeed,
     setIsRecording,
+    setIsPlaying,
+    toggleAutoAdvance,
     setMicrophoneError,
     setPlayerError,
     resetForSession
@@ -227,6 +232,10 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
       setLatestRecordingReady(true);
       setRecordingReadySet((prev) => new Set(prev).add(targetSegment.index));
       setPlaybackMode("attempt");
+
+      if (usePracticeStore.getState().autoAdvance) {
+        setTimeout(() => goNext(), 400);
+      }
     },
     onError: (message) => {
       setMicrophoneError(message);
@@ -271,8 +280,7 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
     }
   }, [clearRecordingAudio, currentIndex, playbackSpeed, segments, setCurrentIndex, setPlaybackMode]);
 
-  // Index-aware callbacks for inline icons
-  const playOriginalForIndex = useCallback(
+  const selectSegment = useCallback(
     (index: number) => {
       setCurrentIndex(index);
       const seg = segments[index];
@@ -282,54 +290,6 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
       setPlaybackMode("source");
     },
     [clearRecordingAudio, playbackSpeed, segments, setCurrentIndex, setPlaybackMode]
-  );
-
-  const toggleRecordingForIndex = useCallback(
-    (index: number) => {
-      // If recording on a different index, stop first
-      if (recorder.isRecording && currentIndex !== index) {
-        void recorder.stop();
-      }
-      setCurrentIndex(index);
-      setMicrophoneError(undefined);
-      playerRef.current?.pause();
-
-      if (recorder.isRecording && currentIndex === index) {
-        void recorder.stop();
-      } else if (!recorder.isRecording) {
-        recordingTargetRef.current = index;
-        void recorder.start();
-      }
-    },
-    [currentIndex, recorder, setCurrentIndex, setMicrophoneError]
-  );
-
-  const playRecordingForIndex = useCallback(
-    async (index: number) => {
-      setCurrentIndex(index);
-      const recording = await getLatestRecording(trackId, index);
-      if (!recording) return;
-
-      playerRef.current?.pause();
-      clearRecordingAudio();
-
-      const url = URL.createObjectURL(recording.blob);
-      const audio = new Audio(url);
-      recordingAudioRef.current = audio;
-      recordingAudioUrlRef.current = url;
-
-      audio.onended = () => {
-        clearRecordingAudio();
-      };
-
-      audio.play().catch(() => {
-        setError("Failed to play your recording.");
-        clearRecordingAudio();
-      });
-
-      setPlaybackMode("attempt");
-    },
-    [clearRecordingAudio, setCurrentIndex, setPlaybackMode, trackId]
   );
 
   const shortcutHandlers = useMemo(
@@ -343,7 +303,8 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
         void playRecording();
       },
       onPrevSegment: goPrev,
-      onNextSegment: goNext
+      onNextSegment: goNext,
+      onToggleTranscript: usePracticeStore.getState().toggleTranscriptHidden
     }),
     [goNext, goPrev, playOriginal, playRecording, toggleOriginal, toggleRecording]
   );
@@ -383,7 +344,21 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
           </Link>
         </div>
 
-        <YouTubeSegmentPlayer videoId={session.video.youtubeVideoId} ref={playerRef} onPlayerError={setPlayerError} />
+        <YouTubeSegmentPlayer
+          videoId={session.video.youtubeVideoId}
+          ref={playerRef}
+          onPlayerError={setPlayerError}
+          onPlayStateChange={setIsPlaying}
+        />
+
+        <PlaybackControlBar
+          isPlaying={isPlaying}
+          isRecording={isRecording}
+          hasRecording={latestRecordingReady}
+          onToggleOriginal={toggleOriginal}
+          onToggleRecording={() => void toggleRecording()}
+          onPlayRecording={() => void playRecording()}
+        />
 
         {resumeMessage ? <p className="resume-indicator">{resumeMessage}</p> : null}
 
@@ -399,6 +374,10 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
               {speed}x
             </button>
           ))}
+          <label className="auto-advance-toggle">
+            <input type="checkbox" checked={autoAdvance} onChange={toggleAutoAdvance} />
+            Auto-advance
+          </label>
         </div>
 
         <div className="actions-row">
@@ -416,7 +395,7 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
         </div>
 
         <p className="muted shortcuts-hint">
-          Space: play/pause · R: record · A: replay · B: playback · &larr;/&rarr;: prev/next
+          Space: play/pause · R: record · A: replay · B: playback · T: toggle text · &larr;/&rarr;: prev/next
         </p>
 
         {error ? <p className="error-text">{error}</p> : null}
@@ -428,12 +407,8 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
         <SegmentNavigator
           segments={segments}
           currentIndex={currentIndex}
-          onPlayOriginal={playOriginalForIndex}
-          onToggleRecording={toggleRecordingForIndex}
-          onPlayRecording={(i) => void playRecordingForIndex(i)}
+          onSelectSegment={selectSegment}
           recordingReadySet={recordingReadySet}
-          isRecording={isRecording}
-          recordingIndex={isRecording ? currentIndex : null}
         />
       </section>
     </div>
