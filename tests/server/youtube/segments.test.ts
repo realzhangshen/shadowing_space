@@ -50,6 +50,30 @@ test("parseTranscriptPayload parses json3 when timestamps are numeric strings", 
   ]);
 });
 
+test("parseTranscriptPayload decodes nested html entities in json3 text", () => {
+  const payload = JSON.stringify({
+    events: [
+      {
+        tStartMs: 1000,
+        dDurationMs: 2000,
+        segs: [{ utf8: "Don&amp;#39;t &amp;amp; go" }]
+      }
+    ]
+  });
+
+  const result = parseTranscriptPayload(payload);
+
+  assert.equal(result.parsed, true);
+  assert.deepEqual(result.segments, [
+    {
+      index: 0,
+      startMs: 1000,
+      endMs: 3000,
+      text: "Don't & go"
+    }
+  ]);
+});
+
 test("parseTranscriptPayload parses xml", () => {
   const payload = `<transcript><text start="1.2" dur="2">Hello &amp; <b>team</b></text></transcript>`;
   const result = parseTranscriptPayload(payload);
@@ -61,6 +85,69 @@ test("parseTranscriptPayload parses xml", () => {
     endMs: 3200,
     text: "Hello & team"
   });
+});
+
+test("parseTranscriptPayload decodes nested html entities in xml text", () => {
+  const payload = `<transcript><text start="1.2" dur="2">Don&amp;#39;t stop</text></transcript>`;
+  const result = parseTranscriptPayload(payload);
+
+  assert.equal(result.parsed, true);
+  assert.deepEqual(result.segments[0], {
+    index: 0,
+    startMs: 1200,
+    endMs: 3200,
+    text: "Don't stop"
+  });
+});
+
+test("parseTranscriptPayload decodes triple-nested html entities", () => {
+  const payload = JSON.stringify({
+    events: [
+      {
+        tStartMs: 1000,
+        dDurationMs: 2000,
+        segs: [{ utf8: "&amp;amp;#39;" }]
+      }
+    ]
+  });
+
+  const result = parseTranscriptPayload(payload);
+
+  assert.equal(result.parsed, true);
+  assert.deepEqual(result.segments, [
+    {
+      index: 0,
+      startMs: 1000,
+      endMs: 3000,
+      text: "'"
+    }
+  ]);
+});
+
+test("parseTranscriptPayload decodes nested html entities in vtt text", () => {
+  const payload = `WEBVTT\n\n00:00:01.000 --> 00:00:02.500\nDon&amp;#39;t stop\n`;
+  const result = parseTranscriptPayload(payload);
+
+  assert.equal(result.parsed, true);
+  assert.equal(result.segments[0]?.text, "Don't stop");
+});
+
+test("parseTranscriptPayload handles malformed entities gracefully", () => {
+  const payload = JSON.stringify({
+    events: [
+      {
+        tStartMs: 1000,
+        dDurationMs: 2000,
+        segs: [{ utf8: "Hello &amp; world &invalid; goodbye" }]
+      }
+    ]
+  });
+
+  const result = parseTranscriptPayload(payload);
+
+  assert.equal(result.parsed, true);
+  // &amp; decodes to &, &invalid; is left as-is (fallback)
+  assert.equal(result.segments[0]?.text, "Hello & world &invalid; goodbye");
 });
 
 test("parseTranscriptPayload parses webvtt", () => {
@@ -136,4 +223,3 @@ test("mergeSegments force-splits when duration exceeds 15 seconds", () => {
   assert.deepEqual(result[0], { index: 0, startMs: 0, endMs: 10000, text: "one two" });
   assert.deepEqual(result[1], { index: 1, startMs: 10000, endMs: 16000, text: "three" });
 });
-

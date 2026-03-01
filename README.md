@@ -48,6 +48,29 @@ npm run typecheck
 npm run test
 ```
 
+## Testing
+- Tests are physically centralized under `tests/`.
+- Main suite: `tests/server/**` (used by `npm run test`).
+- Diagnostic suite: `tests/diagnostics/**` (included by `npm run test:all`).
+- Test governance registry: `tests/catalog.yaml`.
+- Generated status outputs:
+  - `reports/tests/latest.json`
+  - `reports/tests/latest.md`
+  - `reports/tests/history/*.json`
+
+```bash
+# Main suite + status report
+npm run test
+
+# Main + diagnostics
+npm run test:all
+
+# Catalog coverage check (fails on uncataloged tests)
+npm run test:catalog
+```
+
+See `docs/testing.md` for catalog fields, status semantics, and governance rules.
+
 ## Debugging
 - API responses now include `x-request-id` header (and `requestId` in error JSON payload).
 - The server prints structured JSON logs with the same `requestId`, so you can quickly trace a failed `fetch`/`segments` call end-to-end.

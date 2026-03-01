@@ -110,6 +110,7 @@ function decodeXmlEntities(value: string): string {
     try {
       return String.fromCodePoint(codePoint);
     } catch {
+      // Invalid Unicode code point - return raw entity
       return fallback;
     }
   };
@@ -125,6 +126,24 @@ function decodeXmlEntities(value: string): string {
 
     return named[entity] ?? raw;
   });
+}
+
+// YouTube sometimes returns double-encoded HTML entities (e.g., &amp;#39; instead of &#39;).
+// This function iteratively decodes entities until no more are found, with a safety limit.
+const MAX_ENTITY_DECODE_PASSES = 4;
+
+function decodeNestedXmlEntities(value: string): string {
+  let decoded = value;
+
+  for (let pass = 0; pass < MAX_ENTITY_DECODE_PASSES; pass += 1) {
+    const next = decodeXmlEntities(decoded);
+    if (next === decoded) {
+      break;
+    }
+    decoded = next;
+  }
+
+  return decoded;
 }
 
 function parseXmlAttributes(rawAttributes: string): Record<string, string> {
@@ -157,7 +176,9 @@ function normalizeJson3Segments(events: TranscriptEvent[]): SegmentDTO[] {
       continue;
     }
 
-    const text = normalizeText(event.segs.map((item) => item.utf8 ?? item.text ?? "").join(""));
+    const text = normalizeText(
+      decodeNestedXmlEntities(event.segs.map((item) => item.utf8 ?? item.text ?? "").join(""))
+    );
     if (!text) {
       continue;
     }
@@ -193,7 +214,7 @@ function normalizeXmlSegments(xml: string): SegmentDTO[] {
       continue;
     }
 
-    const text = normalizeText(decodeXmlEntities((match[3] ?? "").replace(/<[^>]+>/g, " ")));
+    const text = normalizeText(decodeNestedXmlEntities((match[3] ?? "").replace(/<[^>]+>/g, " ")));
     if (!text) {
       match = textPattern.exec(xml);
       continue;
@@ -283,7 +304,7 @@ function normalizeVttSegments(vttText: string): SegmentDTO[] {
       continue;
     }
 
-    const text = normalizeText(decodeXmlEntities(cueLines.join(" ").replace(/<[^>]+>/g, " ")));
+    const text = normalizeText(decodeNestedXmlEntities(cueLines.join(" ").replace(/<[^>]+>/g, " ")));
     if (!text) {
       continue;
     }
@@ -337,6 +358,17 @@ function flush(buffer: SegmentDTO[], index: number): SegmentDTO {
   };
 }
 
+/**
+ * Merges transcript segments to optimize readability while preserving sentence boundaries.
+ *
+ * Strategy:
+ * - Segments are merged until a 15-second maximum duration is reached
+ * - Sentences are split at sentence-ending punctuation (.?!。？！)
+ * - Segment indices are reassigned after merging
+ *
+ * @param segments - The parsed transcript segments to merge
+ * @returns Merged segments with updated indices
+ */
 export function mergeSegments(segments: SegmentDTO[]): SegmentDTO[] {
   if (segments.length === 0) return [];
 
@@ -385,7 +417,7 @@ export function parseTranscriptPayload(rawPayload: string): { parsed: boolean; s
       }
       return { parsed: false, segments: [] };
     } catch {
-      // Keep falling back.
+      // JSON parse failed - not valid JSON, continue to XML/VTT fallback parsers
     }
   }
 

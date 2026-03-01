@@ -2,7 +2,7 @@
  * Diagnostic test for inspecting raw YouTube caption payloads.
  *
  * Skipped by default — run manually to debug payload parsing issues:
- *   DIAGNOSE=1 npx tsx --test src/server/youtube/diagnose-payload.test.ts
+ *   DIAGNOSE=1 npx tsx --test tests/diagnostics/youtube/diagnose-payload.test.ts
  */
 
 import assert from "node:assert/strict";
