@@ -58,13 +58,15 @@ function parseDurationSec(value: string | undefined): number | undefined {
   return undefined;
 }
 
-function buildCandidateUrls(baseUrl: string): string[] {
+function buildCandidateUrls(baseUrl: string, logger?: RequestLogger): string[] {
   const candidateUrls: string[] = [];
 
   let parsed: URL;
   try {
     parsed = new URL(baseUrl);
   } catch {
+    // Invalid URL format - return as-is and let fetch fail with better error context
+    logger?.warn("youtube.build_candidate_urls.invalid_url", { baseUrl });
     return [baseUrl];
   }
 
@@ -246,7 +248,7 @@ export async function resolveTranscriptSegments(params: {
     expiresAt: payload.expiresAt
   });
 
-  const candidateUrls = buildCandidateUrls(payload.baseUrl);
+  const candidateUrls = buildCandidateUrls(payload.baseUrl, logger);
   logger?.info("youtube.resolve_segments.base_url", {
     videoId,
     baseUrl: payload.baseUrl
@@ -285,6 +287,12 @@ export async function resolveTranscriptSegments(params: {
         });
         continue;
       }
+      // Wrap unexpected errors with context
+      logger?.error("youtube.resolve_segments.unexpected_error", {
+        attempt,
+        ...candidateMeta,
+        error: error instanceof Error ? error.message : String(error)
+      });
       throw error;
     }
 

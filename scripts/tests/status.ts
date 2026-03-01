@@ -401,7 +401,10 @@ function loadPreviousReport(): ReportJson | null {
   try {
     const raw = readFileSync(LATEST_JSON_PATH, "utf8");
     return JSON.parse(raw) as ReportJson;
-  } catch {
+  } catch (error) {
+    // Log to stderr so it doesn't break report parsing
+    const errorMsg = `[status] warning: failed to load previous report: ${error instanceof Error ? error.message : String(error)}\n`;
+    process.stderr.write(errorMsg);
     return null;
   }
 }
@@ -748,7 +751,16 @@ function main(): void {
 try {
   main();
 } catch (error) {
-  const message = error instanceof Error ? error.stack ?? error.message : String(error);
-  console.error(`[status] fatal: ${message}`);
+  const errorCode = "TEST_REPORTER_FATAL";
+  const message = error instanceof Error ? error.message : String(error);
+  const stack = error instanceof Error ? error.stack : undefined;
+
+  console.error(JSON.stringify({
+    errorCode,
+    message,
+    stack,
+    timestamp: new Date().toISOString()
+  }));
+
   process.exitCode = 1;
 }

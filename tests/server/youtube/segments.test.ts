@@ -100,6 +100,56 @@ test("parseTranscriptPayload decodes nested html entities in xml text", () => {
   });
 });
 
+test("parseTranscriptPayload decodes triple-nested html entities", () => {
+  const payload = JSON.stringify({
+    events: [
+      {
+        tStartMs: 1000,
+        dDurationMs: 2000,
+        segs: [{ utf8: "&amp;amp;#39;" }]
+      }
+    ]
+  });
+
+  const result = parseTranscriptPayload(payload);
+
+  assert.equal(result.parsed, true);
+  assert.deepEqual(result.segments, [
+    {
+      index: 0,
+      startMs: 1000,
+      endMs: 3000,
+      text: "'"
+    }
+  ]);
+});
+
+test("parseTranscriptPayload decodes nested html entities in vtt text", () => {
+  const payload = `WEBVTT\n\n00:00:01.000 --> 00:00:02.500\nDon&amp;#39;t stop\n`;
+  const result = parseTranscriptPayload(payload);
+
+  assert.equal(result.parsed, true);
+  assert.equal(result.segments[0]?.text, "Don't stop");
+});
+
+test("parseTranscriptPayload handles malformed entities gracefully", () => {
+  const payload = JSON.stringify({
+    events: [
+      {
+        tStartMs: 1000,
+        dDurationMs: 2000,
+        segs: [{ utf8: "Hello &amp; world &invalid; goodbye" }]
+      }
+    ]
+  });
+
+  const result = parseTranscriptPayload(payload);
+
+  assert.equal(result.parsed, true);
+  // &amp; decodes to &, &invalid; is left as-is (fallback)
+  assert.equal(result.segments[0]?.text, "Hello & world &invalid; goodbye");
+});
+
 test("parseTranscriptPayload parses webvtt", () => {
   const payload = `WEBVTT\n\n00:00:01.000 --> 00:00:02.500\nHello\n`;
   const result = parseTranscriptPayload(payload);

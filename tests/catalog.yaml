@@ -72,6 +72,30 @@ tests:
     lastReviewedOn: 2026-03-01
     reviewBy: 2026-03-31
   - file: tests/server/youtube/segments.test.ts
+    name: parseTranscriptPayload decodes triple-nested html entities
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Tests maximum nesting depth handling for YouTube's double-encoded entities.
+    lastReviewedOn: 2026-03-01
+    reviewBy: 2026-03-31
+  - file: tests/server/youtube/segments.test.ts
+    name: parseTranscriptPayload decodes nested html entities in vtt text
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Ensures VTT fallback format also decodes nested entities.
+    lastReviewedOn: 2026-03-01
+    reviewBy: 2026-03-31
+  - file: tests/server/youtube/segments.test.ts
+    name: parseTranscriptPayload handles malformed entities gracefully
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Confirms fallback behavior for invalid HTML entities.
+    lastReviewedOn: 2026-03-01
+    reviewBy: 2026-03-31
+  - file: tests/server/youtube/segments.test.ts
     name: parseTranscriptPayload parses webvtt
     category: unit
     validity: reasonable

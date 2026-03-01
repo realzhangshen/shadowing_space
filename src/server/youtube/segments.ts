@@ -110,6 +110,7 @@ function decodeXmlEntities(value: string): string {
     try {
       return String.fromCodePoint(codePoint);
     } catch {
+      // Invalid Unicode code point - return raw entity
       return fallback;
     }
   };
@@ -127,6 +128,8 @@ function decodeXmlEntities(value: string): string {
   });
 }
 
+// YouTube sometimes returns double-encoded HTML entities (e.g., &amp;#39; instead of &#39;).
+// This function iteratively decodes entities until no more are found, with a safety limit.
 const MAX_ENTITY_DECODE_PASSES = 4;
 
 function decodeNestedXmlEntities(value: string): string {
@@ -355,6 +358,17 @@ function flush(buffer: SegmentDTO[], index: number): SegmentDTO {
   };
 }
 
+/**
+ * Merges transcript segments to optimize readability while preserving sentence boundaries.
+ *
+ * Strategy:
+ * - Segments are merged until a 15-second maximum duration is reached
+ * - Sentences are split at sentence-ending punctuation (.?!。？！)
+ * - Segment indices are reassigned after merging
+ *
+ * @param segments - The parsed transcript segments to merge
+ * @returns Merged segments with updated indices
+ */
 export function mergeSegments(segments: SegmentDTO[]): SegmentDTO[] {
   if (segments.length === 0) return [];
 
@@ -403,7 +417,7 @@ export function parseTranscriptPayload(rawPayload: string): { parsed: boolean; s
       }
       return { parsed: false, segments: [] };
     } catch {
-      // Keep falling back.
+      // JSON parse failed - not valid JSON, continue to XML/VTT fallback parsers
     }
   }
 
