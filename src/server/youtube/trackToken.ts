@@ -1,5 +1,5 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { AppError } from "@/server/errors";
+import { TrackTokenExpiredError, TrackTokenInvalidError } from "@/server/errors";
 
 const ALLOWED_CAPTION_HOSTS = new Set([
   "youtube.com",
@@ -44,7 +44,7 @@ function decodePayload(encoded: string): TrackTokenPayload {
 
     return parsed as TrackTokenPayload;
   } catch {
-    throw new AppError("字幕轨参数无效", 400);
+    throw new TrackTokenInvalidError("malformed_payload");
   }
 }
 
@@ -59,16 +59,16 @@ function normalizeCaptionUrl(baseUrl: string): string {
   try {
     parsed = new URL(trimmed);
   } catch {
-    throw new AppError("字幕轨参数无效", 400);
+    throw new TrackTokenInvalidError("invalid_url");
   }
 
   const host = parsed.hostname.toLowerCase();
   if (parsed.protocol !== "https:" || !ALLOWED_CAPTION_HOSTS.has(host)) {
-    throw new AppError("字幕轨参数无效", 400);
+    throw new TrackTokenInvalidError("disallowed_host");
   }
 
   if (!parsed.pathname.startsWith("/api/timedtext")) {
-    throw new AppError("字幕轨参数无效", 400);
+    throw new TrackTokenInvalidError("invalid_path");
   }
 
   // Preserve the original URL text so signed query parameters are not rewritten.
@@ -92,7 +92,7 @@ export function createTrackToken(payload: UnsignedPayload, secret: string, ttlSe
 export function parseTrackToken(token: string, secret: string, nowMs = Date.now()): TrackTokenPayload {
   const [encoded, signature] = token.split(".");
   if (!encoded || !signature) {
-    throw new AppError("字幕轨参数无效", 400);
+    throw new TrackTokenInvalidError("malformed_token");
   }
 
   const expectedSignature = signValue(encoded, secret);
@@ -102,14 +102,14 @@ export function parseTrackToken(token: string, secret: string, nowMs = Date.now(
     providedBuffer.length !== expectedBuffer.length ||
     !timingSafeEqual(providedBuffer, expectedBuffer)
   ) {
-    throw new AppError("字幕轨参数无效", 400);
+    throw new TrackTokenInvalidError("bad_signature");
   }
 
   const payload = decodePayload(encoded);
   payload.baseUrl = normalizeCaptionUrl(payload.baseUrl);
 
   if (nowMs > payload.expiresAt) {
-    throw new AppError("字幕轨已过期，请重新抓取字幕轨", 400);
+    throw new TrackTokenExpiredError();
   }
 
   return payload;

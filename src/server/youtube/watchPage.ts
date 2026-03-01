@@ -1,4 +1,4 @@
-import { AppError } from "@/server/errors";
+import { AppError, YouTubeUpstreamError } from "@/server/errors";
 import type { RequestLogger } from "@/server/logger";
 import { describeFetchError, fetchWithProxy, fetchWithTimeout, SHARED_HEADERS } from "@/server/http";
 
@@ -36,11 +36,12 @@ export async function fetchWatchPage(
       proxyUrl
     );
   } catch (error) {
-    throw new AppError(describeFetchError(error, "Unable to reach YouTube watch page"), 502);
+    const networkCause = describeFetchError(error, "network error");
+    throw new YouTubeUpstreamError(videoId, "watch_page", undefined, networkCause);
   }
 
   if (!response.ok) {
-    throw new AppError(`Unable to reach YouTube watch page (HTTP ${response.status})`, 502);
+    throw new YouTubeUpstreamError(videoId, "watch_page", response.status);
   }
 
   logger?.debug("youtube.watch_page.response", {
@@ -130,11 +131,12 @@ export async function fetchInnertubePlayer(
       proxyUrl
     );
   } catch (error) {
-    throw new AppError(describeFetchError(error, "Unable to reach YouTube Innertube API"), 502);
+    const networkCause = describeFetchError(error, "network error");
+    throw new YouTubeUpstreamError(videoId, "innertube_direct", undefined, networkCause);
   }
 
   if (!response.ok) {
-    throw new AppError(`Unable to reach YouTube Innertube API (HTTP ${response.status})`, 502);
+    throw new YouTubeUpstreamError(videoId, "innertube_direct", response.status);
   }
 
   logger?.debug("youtube.innertube_player.response", {
@@ -169,8 +171,8 @@ export async function fetchInnertubePlayerWithKey(
         body: JSON.stringify({
           context: {
             client: {
-              clientName: "WEB",
-              clientVersion: "2.20240101.00.00"
+              clientName: "ANDROID",
+              clientVersion: "20.10.38"
             }
           },
           videoId
@@ -180,11 +182,12 @@ export async function fetchInnertubePlayerWithKey(
       proxyUrl
     );
   } catch (error) {
-    throw new AppError(describeFetchError(error, "Unable to reach YouTube Innertube API (with key)"), 502);
+    const networkCause = describeFetchError(error, "network error");
+    throw new YouTubeUpstreamError(videoId, "innertube_with_key", undefined, networkCause);
   }
 
   if (!response.ok) {
-    throw new AppError(`Unable to reach YouTube Innertube API with key (HTTP ${response.status})`, 502);
+    throw new YouTubeUpstreamError(videoId, "innertube_with_key", response.status);
   }
 
   logger?.debug("youtube.innertube_player_with_key.response", {

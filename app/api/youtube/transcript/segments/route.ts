@@ -9,7 +9,8 @@ import { resolveTranscriptSegments } from "@/server/youtube/service";
 
 const requestSchema = z.object({
   videoId: z.string().trim().min(11).max(32),
-  trackToken: z.string().trim().min(8)
+  trackToken: z.string().trim().min(8),
+  useProxy: z.boolean().optional().default(true)
 });
 
 function clientIpFromRequest(request: Request): string {
@@ -71,7 +72,7 @@ export async function POST(request: Request): Promise<Response> {
       timeoutMs: env.youtubeFetchTimeoutMs,
       trackTokenSecret: env.trackTokenSecret,
       logger,
-      proxyUrl: env.pickYoutubeProxyUrl()
+      proxyUrl: payload.useProxy ? env.pickYoutubeProxyUrl() : undefined
     });
 
     logger.info("request.succeeded", {
@@ -93,15 +94,18 @@ export async function POST(request: Request): Promise<Response> {
         : error instanceof Error
           ? error.message
           : "Request failed";
+    const errorCode = error instanceof AppError ? error.errorCode : undefined;
+    const details = error instanceof AppError ? error.details : undefined;
 
     logger.error("request.failed", {
       statusCode,
       message,
+      errorCode,
       error
     });
 
     return NextResponse.json(
-      { message, requestId },
+      { message, requestId, ...(errorCode && { errorCode }), ...(details && Object.keys(details).length > 0 && { details }) },
       {
         status: statusCode,
         headers

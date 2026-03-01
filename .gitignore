@@ -9,3 +9,5 @@ coverage
 tsconfig.tsbuildinfo
 .claude
 .env*
+reference
+.playwright-mcp

@@ -1,5 +1,12 @@
 import type { FetchTranscriptResponse, ResolveTranscriptResponse } from "@/types/api";
-import { AppError } from "@/server/errors";
+import {
+  AppError,
+  CaptionContentEmptyError,
+  CaptionParsingFailedError,
+  InvalidVideoUrlError,
+  NoCaptionTracksError,
+  TrackTokenInvalidError
+} from "@/server/errors";
 import type { RequestLogger } from "@/server/logger";
 import { mergeSegments, parseTranscriptPayload } from "@/server/youtube/segments";
 import { parseTrackToken } from "@/server/youtube/trackToken";
@@ -52,31 +59,32 @@ function parseDurationSec(value: string | undefined): number | undefined {
 }
 
 function buildCandidateUrls(baseUrl: string): string[] {
-  const candidateUrls = new Set<string>([baseUrl]);
+  const candidateUrls: string[] = [];
 
   let parsed: URL;
   try {
     parsed = new URL(baseUrl);
   } catch {
-    return Array.from(candidateUrls);
+    return [baseUrl];
   }
 
-  // Keep an exact replay candidate first, then try normalized variations.
-  candidateUrls.add(parsed.toString());
+  // Primary: strip `fmt` param to fetch default XML (what working libraries do)
+  const noFmt = new URL(parsed);
+  noFmt.searchParams.delete("fmt");
+  candidateUrls.push(noFmt.toString());
 
-  // Try multiple caption formats because YouTube can expose track data
-  // under different `fmt` values for different videos/locales.
-  for (const fmt of ["json3", "vtt", "ttml", "srv3", "srv1"]) {
-    const withFmt = new URL(parsed);
-    withFmt.searchParams.set("fmt", fmt);
-    candidateUrls.add(withFmt.toString());
+  // Fallback: try fmt=json3
+  const json3 = new URL(parsed);
+  json3.searchParams.set("fmt", "json3");
+  candidateUrls.push(json3.toString());
+
+  // Final: original URL as-is (if different from above)
+  const original = parsed.toString();
+  if (!candidateUrls.includes(original)) {
+    candidateUrls.push(original);
   }
 
-  const raw = new URL(parsed);
-  raw.searchParams.delete("fmt");
-  candidateUrls.add(raw.toString());
-
-  return Array.from(candidateUrls);
+  return candidateUrls;
 }
 
 function summarizeCaptionUrl(url: string): Record<string, unknown> {
@@ -104,36 +112,65 @@ export async function fetchTranscriptMetadata(params: {
 
   const videoId = parseStrictYouTubeVideoId(url);
   if (!videoId) {
-    throw new AppError("Only single YouTube video URLs are supported", 422);
+    throw new InvalidVideoUrlError(url);
   }
 
   let playerData: unknown = null;
-
-  // Strategy 1: Parse ytInitialPlayerResponse from watch page HTML
+  const strategiesAttempted: string[] = [];
   let html = "";
+
+  // Strategy 1: Direct Android Innertube (produces working caption URLs)
   try {
-    html = await fetchWatchPage(videoId, timeoutMs, logger, proxyUrl);
-    playerData = extractPlayerResponseFromHtml(html);
+    playerData = await fetchInnertubePlayer(videoId, timeoutMs, logger, proxyUrl);
+    strategiesAttempted.push("innertube_direct");
     if (hasCaptionTracks(playerData)) {
-      logger?.info("youtube.fetch_metadata.strategy", { strategy: "html_player_response", videoId });
+      logger?.info("youtube.fetch_metadata.strategy", { strategy: "innertube_direct", videoId });
     }
   } catch (error) {
-    logger?.warn("youtube.fetch_metadata.watch_page_failed", {
+    strategiesAttempted.push("innertube_direct");
+    logger?.warn("youtube.fetch_metadata.innertube_direct_failed", {
       videoId,
       message: error instanceof Error ? error.message : "unknown"
     });
   }
 
-  // Strategy 2: Extract API key from page, call Innertube with key
+  // Strategy 2: Parse ytInitialPlayerResponse from watch page HTML
   if (!hasCaptionTracks(playerData)) {
+    try {
+      html = await fetchWatchPage(videoId, timeoutMs, logger, proxyUrl);
+      playerData = extractPlayerResponseFromHtml(html);
+      strategiesAttempted.push("html");
+      if (hasCaptionTracks(playerData)) {
+        logger?.info("youtube.fetch_metadata.strategy", { strategy: "html_player_response", videoId });
+      }
+    } catch (error) {
+      strategiesAttempted.push("html");
+      logger?.warn("youtube.fetch_metadata.watch_page_failed", {
+        videoId,
+        message: error instanceof Error ? error.message : "unknown"
+      });
+    }
+  }
+
+  // Strategy 3: Extract API key from page, call Innertube with key
+  if (!hasCaptionTracks(playerData)) {
+    if (!html) {
+      try {
+        html = await fetchWatchPage(videoId, timeoutMs, logger, proxyUrl);
+      } catch {
+        // html stays empty, apiKey extraction will be skipped
+      }
+    }
     const apiKey = html ? extractInnertubeApiKey(html) : null;
     if (apiKey) {
       try {
         playerData = await fetchInnertubePlayerWithKey(videoId, apiKey, timeoutMs, logger, proxyUrl);
+        strategiesAttempted.push("innertube_with_key");
         if (hasCaptionTracks(playerData)) {
           logger?.info("youtube.fetch_metadata.strategy", { strategy: "innertube_with_key", videoId });
         }
       } catch (error) {
+        strategiesAttempted.push("innertube_with_key");
         logger?.warn("youtube.fetch_metadata.innertube_with_key_failed", {
           videoId,
           message: error instanceof Error ? error.message : "unknown"
@@ -142,25 +179,10 @@ export async function fetchTranscriptMetadata(params: {
     }
   }
 
-  // Strategy 3: Direct Innertube (original approach, final fallback)
-  if (!hasCaptionTracks(playerData)) {
-    try {
-      playerData = await fetchInnertubePlayer(videoId, timeoutMs, logger, proxyUrl);
-      if (hasCaptionTracks(playerData)) {
-        logger?.info("youtube.fetch_metadata.strategy", { strategy: "innertube_direct", videoId });
-      }
-    } catch (error) {
-      logger?.warn("youtube.fetch_metadata.innertube_direct_failed", {
-        videoId,
-        message: error instanceof Error ? error.message : "unknown"
-      });
-    }
-  }
-
   const playerResponse = asPlayerResponse(playerData);
   const rawTracks = playerResponse.captions?.playerCaptionsTracklistRenderer?.captionTracks ?? [];
   if (rawTracks.length === 0) {
-    throw new AppError("No caption tracks available for this video", 404);
+    throw new NoCaptionTracksError(videoId, strategiesAttempted);
   }
 
   logger?.debug("youtube.fetch_metadata.track_candidates", {
@@ -214,7 +236,7 @@ export async function resolveTranscriptSegments(params: {
 
   const payload = parseTrackToken(trackToken, trackTokenSecret);
   if (payload.videoId !== videoId) {
-    throw new AppError("Track token does not belong to the provided video", 400);
+    throw new TrackTokenInvalidError("wrong_video");
   }
 
   logger?.debug("youtube.resolve_segments.track_token", {
@@ -276,6 +298,14 @@ export async function resolveTranscriptSegments(params: {
 
     if (!parsed) {
       sawUnsupportedPayload = true;
+      logger?.warn("youtube.resolve_segments.payload_preview", {
+        attempt,
+        ...candidateMeta,
+        payloadLength: rawPayload.length,
+        payloadSnippet: rawPayload.slice(0, 500),
+        contentStartsWithBrace: rawPayload.trimStart().startsWith("{"),
+        contentStartsWithAngle: rawPayload.trimStart().startsWith("<"),
+      });
       continue;
     }
 
@@ -319,14 +349,14 @@ export async function resolveTranscriptSegments(params: {
       videoId,
       languageCode: payload.languageCode
     });
-    throw new AppError("Caption content is empty", 404);
+    throw new CaptionContentEmptyError(videoId, payload.languageCode);
   }
 
   if (sawUnsupportedPayload) {
     logger?.warn("youtube.resolve_segments.unsupported_payload", { videoId });
-    throw new AppError("Caption parsing failed: unsupported payload format", 502);
+    throw new CaptionParsingFailedError(videoId, "unsupported payload format");
   }
 
   logger?.error("youtube.resolve_segments.parsing_failed", { videoId });
-  throw new AppError("Caption parsing failed", 502);
+  throw new CaptionParsingFailedError(videoId, "no parseable content");
 }

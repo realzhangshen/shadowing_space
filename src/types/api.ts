@@ -15,6 +15,7 @@ export type SegmentDTO = {
 export type FetchTranscriptRequest = {
   url: string;
   preferredLanguage?: string;
+  useProxy?: boolean;
 };
 
 export type FetchTranscriptResponse = {
@@ -29,6 +30,7 @@ export type FetchTranscriptResponse = {
 export type ResolveTranscriptRequest = {
   videoId: string;
   trackToken: string;
+  useProxy?: boolean;
 };
 
 export type ResolveTranscriptResponse = {

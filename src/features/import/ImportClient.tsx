@@ -9,35 +9,54 @@ import type { VideoRecord } from "@/types/models";
 
 const DEFAULT_YOUTUBE_URL = "";
 
-function withRequestId(message: string, requestId?: string): string {
-  if (!requestId) {
-    return message;
+type ErrorDisplay = {
+  message: string;
+  errorCode?: string;
+  details?: Record<string, unknown>;
+  requestId?: string;
+};
+
+function friendlyMessage(errorCode: string | undefined): string | undefined {
+  switch (errorCode) {
+    case "INVALID_VIDEO_URL":
+      return "Please enter a valid single YouTube video URL.";
+    case "VIDEO_UNAVAILABLE":
+      return "This video is unavailable or has been removed.";
+    case "TRANSCRIPTS_DISABLED":
+      return "Transcripts are disabled for this video.";
+    case "NO_CAPTION_TRACKS":
+      return "No caption tracks were found for this video.";
+    case "CAPTION_CONTENT_EMPTY":
+      return "The caption track exists but has no content.";
+    case "CAPTION_PARSING_FAILED":
+      return "Failed to parse the caption data from YouTube.";
+    case "YOUTUBE_UPSTREAM_ERROR":
+      return "YouTube is not responding. Please try again later.";
+    case "TOO_MANY_REQUESTS":
+      return "Too many requests. Please wait a moment and try again.";
+    case "TRACK_TOKEN_INVALID":
+      return "The track selection is invalid. Please re-fetch tracks.";
+    case "TRACK_TOKEN_EXPIRED":
+      return "The track selection has expired. Please re-fetch tracks.";
+    default:
+      return undefined;
   }
-  return `${message} (request id: ${requestId})`;
 }
 
-function normalizeApiError(error: unknown): string {
+function normalizeApiError(error: unknown): ErrorDisplay {
   if (error instanceof ApiError) {
-    if (error.status === 422) {
-      return withRequestId("Please enter a valid single YouTube video URL.", error.requestId);
-    }
-
-    if (error.status === 404) {
-      if (error.message === "No caption tracks available for this video") {
-        return withRequestId("No caption tracks available for this video.", error.requestId);
-      }
-
-      return withRequestId(error.message || "No usable caption content was found for this track.", error.requestId);
-    }
-
-    if (error.status === 429) {
-      return withRequestId("Too many requests. Please try again in a minute.", error.requestId);
-    }
-
-    return withRequestId(error.message, error.requestId);
+    const friendly = friendlyMessage(error.errorCode);
+    return {
+      message: friendly ?? error.message,
+      errorCode: error.errorCode,
+      details: error.details,
+      requestId: error.requestId
+    };
   }
 
-  return error instanceof Error ? error.message : "Failed to process request.";
+  return {
+    message: error instanceof Error ? error.message : "Failed to process request."
+  };
 }
 
 function isRecoverableCaptionError(error: unknown): error is ApiError {
@@ -52,6 +71,71 @@ function mergeTrackSummaries(original: TrackSummary[], resolved: TrackSummary): 
   return [resolved, ...original];
 }
 
+function ErrorBlock({ error }: { error: ErrorDisplay }): JSX.Element {
+  const hasDetails = error.errorCode || error.requestId || (error.details && Object.keys(error.details).length > 0);
+
+  return (
+    <div className="error-block">
+      <p className="error-text">{error.message}</p>
+      {hasDetails ? (
+        <details className="error-details">
+          <summary>Details</summary>
+          <dl className="error-detail-list">
+            {error.errorCode ? (
+              <>
+                <dt>Error code</dt>
+                <dd>{error.errorCode}</dd>
+              </>
+            ) : null}
+            {error.details?.videoId ? (
+              <>
+                <dt>Video ID</dt>
+                <dd>{String(error.details.videoId)}</dd>
+              </>
+            ) : null}
+            {error.details?.step ? (
+              <>
+                <dt>Failed step</dt>
+                <dd>{String(error.details.step)}</dd>
+              </>
+            ) : null}
+            {Array.isArray(error.details?.strategiesAttempted) ? (
+              <>
+                <dt>Strategies attempted</dt>
+                <dd>{(error.details.strategiesAttempted as string[]).join(", ")}</dd>
+              </>
+            ) : null}
+            {error.details?.networkCause ? (
+              <>
+                <dt>Network cause</dt>
+                <dd>{String(error.details.networkCause)}</dd>
+              </>
+            ) : null}
+            {error.details?.reason ? (
+              <>
+                <dt>Reason</dt>
+                <dd>{String(error.details.reason)}</dd>
+              </>
+            ) : null}
+            {error.details?.languageCode ? (
+              <>
+                <dt>Language</dt>
+                <dd>{String(error.details.languageCode)}</dd>
+              </>
+            ) : null}
+            {error.requestId ? (
+              <>
+                <dt>Request ID</dt>
+                <dd>{error.requestId}</dd>
+              </>
+            ) : null}
+          </dl>
+        </details>
+      ) : null}
+    </div>
+  );
+}
+
 export function ImportClient(): JSX.Element {
   const router = useRouter();
 
@@ -60,7 +144,8 @@ export function ImportClient(): JSX.Element {
   const [selectedTrackToken, setSelectedTrackToken] = useState<string>("");
   const [isFetching, setIsFetching] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
-  const [error, setError] = useState<string | undefined>();
+  const [error, setError] = useState<ErrorDisplay | undefined>();
+  const [useProxy, setUseProxy] = useState(true);
 
   const canImport = useMemo(
     () => Boolean(fetchResult && selectedTrackToken) && !isImporting,
@@ -73,7 +158,7 @@ export function ImportClient(): JSX.Element {
     setSelectedTrackToken("");
 
     if (!youtubeUrl.trim()) {
-      setError("Please enter a YouTube URL first.");
+      setError({ message: "Please enter a YouTube URL first." });
       return;
     }
 
@@ -82,7 +167,8 @@ export function ImportClient(): JSX.Element {
     try {
       const data = await fetchTranscriptTracks({
         url: youtubeUrl.trim(),
-        preferredLanguage: "en"
+        preferredLanguage: "en",
+        useProxy
       });
 
       setFetchResult(data);
@@ -96,7 +182,7 @@ export function ImportClient(): JSX.Element {
 
   const onImport = async () => {
     if (!fetchResult || !selectedTrackToken) {
-      setError("Please fetch tracks and choose one track first.");
+      setError({ message: "Please fetch tracks and choose one track first." });
       return;
     }
 
@@ -116,7 +202,8 @@ export function ImportClient(): JSX.Element {
         try {
           const candidate = await fetchTranscriptSegments({
             videoId: fetchResult.videoId,
-            trackToken
+            trackToken,
+            useProxy
           });
 
           if (candidate.segments.length === 0) {
@@ -202,6 +289,15 @@ export function ImportClient(): JSX.Element {
         />
       </label>
 
+      <label className="proxy-toggle">
+        <input
+          type="checkbox"
+          checked={useProxy}
+          onChange={(event) => setUseProxy(event.target.checked)}
+        />
+        <span>Use proxy</span>
+      </label>
+
       <div className="actions-row">
         <button className="btn primary" type="button" onClick={onFetchTracks} disabled={isFetching || isImporting}>
           {isFetching ? "Fetching..." : "Fetch Tracks"}
@@ -236,7 +332,7 @@ export function ImportClient(): JSX.Element {
         </>
       ) : null}
 
-      {error ? <p className="error-text">{error}</p> : null}
+      {error ? <ErrorBlock error={error} /> : null}
     </section>
   );
 }
