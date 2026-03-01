@@ -1,0 +1,201 @@
+tests:
+  - file: tests/server/rateLimit.test.ts
+    name: checkRateLimit limits requests over threshold
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Guards in-memory rate limit threshold behavior.
+    lastReviewedOn: 2026-03-01
+    reviewBy: 2026-03-31
+  - file: tests/server/youtube/url.test.ts
+    name: parseStrictYouTubeVideoId parses watch URL
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Ensures canonical watch URLs are accepted.
+    lastReviewedOn: 2026-03-01
+    reviewBy: 2026-03-31
+  - file: tests/server/youtube/url.test.ts
+    name: parseStrictYouTubeVideoId parses short URL
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Ensures short youtu.be URLs are accepted.
+    lastReviewedOn: 2026-03-01
+    reviewBy: 2026-03-31
+  - file: tests/server/youtube/url.test.ts
+    name: parseStrictYouTubeVideoId rejects non-youtube hosts
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Prevents unsafe or invalid host parsing.
+    lastReviewedOn: 2026-03-01
+    reviewBy: 2026-03-31
+  - file: tests/server/youtube/segments.test.ts
+    name: parseTranscriptPayload parses json3
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Confirms json3 payload conversion into transcript segments.
+    lastReviewedOn: 2026-03-01
+    reviewBy: 2026-03-31
+  - file: tests/server/youtube/segments.test.ts
+    name: parseTranscriptPayload parses json3 when timestamps are numeric strings
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Handles timestamp fields returned as strings.
+    lastReviewedOn: 2026-03-01
+    reviewBy: 2026-03-31
+  - file: tests/server/youtube/segments.test.ts
+    name: parseTranscriptPayload decodes nested html entities in json3 text
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Prevents escaped text artifacts in caption output.
+    lastReviewedOn: 2026-03-01
+    reviewBy: 2026-03-31
+  - file: tests/server/youtube/segments.test.ts
+    name: parseTranscriptPayload parses xml
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Confirms XML caption payload parsing path.
+    lastReviewedOn: 2026-03-01
+    reviewBy: 2026-03-31
+  - file: tests/server/youtube/segments.test.ts
+    name: parseTranscriptPayload decodes nested html entities in xml text
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Verifies XML entity decoding for user-facing text.
+    lastReviewedOn: 2026-03-01
+    reviewBy: 2026-03-31
+  - file: tests/server/youtube/segments.test.ts
+    name: parseTranscriptPayload parses webvtt
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Covers WEBVTT parsing fallback behavior.
+    lastReviewedOn: 2026-03-01
+    reviewBy: 2026-03-31
+  - file: tests/server/youtube/segments.test.ts
+    name: parseTranscriptPayload does not treat html pages as transcript xml
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Prevents HTML error pages from being parsed as captions.
+    lastReviewedOn: 2026-03-01
+    reviewBy: 2026-03-31
+  - file: tests/server/youtube/segments.test.ts
+    name: parseTranscriptPayload treats empty payload as unsupported
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Confirms empty payloads are rejected early.
+    lastReviewedOn: 2026-03-01
+    reviewBy: 2026-03-31
+  - file: tests/server/youtube/segments.test.ts
+    name: mergeSegments returns empty array for empty input
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Baseline behavior for no input segments.
+    lastReviewedOn: 2026-03-01
+    reviewBy: 2026-03-31
+  - file: tests/server/youtube/segments.test.ts
+    name: mergeSegments returns single segment unchanged
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Prevents accidental rewrites for trivial input.
+    lastReviewedOn: 2026-03-01
+    reviewBy: 2026-03-31
+  - file: tests/server/youtube/segments.test.ts
+    name: mergeSegments merges adjacent segments without sentence-ending punctuation
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Verifies sentence merge heuristics for fragmented captions.
+    lastReviewedOn: 2026-03-01
+    reviewBy: 2026-03-31
+  - file: tests/server/youtube/segments.test.ts
+    name: mergeSegments splits on sentence-ending punctuation
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Ensures punctuation boundaries remain separate segments.
+    lastReviewedOn: 2026-03-01
+    reviewBy: 2026-03-31
+  - file: tests/server/youtube/segments.test.ts
+    name: mergeSegments force-splits when duration exceeds 15 seconds
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Enforces max sentence duration for practice UX.
+    lastReviewedOn: 2026-03-01
+    reviewBy: 2026-03-31
+  - file: tests/server/youtube/trackToken.test.ts
+    name: track token signs and validates payload
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Validates signed token round-trip behavior.
+    lastReviewedOn: 2026-03-01
+    reviewBy: 2026-03-31
+  - file: tests/server/youtube/trackToken.test.ts
+    name: track token rejects tampered signatures
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Guards signature verification against tampering.
+    lastReviewedOn: 2026-03-01
+    reviewBy: 2026-03-31
+  - file: tests/server/youtube/trackToken.test.ts
+    name: track token preserves caption URL query bytes
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Preserves encoded query bytes required by YouTube.
+    lastReviewedOn: 2026-03-01
+    reviewBy: 2026-03-31
+  - file: tests/server/youtube/service.test.ts
+    name: fetchTranscriptMetadata returns tracks from innertube player
+    category: integration
+    validity: reasonable
+    owner: shadowing-team
+    reason: Verifies metadata extraction path from mocked innertube payload.
+    lastReviewedOn: 2026-03-01
+    reviewBy: 2026-03-31
+  - file: tests/server/youtube/service.test.ts
+    name: resolveTranscriptSegments parses json3 payload
+    category: integration
+    validity: reasonable
+    owner: shadowing-team
+    reason: Checks transcript resolution from a json3 caption payload.
+    lastReviewedOn: 2026-03-01
+    reviewBy: 2026-03-31
+  - file: tests/server/youtube/service.test.ts
+    name: resolveTranscriptSegments tries exact caption URL before derived variants
+    category: integration
+    validity: reasonable
+    owner: shadowing-team
+    reason: Protects URL ordering behavior for exact signed URLs.
+    lastReviewedOn: 2026-03-01
+    reviewBy: 2026-03-31
+  - file: tests/server/youtube/service.test.ts
+    name: resolveTranscriptSegments falls back to vtt when other formats are empty
+    category: integration
+    validity: needs-review
+    owner: shadowing-team
+    reason: Known failing fallback behavior under current parser strategy.
+    lastReviewedOn: 2026-03-01
+    reviewBy: 2026-03-31
+  - file: tests/diagnostics/youtube/diagnose-payload.test.ts
+    name: diagnose caption payloads for specific video
+    category: diagnostic
+    validity: needs-review
+    owner: shadowing-team
+    reason: Manual troubleshooting aid, intentionally skipped by default.
+    lastReviewedOn: 2026-03-01
+    reviewBy: 2026-03-31
