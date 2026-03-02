@@ -6,8 +6,8 @@ type UseVADParams = {
   stream: MediaStream | null;
   enabled: boolean;
   onSilenceDetected: () => void;
+  audioFinishedRef: React.RefObject<boolean>;
   silenceDurationMs?: number;
-  minRecordingMs?: number;
   threshold?: number;
 };
 
@@ -15,13 +15,21 @@ export function useVAD({
   stream,
   enabled,
   onSilenceDetected,
+  audioFinishedRef,
   silenceDurationMs = 1800,
-  minRecordingMs = 1000,
   threshold = 0.01
-}: UseVADParams): { isSilent: boolean } {
+}: UseVADParams): { isSilent: boolean; hasSpoken: boolean } {
   const [isSilent, setIsSilent] = useState(false);
+  const [hasSpoken, setHasSpoken] = useState(false);
   const onSilenceRef = useRef(onSilenceDetected);
   onSilenceRef.current = onSilenceDetected;
+
+  // Reset hasSpoken when VAD is re-enabled (new recording session)
+  useEffect(() => {
+    if (enabled) {
+      setHasSpoken(false);
+    }
+  }, [enabled]);
 
   useEffect(() => {
     if (!stream || !enabled) {
@@ -36,9 +44,9 @@ export function useVAD({
     source.connect(analyser);
 
     const dataArray = new Float32Array(analyser.fftSize);
-    const startedAt = Date.now();
     let silenceSince: number | null = null;
     let fired = false;
+    let spokenInLoop = false;
     let rafId: number;
 
     const tick = () => {
@@ -54,25 +62,35 @@ export function useVAD({
       const rms = Math.sqrt(sum / dataArray.length);
 
       const now = Date.now();
-      const elapsed = now - startedAt;
 
-      if (rms < threshold) {
+      if (rms >= threshold) {
+        // User is speaking
+        silenceSince = null;
+        setIsSilent(false);
+        if (!spokenInLoop) {
+          spokenInLoop = true;
+          setHasSpoken(true);
+        }
+      } else {
+        // Silence
         if (silenceSince === null) {
           silenceSince = now;
         }
         setIsSilent(true);
 
+        // Fire only when all gates pass:
+        // 1. User has spoken at least once
+        // 2. Original audio has finished playing
+        // 3. Sustained silence for silenceDurationMs
         if (
-          elapsed > minRecordingMs &&
+          spokenInLoop &&
+          audioFinishedRef.current &&
           now - silenceSince >= silenceDurationMs
         ) {
           fired = true;
           onSilenceRef.current();
           return;
         }
-      } else {
-        silenceSince = null;
-        setIsSilent(false);
       }
 
       rafId = requestAnimationFrame(tick);
@@ -85,7 +103,7 @@ export function useVAD({
       source.disconnect();
       void audioCtx.close();
     };
-  }, [stream, enabled, silenceDurationMs, minRecordingMs, threshold]);
+  }, [stream, enabled, silenceDurationMs, threshold, audioFinishedRef]);
 
-  return { isSilent };
+  return { isSilent, hasSpoken };
 }

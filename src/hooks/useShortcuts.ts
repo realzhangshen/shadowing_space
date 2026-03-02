@@ -10,8 +10,6 @@ type ShortcutHandlers = {
   onPrevSegment: () => void;
   onNextSegment: () => void;
   onToggleTranscript: () => void;
-  onSetMethodListenRepeat: () => void;
-  onSetMethodShadow: () => void;
   onToggleScope: () => void;
   onToggleRepeatFlow: () => void;
 };
@@ -64,15 +62,6 @@ export function useShortcuts(handlers: ShortcutHandlers): void {
         case "t":
           event.preventDefault();
           handlers.onToggleTranscript();
-          break;
-        case "1":
-          event.preventDefault();
-          handlers.onSetMethodListenRepeat();
-          break;
-        case "2":
-        case "s":
-          event.preventDefault();
-          handlers.onSetMethodShadow();
           break;
         case "m":
           event.preventDefault();

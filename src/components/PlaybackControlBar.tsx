@@ -1,19 +1,17 @@
 "use client";
 
 import { memo } from "react";
-import type { PracticeMethod, PracticeScope, RepeatFlow } from "@/store/practiceStore";
+import type { PracticeScope, RepeatFlow } from "@/store/practiceStore";
 
 type PlaybackControlBarProps = {
   isPlaying: boolean;
   isRecording: boolean;
   hasRecording: boolean;
-  practiceMethod: PracticeMethod;
   practiceScope: PracticeScope;
   repeatFlow: RepeatFlow;
   onToggleOriginal: () => void;
   onToggleRecording: () => void;
   onPlayRecording: () => void;
-  onSetPracticeMethod: (method: PracticeMethod) => void;
   onSetRepeatFlow: (flow: RepeatFlow) => void;
   onPrev: () => void;
   onNext: () => void;
@@ -21,19 +19,14 @@ type PlaybackControlBarProps = {
   nextDisabled: boolean;
 };
 
-const METHODS: { value: PracticeMethod; label: string }[] = [
-  { value: "listen-repeat", label: "Listen & Repeat" },
-  { value: "shadow", label: "Shadow" }
-];
-
 const FLOWS: { value: RepeatFlow; label: string }[] = [
   { value: "manual", label: "Manual" },
   { value: "auto", label: "Auto" }
 ];
 
-function getPlayLabel(method: PracticeMethod, scope: PracticeScope, isPlaying: boolean): string {
+function getPlayLabel(isAuto: boolean, isPlaying: boolean): string {
   if (isPlaying) return "⏸ Pause";
-  if (method === "shadow") return "▶ Shadow";
+  if (isAuto) return "▶ Shadow";
   return "▶ Play";
 }
 
@@ -41,13 +34,11 @@ export const PlaybackControlBar = memo(function PlaybackControlBar({
   isPlaying,
   isRecording,
   hasRecording,
-  practiceMethod,
   practiceScope,
   repeatFlow,
   onToggleOriginal,
   onToggleRecording,
   onPlayRecording,
-  onSetPracticeMethod,
   onSetRepeatFlow,
   onPrev,
   onNext,
@@ -55,9 +46,10 @@ export const PlaybackControlBar = memo(function PlaybackControlBar({
   nextDisabled
 }: PlaybackControlBarProps): JSX.Element {
   const isSentenceScope = practiceScope === "sentence";
-  const showRecord = practiceMethod === "listen-repeat" && repeatFlow === "manual";
-  const showReplay = practiceScope === "sentence" && hasRecording;
-  const showHeadphoneHint = practiceMethod === "shadow";
+  const isAuto = repeatFlow === "auto";
+  const showRecord = isSentenceScope && !isAuto;
+  const showReplay = isSentenceScope && hasRecording;
+  const showHeadphoneHint = isAuto;
 
   return (
     <div className="control-bar-wrap">
@@ -70,11 +62,11 @@ export const PlaybackControlBar = memo(function PlaybackControlBar({
 
         <button
           type="button"
-          className={practiceMethod === "shadow" && !isPlaying ? "btn secondary shadow-play-btn" : "btn secondary"}
-          title={practiceMethod === "shadow" ? "Play + Record simultaneously" : isPlaying ? "Pause" : "Play"}
+          className={isAuto && !isPlaying ? "btn secondary shadow-play-btn" : "btn secondary"}
+          title={isAuto ? "Play + Record simultaneously" : isPlaying ? "Pause" : "Play"}
           onClick={onToggleOriginal}
         >
-          {getPlayLabel(practiceMethod, practiceScope, isPlaying)}
+          {getPlayLabel(isAuto, isPlaying)}
         </button>
 
         {showRecord ? (
@@ -108,23 +100,6 @@ export const PlaybackControlBar = memo(function PlaybackControlBar({
       </div>
 
       <div className="mode-settings">
-        {isSentenceScope ? (
-          <div className="method-selector" role="radiogroup" aria-label="Practice method">
-            {METHODS.map((m) => (
-              <button
-                key={m.value}
-                type="button"
-                role="radio"
-                aria-checked={practiceMethod === m.value}
-                className={practiceMethod === m.value ? "method-option active" : "method-option"}
-                onClick={() => onSetPracticeMethod(m.value)}
-              >
-                {m.label}
-              </button>
-            ))}
-          </div>
-        ) : null}
-
         {isSentenceScope ? (
           <div className="scope-toggle" role="radiogroup" aria-label="Practice flow">
             {FLOWS.map((f) => (

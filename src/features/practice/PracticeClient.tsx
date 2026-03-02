@@ -50,6 +50,7 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
   const recordingAudioUrlRef = useRef<string | null>(null);
   const recordingTargetRef = useRef<number>(0);
   const continuousTimerRef = useRef<number | null>(null);
+  const audioFinishedRef = useRef(false);
 
   const {
     currentIndex,
@@ -57,7 +58,6 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
     playbackSpeed,
     isRecording,
     isPlaying,
-    practiceMethod,
     practiceScope,
     repeatFlow,
     microphoneError,
@@ -69,7 +69,6 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
     setPlaybackSpeed,
     setIsRecording,
     setIsPlaying,
-    setPracticeMethod,
     setPracticeScope,
     setRepeatFlow,
     setMicrophoneError,
@@ -177,6 +176,7 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
       const seg = segments[index];
       if (!seg) return;
       clearRecordingAudio();
+      audioFinishedRef.current = false;
       playerRef.current?.playSegment(seg.startMs, seg.endMs, playbackSpeed);
       setPlaybackMode("source");
     },
@@ -221,13 +221,15 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
         return;
       }
 
-      if (state.practiceMethod !== "shadow") {
-        setPlaybackMode("attempt");
-      } else {
+      // In auto mode, we skip "attempt" review — just advance
+      // In manual mode, show the recording for review
+      if (state.repeatFlow === "auto") {
         setPlaybackMode("idle");
+      } else {
+        setPlaybackMode("attempt");
       }
 
-      // Auto-advance when repeatFlow is "auto" (sentence scope, both methods)
+      // Auto-advance: play next + record simultaneously (unified shadow-style)
       if (state.repeatFlow === "auto" && state.practiceScope === "sentence") {
         setTimeout(() => {
           const s = usePracticeStore.getState();
@@ -239,14 +241,13 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
           if (!nextSeg) return;
 
           clearRecordingAudio();
+          audioFinishedRef.current = false;
           playerRef.current?.playSegment(nextSeg.startMs, nextSeg.endMs, s.playbackSpeed);
           setPlaybackMode("source");
 
-          // For shadow auto, also start recording after a short delay
-          if (s.practiceMethod === "shadow") {
-            recordingTargetRef.current = nextIdx;
-            void recorder.start();
-          }
+          // Always start recording with playback in auto mode
+          recordingTargetRef.current = nextIdx;
+          void recorder.start();
         }, AUTO_ADVANCE_DELAY_MS);
       }
     },
@@ -262,13 +263,12 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
   // --- VAD ---
 
   const vadEnabled =
-    recorder.isRecording &&
-    practiceScope !== "free" &&
-    (practiceMethod === "shadow" || (practiceMethod === "listen-repeat" && repeatFlow === "auto"));
+    recorder.isRecording && practiceScope === "sentence" && repeatFlow === "auto";
 
   useVAD({
     stream: recorder.stream,
     enabled: vadEnabled,
+    audioFinishedRef,
     onSilenceDetected: () => {
       void recorder.stop();
     }
@@ -288,6 +288,9 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
         continuousTimerRef.current = null;
       }
 
+      // Mark that original audio has finished (unblocks VAD gate)
+      audioFinishedRef.current = true;
+
       const state = usePracticeStore.getState();
 
       // Free mode: stop recording when playback pauses
@@ -296,22 +299,8 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
         return;
       }
 
-      // Shadow + sentence: do NOT stop recording — let VAD handle it
-      if (state.practiceMethod === "shadow" && state.practiceScope === "sentence") {
-        return;
-      }
-
-      // Listen-repeat + auto + sentence: auto-start recording after playback ends
-      if (
-        state.practiceMethod === "listen-repeat" &&
-        state.repeatFlow === "auto" &&
-        state.practiceScope === "sentence" &&
-        !recorder.isRecording
-      ) {
-        recordingTargetRef.current = state.currentIndex;
-        void recorder.start();
-        return;
-      }
+      // Sentence mode with recording active: let VAD handle stopping
+      // (VAD now knows audio finished via audioFinishedRef)
     }
   }, [isPlaying, recorder]);
 
@@ -329,7 +318,8 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
 
   const toggleRecording = useCallback(async () => {
     setMicrophoneError(undefined);
-    if (usePracticeStore.getState().practiceMethod !== "shadow") {
+    // In manual mode, pause playback when toggling recording
+    if (usePracticeStore.getState().repeatFlow === "manual") {
       playerRef.current?.pause();
     }
 
@@ -345,6 +335,7 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
     if (!currentSegment) return;
     setMicrophoneError(undefined);
     clearRecordingAudio();
+    audioFinishedRef.current = false;
 
     playerRef.current?.playSegment(currentSegment.startMs, currentSegment.endMs, playbackSpeed);
     setPlaybackMode("source");
@@ -431,13 +422,15 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
       return;
     }
 
-    // Shadow method (sentence scope): play + record simultaneously
-    if (state.practiceMethod === "shadow" && !recorder.isRecording) {
+    // Auto mode (sentence scope): play + record simultaneously
+    if (state.repeatFlow === "auto" && !recorder.isRecording) {
       void startShadowing();
       return;
     }
 
+    // Manual mode: just play the original
     clearRecordingAudio();
+    audioFinishedRef.current = false;
     playerRef.current?.toggleSegment(currentSegment.startMs, currentSegment.endMs, playbackSpeed);
     setPlaybackMode("source");
   }, [clearRecordingAudio, currentSegment, isPlaying, playbackSpeed, recorder, setPlaybackMode, startFreePlay, startShadowing, stopContinuousTracking]);
@@ -502,12 +495,10 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
       onPrevSegment: goPrev,
       onNextSegment: goNext,
       onToggleTranscript: usePracticeStore.getState().toggleTranscriptHidden,
-      onSetMethodListenRepeat: () => setPracticeMethod("listen-repeat"),
-      onSetMethodShadow: () => setPracticeMethod("shadow"),
       onToggleScope: toggleScope,
       onToggleRepeatFlow: toggleRepeatFlow
     }),
-    [goNext, goPrev, playOriginal, playRecording, setPracticeMethod, toggleOriginal, toggleRecording, toggleRepeatFlow, toggleScope]
+    [goNext, goPrev, playOriginal, playRecording, toggleOriginal, toggleRecording, toggleRepeatFlow, toggleScope]
   );
 
   useShortcuts(shortcutHandlers);
@@ -552,13 +543,11 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
           isPlaying={isPlaying}
           isRecording={isRecording}
           hasRecording={latestRecordingReady}
-          practiceMethod={practiceMethod}
           practiceScope={practiceScope}
           repeatFlow={repeatFlow}
           onToggleOriginal={toggleOriginal}
           onToggleRecording={() => void toggleRecording()}
           onPlayRecording={() => void playRecording()}
-          onSetPracticeMethod={setPracticeMethod}
           onSetRepeatFlow={setRepeatFlow}
           onPrev={goPrev}
           onNext={goNext}
@@ -584,7 +573,7 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
         </div>
 
         <p className="muted shortcuts-hint">
-          Space: play/pause · R: record · A: replay · B: playback · 1/2: method · M: manual/auto · C: scope · T: toggle text · &larr;/&rarr;: prev/next
+          Space: play/pause · R: record · A: replay · B: playback · M: manual/auto · C: scope · T: toggle text · &larr;/&rarr;: prev/next
         </p>
 
         <div aria-live="polite">
