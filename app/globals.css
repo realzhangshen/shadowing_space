@@ -513,7 +513,7 @@ textarea {
   50% { opacity: 0.4; }
 }
 
-/* Control bar wrap (main bar + mode toggles) */
+/* Control bar wrap (main bar + mode settings) */
 
 .control-bar-wrap {
   display: flex;
@@ -521,27 +521,56 @@ textarea {
   gap: 0.4rem;
 }
 
-.mode-toggles {
+.mode-settings {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.75rem;
   flex-wrap: wrap;
 }
 
-.mode-toggle {
-  font-size: 0.82rem;
-  padding: 0.35rem 0.7rem;
-  border-radius: 999px;
+/* Segmented control (shared by method + scope) */
+
+.method-selector,
+.scope-toggle {
+  display: inline-flex;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  overflow: hidden;
 }
 
-.mode-toggle.active-mode {
+.method-option,
+.scope-option {
+  border: none;
+  background: transparent;
+  padding: 0.35rem 0.7rem;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.method-option:not(:last-child),
+.scope-option:not(:last-child) {
+  border-right: 1px solid var(--line-strong);
+}
+
+.method-option:hover,
+.scope-option:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+
+.method-option.active,
+.scope-option.active {
   background: var(--primary);
   color: var(--primary-text);
-  border-color: var(--primary);
 }
 
-.mode-toggle.active-mode:hover {
+.method-option.active:hover,
+.scope-option.active:hover {
   background: var(--primary-hover);
 }
 

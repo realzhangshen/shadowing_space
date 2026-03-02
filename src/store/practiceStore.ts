@@ -2,6 +2,8 @@ import { create } from "zustand";
 
 export type PlaybackMode = "idle" | "source" | "attempt";
 export type PlaybackSpeed = 0.75 | 1 | 1.25 | 1.5;
+export type PracticeMethod = "listen-repeat" | "shadow" | "listen";
+export type PracticeScope = "sentence" | "all";
 
 type PracticeState = {
   currentIndex: number;
@@ -10,9 +12,9 @@ type PracticeState = {
   isRecording: boolean;
   isPlaying: boolean;
   transcriptHidden: boolean;
+  practiceMethod: PracticeMethod;
+  practiceScope: PracticeScope;
   autoAdvance: boolean;
-  shadowingMode: boolean;
-  continuousPlay: boolean;
   microphoneError?: string;
   playerError?: string;
   setCurrentIndex: (index: number) => void;
@@ -21,9 +23,9 @@ type PracticeState = {
   setIsRecording: (value: boolean) => void;
   setIsPlaying: (value: boolean) => void;
   toggleTranscriptHidden: () => void;
+  setPracticeMethod: (method: PracticeMethod) => void;
+  setPracticeScope: (scope: PracticeScope) => void;
   toggleAutoAdvance: () => void;
-  toggleShadowingMode: () => void;
-  toggleContinuousPlay: () => void;
   setMicrophoneError: (message?: string) => void;
   setPlayerError: (message?: string) => void;
   resetForSession: (startIndex: number) => void;
@@ -36,18 +38,32 @@ export const usePracticeStore = create<PracticeState>((set) => ({
   isRecording: false,
   isPlaying: false,
   transcriptHidden: false,
-  autoAdvance: false,
-  shadowingMode: false,
-  continuousPlay: false,
+  practiceMethod: "listen-repeat",
+  practiceScope: "sentence",
+  autoAdvance: true,
   setCurrentIndex: (currentIndex) => set({ currentIndex }),
   setPlaybackMode: (playbackMode) => set({ playbackMode }),
   setPlaybackSpeed: (playbackSpeed) => set({ playbackSpeed }),
   setIsRecording: (isRecording) => set({ isRecording }),
   setIsPlaying: (isPlaying) => set({ isPlaying }),
   toggleTranscriptHidden: () => set((s) => ({ transcriptHidden: !s.transcriptHidden })),
+  setPracticeMethod: (method) =>
+    set((s) => {
+      // "Listen & Repeat" + "All" is invalid — force scope to "sentence"
+      if (method === "listen-repeat" && s.practiceScope === "all") {
+        return { practiceMethod: method, practiceScope: "sentence" };
+      }
+      return { practiceMethod: method };
+    }),
+  setPracticeScope: (scope) =>
+    set((s) => {
+      // "All" + "Listen & Repeat" is invalid — switch method to "shadow"
+      if (scope === "all" && s.practiceMethod === "listen-repeat") {
+        return { practiceScope: scope, practiceMethod: "shadow" };
+      }
+      return { practiceScope: scope };
+    }),
   toggleAutoAdvance: () => set((s) => ({ autoAdvance: !s.autoAdvance })),
-  toggleShadowingMode: () => set((s) => ({ shadowingMode: !s.shadowingMode })),
-  toggleContinuousPlay: () => set((s) => ({ continuousPlay: !s.continuousPlay })),
   setMicrophoneError: (microphoneError) => set({ microphoneError }),
   setPlayerError: (playerError) => set({ playerError }),
   resetForSession: (startIndex) =>
@@ -57,6 +73,9 @@ export const usePracticeStore = create<PracticeState>((set) => ({
       playbackSpeed: 1,
       isRecording: false,
       isPlaying: false,
+      practiceMethod: "listen-repeat",
+      practiceScope: "sentence",
+      autoAdvance: true,
       microphoneError: undefined,
       playerError: undefined
     })

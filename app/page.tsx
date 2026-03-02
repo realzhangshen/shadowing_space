@@ -42,10 +42,10 @@ export default function HomePage(): JSX.Element {
           </p>
         </div>
         <div className="card feature-card">
-          <h3>Shadow Mode</h3>
+          <h3>Multiple Practice Modes</h3>
           <p>
-            Speak along with the video in real time. The app plays each sentence,
-            then pauses for you to repeat before moving on.
+            Listen &amp; Repeat, Shadow along in real time, or just Listen.
+            Practice one sentence at a time or play through everything continuously.
           </p>
         </div>
         <div className="card feature-card">

@@ -56,9 +56,9 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
     playbackSpeed,
     isRecording,
     isPlaying,
+    practiceMethod,
+    practiceScope,
     autoAdvance,
-    shadowingMode,
-    continuousPlay,
     microphoneError,
     playerError,
     transcriptHidden,
@@ -68,9 +68,9 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
     setPlaybackSpeed,
     setIsRecording,
     setIsPlaying,
+    setPracticeMethod,
+    setPracticeScope,
     toggleAutoAdvance,
-    toggleShadowingMode,
-    toggleContinuousPlay,
     setMicrophoneError,
     setPlayerError,
     resetForSession
@@ -216,13 +216,13 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
       setRecordingReadySet((prev) => new Set(prev).add(targetSegment.index));
 
       const state = usePracticeStore.getState();
-      if (!state.shadowingMode) {
+      if (state.practiceMethod !== "shadow") {
         setPlaybackMode("attempt");
       } else {
         setPlaybackMode("idle");
       }
 
-      if (state.autoAdvance && !state.continuousPlay) {
+      if (state.practiceMethod === "listen-repeat" && state.autoAdvance) {
         setTimeout(() => goNext(), AUTO_ADVANCE_DELAY_MS);
       }
     },
@@ -246,7 +246,7 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
         window.clearInterval(continuousTimerRef.current);
         continuousTimerRef.current = null;
       }
-      if (usePracticeStore.getState().shadowingMode && recorder.isRecording) {
+      if (usePracticeStore.getState().practiceMethod === "shadow" && recorder.isRecording) {
         void recorder.stop();
       }
     }
@@ -266,7 +266,7 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
 
   const toggleRecording = useCallback(async () => {
     setMicrophoneError(undefined);
-    if (!usePracticeStore.getState().shadowingMode) {
+    if (usePracticeStore.getState().practiceMethod !== "shadow") {
       playerRef.current?.pause();
     }
 
@@ -334,8 +334,8 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
       }
     }, 250);
 
-    // If shadowing mode, also start recording
-    if (usePracticeStore.getState().shadowingMode) {
+    // If shadow method, also start recording
+    if (usePracticeStore.getState().practiceMethod === "shadow") {
       recordingTargetRef.current = currentIndex;
       void recorder.start();
     }
@@ -346,7 +346,7 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
     return () => stopContinuousTracking();
   }, [stopContinuousTracking]);
 
-  // toggleOriginal: dispatches to shadowing/continuous/normal based on active modes
+  // toggleOriginal: dispatches to shadowing/continuous/normal based on method + scope
   const toggleOriginal = useCallback(() => {
     if (!currentSegment) {
       return;
@@ -358,20 +358,20 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
     if (isPlaying) {
       playerRef.current?.pause();
       stopContinuousTracking();
-      if (state.shadowingMode && recorder.isRecording) {
+      if (state.practiceMethod === "shadow" && recorder.isRecording) {
         void recorder.stop();
       }
       return;
     }
 
-    // Continuous play mode: play from current segment to end
-    if (state.continuousPlay) {
+    // Scope "all": continuous play (optionally with recording if shadow)
+    if (state.practiceScope === "all") {
       startContinuousPlay();
       return;
     }
 
-    // Shadowing mode (non-continuous): play + record simultaneously
-    if (state.shadowingMode && !recorder.isRecording) {
+    // Shadow method (sentence scope): play + record simultaneously
+    if (state.practiceMethod === "shadow" && !recorder.isRecording) {
       void startShadowing();
       return;
     }
@@ -418,6 +418,11 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
     [navigateToSegment]
   );
 
+  const toggleScope = useCallback(() => {
+    const state = usePracticeStore.getState();
+    state.setPracticeScope(state.practiceScope === "sentence" ? "all" : "sentence");
+  }, []);
+
   const shortcutHandlers = useMemo(
     () => ({
       onPlayOrPauseSource: toggleOriginal,
@@ -431,10 +436,12 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
       onPrevSegment: goPrev,
       onNextSegment: goNext,
       onToggleTranscript: usePracticeStore.getState().toggleTranscriptHidden,
-      onToggleShadowingMode: toggleShadowingMode,
-      onToggleContinuousPlay: toggleContinuousPlay
+      onSetMethodListenRepeat: () => setPracticeMethod("listen-repeat"),
+      onSetMethodShadow: () => setPracticeMethod("shadow"),
+      onSetMethodListen: () => setPracticeMethod("listen"),
+      onToggleScope: toggleScope
     }),
-    [goNext, goPrev, playOriginal, playRecording, toggleContinuousPlay, toggleOriginal, toggleRecording, toggleShadowingMode]
+    [goNext, goPrev, playOriginal, playRecording, setPracticeMethod, toggleOriginal, toggleRecording, toggleScope]
   );
 
   useShortcuts(shortcutHandlers);
@@ -479,13 +486,15 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
           isPlaying={isPlaying}
           isRecording={isRecording}
           hasRecording={latestRecordingReady}
-          shadowingMode={shadowingMode}
-          continuousPlay={continuousPlay}
+          practiceMethod={practiceMethod}
+          practiceScope={practiceScope}
+          autoAdvance={autoAdvance}
           onToggleOriginal={toggleOriginal}
           onToggleRecording={() => void toggleRecording()}
           onPlayRecording={() => void playRecording()}
-          onToggleShadowingMode={toggleShadowingMode}
-          onToggleContinuousPlay={toggleContinuousPlay}
+          onSetPracticeMethod={setPracticeMethod}
+          onSetPracticeScope={setPracticeScope}
+          onToggleAutoAdvance={toggleAutoAdvance}
           onPrev={goPrev}
           onNext={goNext}
           prevDisabled={currentIndex <= 0}
@@ -507,14 +516,10 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
               {speed}x
             </button>
           ))}
-          <label className="auto-advance-toggle">
-            <input type="checkbox" checked={autoAdvance} onChange={toggleAutoAdvance} />
-            Auto-advance
-          </label>
         </div>
 
         <p className="muted shortcuts-hint">
-          Space: play/pause · R: record · A: replay · B: playback · S: shadow · C: continuous · T: toggle text · &larr;/&rarr;: prev/next
+          Space: play/pause · R: record · A: replay · B: playback · 1/2/3: method · S: shadow · C: scope · T: toggle text · &larr;/&rarr;: prev/next
         </p>
 
         <div aria-live="polite">

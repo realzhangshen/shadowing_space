@@ -43,11 +43,11 @@ export default function GuidePage(): JSX.Element {
         <ul>
           <li>Import any YouTube video with English subtitles</li>
           <li>Automatic sentence-by-sentence segmentation</li>
-          <li>Adjustable playback speed (0.5x to 2x)</li>
+          <li>Adjustable playback speed (0.75x to 1.5x)</li>
           <li>Built-in voice recorder for each sentence</li>
           <li>Side-by-side comparison of original and your recording</li>
-          <li>Shadow mode — speak along in real time with auto-advance</li>
-          <li>Continuous playback mode for passive listening</li>
+          <li>Three practice methods: Listen &amp; Repeat, Shadow, and Listen</li>
+          <li>Sentence or continuous (All) playback scope</li>
           <li>Transcript toggle to hide text and train your ear</li>
           <li>Progress tracking per video</li>
           <li>100% client-side — all data stays in your browser</li>
@@ -64,27 +64,42 @@ export default function GuidePage(): JSX.Element {
           and extract subtitle segments automatically.
         </p>
 
-        <h4>2. Basic Practice</h4>
+        <h4>2. Choose a Practice Method</h4>
         <p>
-          Open any imported video to enter practice mode. You will see the video player
-          on one side and the sentence list on the other. Click any sentence to jump to it.
-          Press <kbd>Space</kbd> to play/pause, then press <kbd>R</kbd> to record yourself
-          repeating the sentence.
+          Open any imported video to enter practice mode. Below the playback controls you
+          will see two selectors: <strong>Method</strong> and <strong>Scope</strong>.
         </p>
+        <ul>
+          <li>
+            <strong>Listen &amp; Repeat</strong> (press <kbd>1</kbd>) — Play a sentence,
+            record yourself repeating it, then replay to compare. Auto-advance moves to the
+            next sentence after you finish recording.
+          </li>
+          <li>
+            <strong>Shadow</strong> (press <kbd>2</kbd> or <kbd>S</kbd>) — Play and record
+            at the same time. Speak along with the original audio in real time. Use headphones
+            so your microphone does not pick up the speaker.
+          </li>
+          <li>
+            <strong>Listen</strong> (press <kbd>3</kbd>) — Play without recording. Good for
+            passive listening or reviewing content before practicing.
+          </li>
+        </ul>
 
-        <h4>3. Shadow Mode</h4>
+        <h4>3. Choose a Scope</h4>
         <p>
-          Press <kbd>S</kbd> to toggle shadow mode. In this mode, the app plays each sentence,
-          pauses for you to repeat, then automatically advances to the next one. It is the
-          closest experience to real-time shadowing practice.
+          Press <kbd>C</kbd> to toggle between <strong>Sentence</strong> and <strong>All</strong>.
         </p>
-
-        <h4>4. Continuous Play</h4>
-        <p>
-          Press <kbd>C</kbd> to enable continuous playback. The video plays through all
-          sentences without stopping — useful for passive listening or when you want to
-          shadow without pauses.
-        </p>
+        <ul>
+          <li>
+            <strong>Sentence</strong> — Plays one sentence at a time. Best for focused practice.
+          </li>
+          <li>
+            <strong>All</strong> — Plays continuously from the current sentence to the end.
+            The active sentence highlights as it progresses. Available with Shadow and Listen
+            methods.
+          </li>
+        </ul>
       </section>
 
       <section id="shortcuts" className="guide-section card">
@@ -101,8 +116,10 @@ export default function GuidePage(): JSX.Element {
             <tr><td><kbd>R</kbd></td><td>Record your voice</td></tr>
             <tr><td><kbd>A</kbd></td><td>Replay original sentence</td></tr>
             <tr><td><kbd>B</kbd></td><td>Play your recording</td></tr>
-            <tr><td><kbd>S</kbd></td><td>Toggle shadow mode</td></tr>
-            <tr><td><kbd>C</kbd></td><td>Toggle continuous play</td></tr>
+            <tr><td><kbd>1</kbd></td><td>Method: Listen &amp; Repeat</td></tr>
+            <tr><td><kbd>2</kbd> / <kbd>S</kbd></td><td>Method: Shadow</td></tr>
+            <tr><td><kbd>3</kbd></td><td>Method: Listen</td></tr>
+            <tr><td><kbd>C</kbd></td><td>Toggle scope (Sentence / All)</td></tr>
             <tr><td><kbd>T</kbd></td><td>Toggle transcript visibility</td></tr>
             <tr><td><kbd>&larr;</kbd></td><td>Previous sentence</td></tr>
             <tr><td><kbd>&rarr;</kbd></td><td>Next sentence</td></tr>
