@@ -1,5 +1,8 @@
 import type { SegmentDTO } from "@/types/api";
 
+const DEFAULT_DURATION_MS = 1_600;
+const MIN_DURATION_MS = 200;
+
 type TranscriptEvent = {
   tStartMs?: number | string;
   dDurationMs?: number | string;
@@ -27,9 +30,9 @@ function parseNumberishMs(value: number | string | undefined): number | null {
 
 function clampDuration(durationMs: number): number {
   if (!Number.isFinite(durationMs) || durationMs <= 0) {
-    return 1_600;
+    return DEFAULT_DURATION_MS;
   }
-  return Math.max(200, Math.round(durationMs));
+  return Math.max(MIN_DURATION_MS, Math.round(durationMs));
 }
 
 function normalizeText(raw: string): string {
@@ -184,7 +187,7 @@ function normalizeJson3Segments(events: TranscriptEvent[]): SegmentDTO[] {
     }
 
     const durationMs = parseNumberishMs(event.dDurationMs);
-    const endMs = startMs + clampDuration(durationMs ?? 1_600);
+    const endMs = startMs + clampDuration(durationMs ?? DEFAULT_DURATION_MS);
 
     segments.push({
       index: segments.length,
@@ -232,7 +235,7 @@ function normalizeXmlSegments(xml: string): SegmentDTO[] {
     segments.push({
       index: segments.length,
       startMs,
-      endMs: startMs + clampDuration(durationMs ?? 1_600),
+      endMs: startMs + clampDuration(durationMs ?? DEFAULT_DURATION_MS),
       text
     });
 

@@ -4,6 +4,8 @@ import { forwardRef, useEffect, useId, useImperativeHandle, useRef, useState } f
 import type { PlaybackSpeed } from "@/store/practiceStore";
 
 const SCRIPT_ID = "youtube-iframe-api-script";
+const API_POLL_INTERVAL_MS = 50;
+const API_LOAD_TIMEOUT_MS = 10_000;
 let apiReadyPromise: Promise<void> | null = null;
 
 function loadYouTubeApi(): Promise<void> {
@@ -49,21 +51,17 @@ function loadYouTubeApi(): Promise<void> {
         window.clearInterval(checker);
         done();
       }
-    }, 50);
+    }, API_POLL_INTERVAL_MS);
 
     window.setTimeout(() => {
       if (!resolved && !window.YT?.Player) {
         window.clearInterval(checker);
         reject(new Error("Timed out while loading YouTube API"));
       }
-    }, 10_000);
+    }, API_LOAD_TIMEOUT_MS);
   });
 
   return apiReadyPromise;
-}
-
-function toYouTubeRate(speed: PlaybackSpeed): number {
-  return speed;
 }
 
 export type YouTubeSegmentPlayerHandle = {
@@ -145,63 +143,51 @@ export const YouTubeSegmentPlayer = forwardRef<YouTubeSegmentPlayerHandle, YouTu
       clearEndTimer();
     }, [isReady, videoId]);
 
+    const seekAndPlay = (startMs: number, endMs: number, speed: PlaybackSpeed) => {
+      clearEndTimer();
+      const startSeconds = Math.max(0, startMs / 1_000);
+      const durationSeconds = Math.max(0.2, (endMs - startMs) / 1_000);
+
+      playerRef.current!.setPlaybackRate(speed);
+      playerRef.current!.seekTo(startSeconds, true);
+      playerRef.current!.playVideo();
+
+      endTimerRef.current = window.setTimeout(() => {
+        playerRef.current?.pauseVideo();
+      }, (durationSeconds * 1_000) / speed);
+    };
+
     useImperativeHandle(
       ref,
       () => ({
         playSegment: (startMs, endMs, speed) => {
-          if (!isReady || !playerRef.current) {
-            return;
-          }
-
-          clearEndTimer();
-          const startSeconds = Math.max(0, startMs / 1_000);
-          const durationSeconds = Math.max(0.2, (endMs - startMs) / 1_000);
-
-          playerRef.current.setPlaybackRate(toYouTubeRate(speed));
-          playerRef.current.seekTo(startSeconds, true);
-          playerRef.current.playVideo();
-
-          endTimerRef.current = window.setTimeout(() => {
-            playerRef.current?.pauseVideo();
-          }, durationSeconds * 1_000);
+          if (!isReady || !playerRef.current) return;
+          seekAndPlay(startMs, endMs, speed);
         },
         toggleSegment: (startMs, endMs, speed) => {
-          if (!isReady || !playerRef.current) {
-            return;
-          }
+          if (!isReady || !playerRef.current) return;
 
-          const state = playerRef.current.getPlayerState();
-          if (state === window.YT.PlayerState.PLAYING) {
+          if (playerRef.current.getPlayerState() === window.YT.PlayerState.PLAYING) {
             clearEndTimer();
             playerRef.current.pauseVideo();
             return;
           }
 
-          const startSeconds = Math.max(0, startMs / 1_000);
-          const durationSeconds = Math.max(0.2, (endMs - startMs) / 1_000);
-
-          playerRef.current.setPlaybackRate(toYouTubeRate(speed));
-          playerRef.current.seekTo(startSeconds, true);
-          playerRef.current.playVideo();
-
-          clearEndTimer();
-          endTimerRef.current = window.setTimeout(() => {
-            playerRef.current?.pauseVideo();
-          }, durationSeconds * 1_000);
+          seekAndPlay(startMs, endMs, speed);
         },
         pause: () => {
           clearEndTimer();
           playerRef.current?.pauseVideo();
         },
         setPlaybackSpeed: (speed) => {
-          playerRef.current?.setPlaybackRate(toYouTubeRate(speed));
+          playerRef.current?.setPlaybackRate(speed);
         }
       }),
       [isReady]
     );
 
     return (
-      <div className="youtube-shell-wrap">
+      <div className="youtube-shell-wrap" aria-label="YouTube video player">
         <div id={elementId} className="youtube-shell" />
       </div>
     );

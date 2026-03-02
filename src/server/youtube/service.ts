@@ -21,6 +21,8 @@ import {
   fetchWatchPage
 } from "@/server/youtube/watchPage";
 
+const PAYLOAD_PREVIEW_LENGTH = 500;
+
 type PlayerResponse = {
   videoDetails?: {
     title?: string;
@@ -310,7 +312,7 @@ export async function resolveTranscriptSegments(params: {
         attempt,
         ...candidateMeta,
         payloadLength: rawPayload.length,
-        payloadSnippet: rawPayload.slice(0, 500),
+        payloadSnippet: rawPayload.slice(0, PAYLOAD_PREVIEW_LENGTH),
         contentStartsWithBrace: rawPayload.trimStart().startsWith("{"),
         contentStartsWithAngle: rawPayload.trimStart().startsWith("<"),
       });

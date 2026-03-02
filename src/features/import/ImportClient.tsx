@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ApiError, fetchTranscriptSegments, fetchTranscriptTracks } from "@/lib/apiClient";
 import { buildTrackId, mapSegments, mapTracks, saveImportBundle } from "@/features/storage/repository";
@@ -147,10 +147,7 @@ export function ImportClient(): JSX.Element {
   const [error, setError] = useState<ErrorDisplay | undefined>();
   const [useProxy, setUseProxy] = useState(true);
 
-  const canImport = useMemo(
-    () => Boolean(fetchResult && selectedTrackToken) && !isImporting,
-    [fetchResult, selectedTrackToken, isImporting]
-  );
+  const canImport = Boolean(fetchResult && selectedTrackToken) && !isImporting;
 
   const onFetchTracks = async () => {
     setError(undefined);
@@ -248,13 +245,6 @@ export function ImportClient(): JSX.Element {
         createdAt: now
       };
 
-      console.log("[debug] saving import bundle", {
-        videoId: videoRecord.id,
-        targetTrackId,
-        trackIds: mappedTracks.map((t) => t.id),
-        segmentCount: mappedSegments.length
-      });
-
       await saveImportBundle({
         video: videoRecord,
         tracks: mappedTracks,
@@ -263,7 +253,6 @@ export function ImportClient(): JSX.Element {
       });
 
       const practiceUrl = `/practice/${fetchResult.videoId}/${encodeURIComponent(targetTrackId)}`;
-      console.log("[debug] navigating to", practiceUrl);
       router.push(practiceUrl);
     } catch (requestError) {
       setError(normalizeApiError(requestError));

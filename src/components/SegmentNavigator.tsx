@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { memo, useEffect, useRef } from "react";
 import type { SegmentRecord } from "@/types/models";
 
 type SegmentNavigatorProps = {
@@ -12,7 +12,7 @@ type SegmentNavigatorProps = {
   onToggleTranscriptHidden: () => void;
 };
 
-export function SegmentNavigator({
+export const SegmentNavigator = memo(function SegmentNavigator({
   segments,
   currentIndex,
   onSelectSegment,
@@ -41,6 +41,7 @@ export function SegmentNavigator({
             className="transcript-toggle icon-btn"
             onClick={onToggleTranscriptHidden}
             title={transcriptHidden ? "Show sentences" : "Hide sentences"}
+            aria-pressed={!transcriptHidden}
           >
             {transcriptHidden ? "Show" : "Hide"}
           </button>
@@ -94,4 +95,4 @@ export function SegmentNavigator({
       </div>
     </section>
   );
-}
+});

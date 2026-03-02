@@ -1,5 +1,7 @@
 "use client";
 
+import { memo } from "react";
+
 type PlaybackControlBarProps = {
   isPlaying: boolean;
   isRecording: boolean;
@@ -13,7 +15,7 @@ type PlaybackControlBarProps = {
   nextDisabled: boolean;
 };
 
-export function PlaybackControlBar({
+export const PlaybackControlBar = memo(function PlaybackControlBar({
   isPlaying,
   isRecording,
   hasRecording,
@@ -49,6 +51,7 @@ export function PlaybackControlBar({
         type="button"
         className={isRecording ? "btn primary recording" : "btn primary"}
         title={isRecording ? "Stop recording" : "Record"}
+        aria-pressed={isRecording}
         onClick={onToggleRecording}
       >
         {isRecording ? "⏹ Stop" : "🎤 Record"}
@@ -74,4 +77,4 @@ export function PlaybackControlBar({
       </button>
     </div>
   );
-}
+});

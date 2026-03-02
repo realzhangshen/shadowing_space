@@ -33,6 +33,8 @@ type SessionState = {
 };
 
 const SPEEDS = [0.75, 1, 1.25, 1.5] as const;
+const RESUME_MESSAGE_TIMEOUT_MS = 3_000;
+const AUTO_ADVANCE_DELAY_MS = 400;
 
 export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.Element {
   const [session, setSession] = useState<SessionState | null>(null);
@@ -131,7 +133,7 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
       // Show resume indicator
       if (safeIndex > 0) {
         setResumeMessage(`Resumed from sentence #${safeIndex + 1}`);
-        setTimeout(() => setResumeMessage(undefined), 3000);
+        setTimeout(() => setResumeMessage(undefined), RESUME_MESSAGE_TIMEOUT_MS);
       }
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "Failed to load practice session.");
@@ -236,7 +238,7 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
       setPlaybackMode("attempt");
 
       if (usePracticeStore.getState().autoAdvance) {
-        setTimeout(() => goNext(), 400);
+        setTimeout(() => goNext(), AUTO_ADVANCE_DELAY_MS);
       }
     },
     onError: (message) => {
@@ -260,29 +262,7 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
     }
   }, [currentIndex, recorder, setMicrophoneError]);
 
-  const goPrev = useCallback(() => {
-    const newIndex = Math.max(0, currentIndex - 1);
-    setCurrentIndex(newIndex);
-    const seg = segments[newIndex];
-    if (seg) {
-      clearRecordingAudio();
-      playerRef.current?.playSegment(seg.startMs, seg.endMs, playbackSpeed);
-      setPlaybackMode("source");
-    }
-  }, [clearRecordingAudio, currentIndex, playbackSpeed, segments, setCurrentIndex, setPlaybackMode]);
-
-  const goNext = useCallback(() => {
-    const newIndex = Math.min(segments.length - 1, currentIndex + 1);
-    setCurrentIndex(newIndex);
-    const seg = segments[newIndex];
-    if (seg) {
-      clearRecordingAudio();
-      playerRef.current?.playSegment(seg.startMs, seg.endMs, playbackSpeed);
-      setPlaybackMode("source");
-    }
-  }, [clearRecordingAudio, currentIndex, playbackSpeed, segments, setCurrentIndex, setPlaybackMode]);
-
-  const selectSegment = useCallback(
+  const navigateToSegment = useCallback(
     (index: number) => {
       setCurrentIndex(index);
       const seg = segments[index];
@@ -292,6 +272,23 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
       setPlaybackMode("source");
     },
     [clearRecordingAudio, playbackSpeed, segments, setCurrentIndex, setPlaybackMode]
+  );
+
+  const goPrev = useCallback(() => {
+    const newIndex = Math.max(0, currentIndex - 1);
+    if (newIndex === currentIndex) return;
+    navigateToSegment(newIndex);
+  }, [currentIndex, navigateToSegment]);
+
+  const goNext = useCallback(() => {
+    const newIndex = Math.min(segments.length - 1, currentIndex + 1);
+    if (newIndex === currentIndex) return;
+    navigateToSegment(newIndex);
+  }, [currentIndex, navigateToSegment, segments.length]);
+
+  const selectSegment = useCallback(
+    (index: number) => navigateToSegment(index),
+    [navigateToSegment]
   );
 
   const shortcutHandlers = useMemo(
@@ -371,6 +368,7 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
               key={speed}
               type="button"
               className={playbackSpeed === speed ? "btn secondary active-speed" : "btn secondary"}
+              aria-current={playbackSpeed === speed ? true : undefined}
               onClick={() => setPlaybackSpeed(speed)}
             >
               {speed}x
@@ -386,9 +384,11 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
           Space: play/pause · R: record · A: replay · B: playback · T: toggle text · &larr;/&rarr;: prev/next
         </p>
 
-        {error ? <p className="error-text">{error}</p> : null}
-        {playerError ? <p className="error-text">{playerError}</p> : null}
-        {microphoneError ? <p className="error-text">{microphoneError}</p> : null}
+        <div aria-live="polite">
+          {error ? <p className="error-text">{error}</p> : null}
+          {playerError ? <p className="error-text">{playerError}</p> : null}
+          {microphoneError ? <p className="error-text">{microphoneError}</p> : null}
+        </div>
       </section>
 
       <section className="card main-practice">

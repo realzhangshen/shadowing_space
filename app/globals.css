@@ -7,6 +7,7 @@
   --bg-elevated: #eeeee8;
   --bg-hover: rgba(38, 37, 30, 0.06);
   --bg-active: rgba(38, 37, 30, 0.10);
+  --bg-elevated-hover: #e5e5de;
   --card: #ffffff;
   --card-border: rgba(38, 37, 30, 0.12);
   --text: #26251e;
@@ -232,7 +233,7 @@ textarea {
 }
 
 .btn.secondary:hover {
-  background: #e5e5de;
+  background: var(--bg-elevated-hover);
   border-color: var(--text);
   color: var(--text);
 }

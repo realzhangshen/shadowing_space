@@ -19,7 +19,12 @@ function parseProxyUrls(raw: string | undefined): string[] {
     .filter(Boolean);
 }
 
+const DEFAULT_TOKEN_SECRET = "shadowing-dev-secret";
 const youtubeProxyUrls = parseProxyUrls(process.env.YOUTUBE_PROXY_URLS);
+
+if (!process.env.TRACK_TOKEN_SECRET && process.env.NODE_ENV === "production") {
+  console.warn("[env] TRACK_TOKEN_SECRET is not set — using insecure default. Set a real secret for production.");
+}
 
 export const env = {
   youtubeFetchTimeoutMs: readPositiveInteger(
@@ -28,7 +33,7 @@ export const env = {
   ),
   transcriptRateLimitMaxRequests: readPositiveInteger(process.env.TRANSCRIPT_RATE_LIMIT_MAX_REQUESTS, 30),
   transcriptRateLimitWindowMs: readPositiveInteger(process.env.TRANSCRIPT_RATE_LIMIT_WINDOW_MS, 60_000),
-  trackTokenSecret: readString(process.env.TRACK_TOKEN_SECRET, "shadowing-dev-secret"),
+  trackTokenSecret: readString(process.env.TRACK_TOKEN_SECRET, DEFAULT_TOKEN_SECRET),
   trackTokenTtlSeconds: readPositiveInteger(process.env.TRACK_TOKEN_TTL_SECONDS, 86_400),
   pickYoutubeProxyUrl(): string | undefined {
     if (youtubeProxyUrls.length === 0) return undefined;
