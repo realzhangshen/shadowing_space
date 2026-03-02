@@ -508,6 +508,26 @@ textarea {
   50% { opacity: 0.4; }
 }
 
+.rec-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  font-family: "JetBrains Mono", monospace;
+  color: var(--danger);
+  letter-spacing: 0.05em;
+  animation: pulse-record 1s infinite;
+}
+
+.rec-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--danger);
+}
+
 /* Control bar wrap (main bar + mode settings) */
 
 .control-bar-wrap {

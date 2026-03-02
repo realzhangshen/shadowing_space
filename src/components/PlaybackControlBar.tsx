@@ -69,6 +69,13 @@ export const PlaybackControlBar = memo(function PlaybackControlBar({
           {getPlayLabel(isAuto, isPlaying)}
         </button>
 
+        {isRecording ? (
+          <span className="rec-indicator" aria-label="Recording in progress">
+            <span className="rec-dot" />
+            REC
+          </span>
+        ) : null}
+
         {showRecord ? (
           <button
             type="button"

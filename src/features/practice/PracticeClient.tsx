@@ -51,6 +51,7 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
   const recordingTargetRef = useRef<number>(0);
   const continuousTimerRef = useRef<number | null>(null);
   const audioFinishedRef = useRef(false);
+  const manualStopRef = useRef(false);
 
   const {
     currentIndex,
@@ -213,6 +214,13 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
 
       setLatestRecordingReady(true);
       setRecordingReadySet((prev) => new Set(prev).add(targetSegment.index));
+
+      // User-initiated stop: save recording but don't auto-advance
+      if (manualStopRef.current) {
+        manualStopRef.current = false;
+        setPlaybackMode("idle");
+        return;
+      }
 
       const state = usePracticeStore.getState();
 
@@ -411,6 +419,7 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
       playerRef.current?.pause();
       stopContinuousTracking();
       if (recorder.isRecording) {
+        manualStopRef.current = true;
         void recorder.stop();
       }
       return;
