@@ -11,3 +11,4 @@ tsconfig.tsbuildinfo
 .env*
 reference
 .playwright-mcp
+reports
