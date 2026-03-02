@@ -12,8 +12,8 @@ type ShortcutHandlers = {
   onToggleTranscript: () => void;
   onSetMethodListenRepeat: () => void;
   onSetMethodShadow: () => void;
-  onSetMethodListen: () => void;
   onToggleScope: () => void;
+  onToggleRepeatFlow: () => void;
 };
 
 function isEditableTarget(target: EventTarget | null): boolean {
@@ -70,16 +70,13 @@ export function useShortcuts(handlers: ShortcutHandlers): void {
           handlers.onSetMethodListenRepeat();
           break;
         case "2":
-          event.preventDefault();
-          handlers.onSetMethodShadow();
-          break;
         case "s":
           event.preventDefault();
           handlers.onSetMethodShadow();
           break;
-        case "3":
+        case "m":
           event.preventDefault();
-          handlers.onSetMethodListen();
+          handlers.onToggleRepeatFlow();
           break;
         case "c":
           event.preventDefault();

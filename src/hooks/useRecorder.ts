@@ -17,6 +17,7 @@ const preferredMimeTypes = ["audio/webm;codecs=opus", "audio/webm", "audio/ogg"]
 
 export function useRecorder(params: UseRecorderParams): {
   isRecording: boolean;
+  stream: MediaStream | null;
   start: () => Promise<void>;
   stop: () => Promise<void>;
 } {
@@ -26,17 +27,19 @@ export function useRecorder(params: UseRecorderParams): {
   const streamRef = useRef<MediaStream | null>(null);
   const startedAtRef = useRef<number>(0);
   const [isRecording, setIsRecording] = useState(false);
+  const [stream, setStream] = useState<MediaStream | null>(null);
 
   const stopTracks = useCallback(() => {
-    const stream = streamRef.current;
-    if (!stream) {
+    const s = streamRef.current;
+    if (!s) {
       return;
     }
 
-    for (const track of stream.getTracks()) {
+    for (const track of s.getTracks()) {
       track.stop();
     }
     streamRef.current = null;
+    setStream(null);
   }, []);
 
   const start = useCallback(async () => {
@@ -50,6 +53,7 @@ export function useRecorder(params: UseRecorderParams): {
       const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
 
       streamRef.current = stream;
+      setStream(stream);
       recorderRef.current = recorder;
       chunksRef.current = [];
       startedAtRef.current = Date.now();
@@ -99,6 +103,7 @@ export function useRecorder(params: UseRecorderParams): {
 
   return {
     isRecording,
+    stream,
     start,
     stop
   };

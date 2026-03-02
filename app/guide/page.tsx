@@ -46,8 +46,9 @@ export default function GuidePage(): JSX.Element {
           <li>Adjustable playback speed (0.75x to 1.5x)</li>
           <li>Built-in voice recorder for each sentence</li>
           <li>Side-by-side comparison of original and your recording</li>
-          <li>Three practice methods: Listen &amp; Repeat, Shadow, and Listen</li>
-          <li>Sentence or continuous (All) playback scope</li>
+          <li>Two practice methods: Listen &amp; Repeat and Shadow</li>
+          <li>Sentence or Free-form playback scope</li>
+          <li>Manual or Auto flow control with voice activity detection</li>
           <li>Transcript toggle to hide text and train your ear</li>
           <li>Progress tracking per video</li>
           <li>100% client-side — all data stays in your browser</li>
@@ -72,32 +73,41 @@ export default function GuidePage(): JSX.Element {
         <ul>
           <li>
             <strong>Listen &amp; Repeat</strong> (press <kbd>1</kbd>) — Play a sentence,
-            record yourself repeating it, then replay to compare. Auto-advance moves to the
-            next sentence after you finish recording.
+            record yourself repeating it, then replay to compare.
           </li>
           <li>
             <strong>Shadow</strong> (press <kbd>2</kbd> or <kbd>S</kbd>) — Play and record
             at the same time. Speak along with the original audio in real time. Use headphones
             so your microphone does not pick up the speaker.
           </li>
-          <li>
-            <strong>Listen</strong> (press <kbd>3</kbd>) — Play without recording. Good for
-            passive listening or reviewing content before practicing.
-          </li>
         </ul>
 
-        <h4>3. Choose a Scope</h4>
+        <h4>3. Choose a Flow</h4>
         <p>
-          Press <kbd>C</kbd> to toggle between <strong>Sentence</strong> and <strong>All</strong>.
+          Press <kbd>M</kbd> to toggle between <strong>Manual</strong> and <strong>Auto</strong>.
         </p>
         <ul>
           <li>
-            <strong>Sentence</strong> — Plays one sentence at a time. Best for focused practice.
+            <strong>Manual</strong> — You control recording start/stop and navigation.
           </li>
           <li>
-            <strong>All</strong> — Plays continuously from the current sentence to the end.
-            The active sentence highlights as it progresses. Available with Shadow and Listen
-            methods.
+            <strong>Auto</strong> — Automatic loop: recording starts after playback, voice
+            activity detection stops recording on silence, then auto-advances to the next sentence.
+          </li>
+        </ul>
+
+        <h4>4. Choose a Scope</h4>
+        <p>
+          Press <kbd>C</kbd> to toggle between <strong>Sentences</strong> and <strong>Free</strong>.
+        </p>
+        <ul>
+          <li>
+            <strong>Sentences</strong> — Plays one sentence at a time. Best for focused practice.
+          </li>
+          <li>
+            <strong>Free</strong> — Free-form mode. Scrub the YouTube player to any position,
+            then play and shadow along continuously. Sentences highlight as reference. Forces
+            Shadow method.
           </li>
         </ul>
       </section>
@@ -118,8 +128,8 @@ export default function GuidePage(): JSX.Element {
             <tr><td><kbd>B</kbd></td><td>Play your recording</td></tr>
             <tr><td><kbd>1</kbd></td><td>Method: Listen &amp; Repeat</td></tr>
             <tr><td><kbd>2</kbd> / <kbd>S</kbd></td><td>Method: Shadow</td></tr>
-            <tr><td><kbd>3</kbd></td><td>Method: Listen</td></tr>
-            <tr><td><kbd>C</kbd></td><td>Toggle scope (Sentence / All)</td></tr>
+            <tr><td><kbd>M</kbd></td><td>Toggle flow (Manual / Auto)</td></tr>
+            <tr><td><kbd>C</kbd></td><td>Toggle scope (Sentences / Free)</td></tr>
             <tr><td><kbd>T</kbd></td><td>Toggle transcript visibility</td></tr>
             <tr><td><kbd>&larr;</kbd></td><td>Previous sentence</td></tr>
             <tr><td><kbd>&rarr;</kbd></td><td>Next sentence</td></tr>

@@ -1,7 +1,7 @@
 "use client";
 
 import { memo } from "react";
-import type { PracticeMethod, PracticeScope } from "@/store/practiceStore";
+import type { PracticeMethod, PracticeScope, RepeatFlow } from "@/store/practiceStore";
 
 type PlaybackControlBarProps = {
   isPlaying: boolean;
@@ -9,13 +9,12 @@ type PlaybackControlBarProps = {
   hasRecording: boolean;
   practiceMethod: PracticeMethod;
   practiceScope: PracticeScope;
-  autoAdvance: boolean;
+  repeatFlow: RepeatFlow;
   onToggleOriginal: () => void;
   onToggleRecording: () => void;
   onPlayRecording: () => void;
   onSetPracticeMethod: (method: PracticeMethod) => void;
-  onSetPracticeScope: (scope: PracticeScope) => void;
-  onToggleAutoAdvance: () => void;
+  onSetRepeatFlow: (flow: RepeatFlow) => void;
   onPrev: () => void;
   onNext: () => void;
   prevDisabled: boolean;
@@ -24,20 +23,17 @@ type PlaybackControlBarProps = {
 
 const METHODS: { value: PracticeMethod; label: string }[] = [
   { value: "listen-repeat", label: "Listen & Repeat" },
-  { value: "shadow", label: "Shadow" },
-  { value: "listen", label: "Listen" }
+  { value: "shadow", label: "Shadow" }
 ];
 
-const SCOPES: { value: PracticeScope; label: string }[] = [
-  { value: "sentence", label: "Sentence" },
-  { value: "all", label: "All" }
+const FLOWS: { value: RepeatFlow; label: string }[] = [
+  { value: "manual", label: "Manual" },
+  { value: "auto", label: "Auto" }
 ];
 
 function getPlayLabel(method: PracticeMethod, scope: PracticeScope, isPlaying: boolean): string {
   if (isPlaying) return "⏸ Pause";
-  if (method === "shadow" && scope === "all") return "▶ Shadow All";
   if (method === "shadow") return "▶ Shadow";
-  if (method === "listen" && scope === "all") return "▶ Play All";
   return "▶ Play";
 }
 
@@ -47,29 +43,30 @@ export const PlaybackControlBar = memo(function PlaybackControlBar({
   hasRecording,
   practiceMethod,
   practiceScope,
-  autoAdvance,
+  repeatFlow,
   onToggleOriginal,
   onToggleRecording,
   onPlayRecording,
   onSetPracticeMethod,
-  onSetPracticeScope,
-  onToggleAutoAdvance,
+  onSetRepeatFlow,
   onPrev,
   onNext,
   prevDisabled,
   nextDisabled
 }: PlaybackControlBarProps): JSX.Element {
-  const showRecord = practiceMethod === "listen-repeat";
-  const showReplay = practiceMethod !== "listen" && practiceScope === "sentence" && hasRecording;
-  const showAutoAdvance = practiceMethod === "listen-repeat";
+  const isSentenceScope = practiceScope === "sentence";
+  const showRecord = practiceMethod === "listen-repeat" && repeatFlow === "manual";
+  const showReplay = practiceScope === "sentence" && hasRecording;
   const showHeadphoneHint = practiceMethod === "shadow";
 
   return (
     <div className="control-bar-wrap">
       <div className="control-bar">
-        <button type="button" className="btn secondary" onClick={onPrev} disabled={prevDisabled}>
-          ← Prev
-        </button>
+        {isSentenceScope ? (
+          <button type="button" className="btn secondary" onClick={onPrev} disabled={prevDisabled}>
+            ← Prev
+          </button>
+        ) : null}
 
         <button
           type="button"
@@ -103,47 +100,46 @@ export const PlaybackControlBar = memo(function PlaybackControlBar({
           </button>
         ) : null}
 
-        <button type="button" className="btn secondary" onClick={onNext} disabled={nextDisabled}>
-          Next →
-        </button>
+        {isSentenceScope ? (
+          <button type="button" className="btn secondary" onClick={onNext} disabled={nextDisabled}>
+            Next →
+          </button>
+        ) : null}
       </div>
 
       <div className="mode-settings">
-        <div className="method-selector" role="radiogroup" aria-label="Practice method">
-          {METHODS.map((m) => (
-            <button
-              key={m.value}
-              type="button"
-              role="radio"
-              aria-checked={practiceMethod === m.value}
-              className={practiceMethod === m.value ? "method-option active" : "method-option"}
-              onClick={() => onSetPracticeMethod(m.value)}
-            >
-              {m.label}
-            </button>
-          ))}
-        </div>
+        {isSentenceScope ? (
+          <div className="method-selector" role="radiogroup" aria-label="Practice method">
+            {METHODS.map((m) => (
+              <button
+                key={m.value}
+                type="button"
+                role="radio"
+                aria-checked={practiceMethod === m.value}
+                className={practiceMethod === m.value ? "method-option active" : "method-option"}
+                onClick={() => onSetPracticeMethod(m.value)}
+              >
+                {m.label}
+              </button>
+            ))}
+          </div>
+        ) : null}
 
-        <div className="scope-toggle" role="radiogroup" aria-label="Practice scope">
-          {SCOPES.map((s) => (
-            <button
-              key={s.value}
-              type="button"
-              role="radio"
-              aria-checked={practiceScope === s.value}
-              className={practiceScope === s.value ? "scope-option active" : "scope-option"}
-              onClick={() => onSetPracticeScope(s.value)}
-            >
-              {s.label}
-            </button>
-          ))}
-        </div>
-
-        {showAutoAdvance ? (
-          <label className="auto-advance-toggle">
-            <input type="checkbox" checked={autoAdvance} onChange={onToggleAutoAdvance} />
-            Auto-advance
-          </label>
+        {isSentenceScope ? (
+          <div className="scope-toggle" role="radiogroup" aria-label="Practice flow">
+            {FLOWS.map((f) => (
+              <button
+                key={f.value}
+                type="button"
+                role="radio"
+                aria-checked={repeatFlow === f.value}
+                className={repeatFlow === f.value ? "scope-option active" : "scope-option"}
+                onClick={() => onSetRepeatFlow(f.value)}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
         ) : null}
 
         {showHeadphoneHint ? (

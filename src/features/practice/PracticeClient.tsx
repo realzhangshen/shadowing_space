@@ -7,6 +7,7 @@ import { SegmentNavigator } from "@/components/SegmentNavigator";
 import { YouTubeSegmentPlayer, type YouTubeSegmentPlayerHandle } from "@/components/YouTubeSegmentPlayer";
 import { useShortcuts } from "@/hooks/useShortcuts";
 import { useRecorder } from "@/hooks/useRecorder";
+import { useVAD } from "@/hooks/useVAD";
 import { fetchTranscriptSegments } from "@/lib/apiClient";
 import {
   getLatestRecording,
@@ -58,7 +59,7 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
     isPlaying,
     practiceMethod,
     practiceScope,
-    autoAdvance,
+    repeatFlow,
     microphoneError,
     playerError,
     transcriptHidden,
@@ -70,7 +71,7 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
     setIsPlaying,
     setPracticeMethod,
     setPracticeScope,
-    toggleAutoAdvance,
+    setRepeatFlow,
     setMicrophoneError,
     setPlayerError,
     resetForSession
@@ -131,11 +132,9 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
       });
       await loadRecordingState(trackId, safeIndex);
 
-      // Load recording indices
       const indices = await getRecordedSegmentIndices(trackId);
       setRecordingReadySet(indices);
 
-      // Show resume indicator
       if (safeIndex > 0) {
         setResumeMessage(`Resumed from sentence #${safeIndex + 1}`);
         setTimeout(() => setResumeMessage(undefined), RESUME_MESSAGE_TIMEOUT_MS);
@@ -170,7 +169,7 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
     playerRef.current?.setPlaybackSpeed(playbackSpeed);
   }, [playbackSpeed]);
 
-  // --- Recorder (must be declared before functions that reference it) ---
+  // --- Recorder ---
 
   const navigateToSegment = useCallback(
     (index: number) => {
@@ -216,14 +215,39 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
       setRecordingReadySet((prev) => new Set(prev).add(targetSegment.index));
 
       const state = usePracticeStore.getState();
+
+      if (state.practiceScope === "free") {
+        setPlaybackMode("idle");
+        return;
+      }
+
       if (state.practiceMethod !== "shadow") {
         setPlaybackMode("attempt");
       } else {
         setPlaybackMode("idle");
       }
 
-      if (state.practiceMethod === "listen-repeat" && state.autoAdvance) {
-        setTimeout(() => goNext(), AUTO_ADVANCE_DELAY_MS);
+      // Auto-advance when repeatFlow is "auto" (sentence scope, both methods)
+      if (state.repeatFlow === "auto" && state.practiceScope === "sentence") {
+        setTimeout(() => {
+          const s = usePracticeStore.getState();
+          const nextIdx = Math.min(segments.length - 1, s.currentIndex + 1);
+          if (nextIdx === s.currentIndex) return;
+
+          setCurrentIndex(nextIdx);
+          const nextSeg = segments[nextIdx];
+          if (!nextSeg) return;
+
+          clearRecordingAudio();
+          playerRef.current?.playSegment(nextSeg.startMs, nextSeg.endMs, s.playbackSpeed);
+          setPlaybackMode("source");
+
+          // For shadow auto, also start recording after a short delay
+          if (s.practiceMethod === "shadow") {
+            recordingTargetRef.current = nextIdx;
+            void recorder.start();
+          }
+        }, AUTO_ADVANCE_DELAY_MS);
       }
     },
     onError: (message) => {
@@ -235,19 +259,58 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
     setIsRecording(recorder.isRecording);
   }, [recorder.isRecording, setIsRecording]);
 
-  // Auto-stop recording when playback ends in shadowing mode, and clean up continuous tracking
+  // --- VAD ---
+
+  const vadEnabled =
+    recorder.isRecording &&
+    practiceScope !== "free" &&
+    (practiceMethod === "shadow" || (practiceMethod === "listen-repeat" && repeatFlow === "auto"));
+
+  useVAD({
+    stream: recorder.stream,
+    enabled: vadEnabled,
+    onSilenceDetected: () => {
+      void recorder.stop();
+    }
+  });
+
+  // --- Playback-end effect ---
+
   const prevIsPlayingRef = useRef(false);
   useEffect(() => {
     const wasPlaying = prevIsPlayingRef.current;
     prevIsPlayingRef.current = isPlaying;
 
     if (wasPlaying && !isPlaying) {
+      // Clean up continuous tracking
       if (continuousTimerRef.current) {
         window.clearInterval(continuousTimerRef.current);
         continuousTimerRef.current = null;
       }
-      if (usePracticeStore.getState().practiceMethod === "shadow" && recorder.isRecording) {
+
+      const state = usePracticeStore.getState();
+
+      // Free mode: stop recording when playback pauses
+      if (state.practiceScope === "free" && recorder.isRecording) {
         void recorder.stop();
+        return;
+      }
+
+      // Shadow + sentence: do NOT stop recording — let VAD handle it
+      if (state.practiceMethod === "shadow" && state.practiceScope === "sentence") {
+        return;
+      }
+
+      // Listen-repeat + auto + sentence: auto-start recording after playback ends
+      if (
+        state.practiceMethod === "listen-repeat" &&
+        state.repeatFlow === "auto" &&
+        state.practiceScope === "sentence" &&
+        !recorder.isRecording
+      ) {
+        recordingTargetRef.current = state.currentIndex;
+        void recorder.start();
+        return;
       }
     }
   }, [isPlaying, recorder]);
@@ -283,11 +346,9 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
     setMicrophoneError(undefined);
     clearRecordingAudio();
 
-    // Start playback
     playerRef.current?.playSegment(currentSegment.startMs, currentSegment.endMs, playbackSpeed);
     setPlaybackMode("source");
 
-    // Start recording simultaneously
     recordingTargetRef.current = currentIndex;
     await recorder.start();
   }, [clearRecordingAudio, currentIndex, currentSegment, playbackSpeed, recorder, setMicrophoneError, setPlaybackMode]);
@@ -299,14 +360,17 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
     }
   }, []);
 
-  const startContinuousPlay = useCallback(() => {
+  const startFreePlay = useCallback(async () => {
     if (!segments.length) return;
-    const startSeg = segments[currentIndex];
     const endSeg = segments[segments.length - 1];
-    if (!startSeg || !endSeg) return;
+    if (!endSeg) return;
 
+    setMicrophoneError(undefined);
     clearRecordingAudio();
     stopContinuousTracking();
+
+    // Read current YouTube position (user may have scrubbed)
+    const currentTimeMs = playerRef.current?.getCurrentTimeMs() ?? 0;
 
     const onEnd = () => {
       stopContinuousTracking();
@@ -316,16 +380,15 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
       }
     };
 
-    playerRef.current?.playContinuous(startSeg.startMs, endSeg.endMs, playbackSpeed, onEnd);
+    playerRef.current?.playContinuous(currentTimeMs, endSeg.endMs, playbackSpeed, onEnd);
     setPlaybackMode("source");
 
-    // Poll current time to update segment index
+    // Poll current time to update sentence highlighting
     continuousTimerRef.current = window.setInterval(() => {
       const timeMs = playerRef.current?.getCurrentTimeMs() ?? 0;
       const state = usePracticeStore.getState();
-      const segs = segments;
-      for (let i = segs.length - 1; i >= 0; i--) {
-        if (timeMs >= segs[i].startMs) {
+      for (let i = segments.length - 1; i >= 0; i--) {
+        if (timeMs >= segments[i].startMs) {
           if (i !== state.currentIndex) {
             state.setCurrentIndex(i);
           }
@@ -334,19 +397,17 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
       }
     }, 250);
 
-    // If shadow method, also start recording
-    if (usePracticeStore.getState().practiceMethod === "shadow") {
-      recordingTargetRef.current = currentIndex;
-      void recorder.start();
-    }
-  }, [clearRecordingAudio, currentIndex, playbackSpeed, recorder, segments, setPlaybackMode, stopContinuousTracking]);
+    // Always record in free mode (forced shadow)
+    recordingTargetRef.current = currentIndex;
+    await recorder.start();
+  }, [clearRecordingAudio, currentIndex, playbackSpeed, recorder, segments, setMicrophoneError, setPlaybackMode, stopContinuousTracking]);
 
   // Clean up continuous tracking on unmount
   useEffect(() => {
     return () => stopContinuousTracking();
   }, [stopContinuousTracking]);
 
-  // toggleOriginal: dispatches to shadowing/continuous/normal based on method + scope
+  // toggleOriginal: dispatches based on method + scope + flow
   const toggleOriginal = useCallback(() => {
     if (!currentSegment) {
       return;
@@ -358,15 +419,15 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
     if (isPlaying) {
       playerRef.current?.pause();
       stopContinuousTracking();
-      if (state.practiceMethod === "shadow" && recorder.isRecording) {
+      if (recorder.isRecording) {
         void recorder.stop();
       }
       return;
     }
 
-    // Scope "all": continuous play (optionally with recording if shadow)
-    if (state.practiceScope === "all") {
-      startContinuousPlay();
+    // Free mode: start free play
+    if (state.practiceScope === "free") {
+      void startFreePlay();
       return;
     }
 
@@ -379,7 +440,7 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
     clearRecordingAudio();
     playerRef.current?.toggleSegment(currentSegment.startMs, currentSegment.endMs, playbackSpeed);
     setPlaybackMode("source");
-  }, [clearRecordingAudio, currentSegment, isPlaying, playbackSpeed, recorder, setPlaybackMode, startContinuousPlay, startShadowing, stopContinuousTracking]);
+  }, [clearRecordingAudio, currentSegment, isPlaying, playbackSpeed, recorder, setPlaybackMode, startFreePlay, startShadowing, stopContinuousTracking]);
 
   const playRecording = useCallback(async () => {
     if (!currentSegment) {
@@ -420,7 +481,12 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
 
   const toggleScope = useCallback(() => {
     const state = usePracticeStore.getState();
-    state.setPracticeScope(state.practiceScope === "sentence" ? "all" : "sentence");
+    state.setPracticeScope(state.practiceScope === "sentence" ? "free" : "sentence");
+  }, []);
+
+  const toggleRepeatFlow = useCallback(() => {
+    const state = usePracticeStore.getState();
+    state.setRepeatFlow(state.repeatFlow === "manual" ? "auto" : "manual");
   }, []);
 
   const shortcutHandlers = useMemo(
@@ -438,10 +504,10 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
       onToggleTranscript: usePracticeStore.getState().toggleTranscriptHidden,
       onSetMethodListenRepeat: () => setPracticeMethod("listen-repeat"),
       onSetMethodShadow: () => setPracticeMethod("shadow"),
-      onSetMethodListen: () => setPracticeMethod("listen"),
-      onToggleScope: toggleScope
+      onToggleScope: toggleScope,
+      onToggleRepeatFlow: toggleRepeatFlow
     }),
-    [goNext, goPrev, playOriginal, playRecording, setPracticeMethod, toggleOriginal, toggleRecording, toggleScope]
+    [goNext, goPrev, playOriginal, playRecording, setPracticeMethod, toggleOriginal, toggleRecording, toggleRepeatFlow, toggleScope]
   );
 
   useShortcuts(shortcutHandlers);
@@ -488,13 +554,12 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
           hasRecording={latestRecordingReady}
           practiceMethod={practiceMethod}
           practiceScope={practiceScope}
-          autoAdvance={autoAdvance}
+          repeatFlow={repeatFlow}
           onToggleOriginal={toggleOriginal}
           onToggleRecording={() => void toggleRecording()}
           onPlayRecording={() => void playRecording()}
           onSetPracticeMethod={setPracticeMethod}
-          onSetPracticeScope={setPracticeScope}
-          onToggleAutoAdvance={toggleAutoAdvance}
+          onSetRepeatFlow={setRepeatFlow}
           onPrev={goPrev}
           onNext={goNext}
           prevDisabled={currentIndex <= 0}
@@ -519,7 +584,7 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
         </div>
 
         <p className="muted shortcuts-hint">
-          Space: play/pause · R: record · A: replay · B: playback · 1/2/3: method · S: shadow · C: scope · T: toggle text · &larr;/&rarr;: prev/next
+          Space: play/pause · R: record · A: replay · B: playback · 1/2: method · M: manual/auto · C: scope · T: toggle text · &larr;/&rarr;: prev/next
         </p>
 
         <div aria-live="polite">
@@ -537,6 +602,8 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
           recordingReadySet={recordingReadySet}
           transcriptHidden={transcriptHidden}
           onToggleTranscriptHidden={toggleTranscriptHidden}
+          practiceScope={practiceScope}
+          onSetPracticeScope={setPracticeScope}
         />
       </section>
     </div>
