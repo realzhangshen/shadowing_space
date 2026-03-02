@@ -48,6 +48,7 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
   const recordingAudioRef = useRef<HTMLAudioElement | null>(null);
   const recordingAudioUrlRef = useRef<string | null>(null);
   const recordingTargetRef = useRef<number>(0);
+  const continuousTimerRef = useRef<number | null>(null);
 
   const {
     currentIndex,
@@ -56,6 +57,8 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
     isRecording,
     isPlaying,
     autoAdvance,
+    shadowingMode,
+    continuousPlay,
     microphoneError,
     playerError,
     transcriptHidden,
@@ -66,6 +69,8 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
     setIsRecording,
     setIsPlaying,
     toggleAutoAdvance,
+    toggleShadowingMode,
+    toggleContinuousPlay,
     setMicrophoneError,
     setPlayerError,
     resetForSession
@@ -165,6 +170,90 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
     playerRef.current?.setPlaybackSpeed(playbackSpeed);
   }, [playbackSpeed]);
 
+  // --- Recorder (must be declared before functions that reference it) ---
+
+  const navigateToSegment = useCallback(
+    (index: number) => {
+      setCurrentIndex(index);
+      const seg = segments[index];
+      if (!seg) return;
+      clearRecordingAudio();
+      playerRef.current?.playSegment(seg.startMs, seg.endMs, playbackSpeed);
+      setPlaybackMode("source");
+    },
+    [clearRecordingAudio, playbackSpeed, segments, setCurrentIndex, setPlaybackMode]
+  );
+
+  const goPrev = useCallback(() => {
+    const newIndex = Math.max(0, currentIndex - 1);
+    if (newIndex === currentIndex) return;
+    navigateToSegment(newIndex);
+  }, [currentIndex, navigateToSegment]);
+
+  const goNext = useCallback(() => {
+    const newIndex = Math.min(segments.length - 1, currentIndex + 1);
+    if (newIndex === currentIndex) return;
+    navigateToSegment(newIndex);
+  }, [currentIndex, navigateToSegment, segments.length]);
+
+  const recorder = useRecorder({
+    onComplete: async ({ blob, durationMs, mimeType }) => {
+      const targetIndex = recordingTargetRef.current;
+      const targetSegment = segments[targetIndex];
+      if (!targetSegment) {
+        return;
+      }
+
+      await saveLatestRecording({
+        trackId,
+        segmentIndex: targetSegment.index,
+        blob,
+        durationMs,
+        mimeType
+      });
+
+      setLatestRecordingReady(true);
+      setRecordingReadySet((prev) => new Set(prev).add(targetSegment.index));
+
+      const state = usePracticeStore.getState();
+      if (!state.shadowingMode) {
+        setPlaybackMode("attempt");
+      } else {
+        setPlaybackMode("idle");
+      }
+
+      if (state.autoAdvance && !state.continuousPlay) {
+        setTimeout(() => goNext(), AUTO_ADVANCE_DELAY_MS);
+      }
+    },
+    onError: (message) => {
+      setMicrophoneError(message);
+    }
+  });
+
+  useEffect(() => {
+    setIsRecording(recorder.isRecording);
+  }, [recorder.isRecording, setIsRecording]);
+
+  // Auto-stop recording when playback ends in shadowing mode, and clean up continuous tracking
+  const prevIsPlayingRef = useRef(false);
+  useEffect(() => {
+    const wasPlaying = prevIsPlayingRef.current;
+    prevIsPlayingRef.current = isPlaying;
+
+    if (wasPlaying && !isPlaying) {
+      if (continuousTimerRef.current) {
+        window.clearInterval(continuousTimerRef.current);
+        continuousTimerRef.current = null;
+      }
+      if (usePracticeStore.getState().shadowingMode && recorder.isRecording) {
+        void recorder.stop();
+      }
+    }
+  }, [isPlaying, recorder]);
+
+  // --- Mode-specific functions ---
+
   const playOriginal = useCallback(() => {
     if (!currentSegment) {
       return;
@@ -175,15 +264,122 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
     setPlaybackMode("source");
   }, [clearRecordingAudio, currentSegment, playbackSpeed, setPlaybackMode]);
 
+  const toggleRecording = useCallback(async () => {
+    setMicrophoneError(undefined);
+    if (!usePracticeStore.getState().shadowingMode) {
+      playerRef.current?.pause();
+    }
+
+    if (recorder.isRecording) {
+      await recorder.stop();
+    } else {
+      recordingTargetRef.current = currentIndex;
+      await recorder.start();
+    }
+  }, [currentIndex, recorder, setMicrophoneError]);
+
+  const startShadowing = useCallback(async () => {
+    if (!currentSegment) return;
+    setMicrophoneError(undefined);
+    clearRecordingAudio();
+
+    // Start playback
+    playerRef.current?.playSegment(currentSegment.startMs, currentSegment.endMs, playbackSpeed);
+    setPlaybackMode("source");
+
+    // Start recording simultaneously
+    recordingTargetRef.current = currentIndex;
+    await recorder.start();
+  }, [clearRecordingAudio, currentIndex, currentSegment, playbackSpeed, recorder, setMicrophoneError, setPlaybackMode]);
+
+  const stopContinuousTracking = useCallback(() => {
+    if (continuousTimerRef.current) {
+      window.clearInterval(continuousTimerRef.current);
+      continuousTimerRef.current = null;
+    }
+  }, []);
+
+  const startContinuousPlay = useCallback(() => {
+    if (!segments.length) return;
+    const startSeg = segments[currentIndex];
+    const endSeg = segments[segments.length - 1];
+    if (!startSeg || !endSeg) return;
+
+    clearRecordingAudio();
+    stopContinuousTracking();
+
+    const onEnd = () => {
+      stopContinuousTracking();
+      setPlaybackMode("idle");
+      if (recorder.isRecording) {
+        void recorder.stop();
+      }
+    };
+
+    playerRef.current?.playContinuous(startSeg.startMs, endSeg.endMs, playbackSpeed, onEnd);
+    setPlaybackMode("source");
+
+    // Poll current time to update segment index
+    continuousTimerRef.current = window.setInterval(() => {
+      const timeMs = playerRef.current?.getCurrentTimeMs() ?? 0;
+      const state = usePracticeStore.getState();
+      const segs = segments;
+      for (let i = segs.length - 1; i >= 0; i--) {
+        if (timeMs >= segs[i].startMs) {
+          if (i !== state.currentIndex) {
+            state.setCurrentIndex(i);
+          }
+          break;
+        }
+      }
+    }, 250);
+
+    // If shadowing mode, also start recording
+    if (usePracticeStore.getState().shadowingMode) {
+      recordingTargetRef.current = currentIndex;
+      void recorder.start();
+    }
+  }, [clearRecordingAudio, currentIndex, playbackSpeed, recorder, segments, setPlaybackMode, stopContinuousTracking]);
+
+  // Clean up continuous tracking on unmount
+  useEffect(() => {
+    return () => stopContinuousTracking();
+  }, [stopContinuousTracking]);
+
+  // toggleOriginal: dispatches to shadowing/continuous/normal based on active modes
   const toggleOriginal = useCallback(() => {
     if (!currentSegment) {
+      return;
+    }
+
+    const state = usePracticeStore.getState();
+
+    // If currently playing, pause (stop continuous tracking + recording if active)
+    if (isPlaying) {
+      playerRef.current?.pause();
+      stopContinuousTracking();
+      if (state.shadowingMode && recorder.isRecording) {
+        void recorder.stop();
+      }
+      return;
+    }
+
+    // Continuous play mode: play from current segment to end
+    if (state.continuousPlay) {
+      startContinuousPlay();
+      return;
+    }
+
+    // Shadowing mode (non-continuous): play + record simultaneously
+    if (state.shadowingMode && !recorder.isRecording) {
+      void startShadowing();
       return;
     }
 
     clearRecordingAudio();
     playerRef.current?.toggleSegment(currentSegment.startMs, currentSegment.endMs, playbackSpeed);
     setPlaybackMode("source");
-  }, [clearRecordingAudio, currentSegment, playbackSpeed, setPlaybackMode]);
+  }, [clearRecordingAudio, currentSegment, isPlaying, playbackSpeed, recorder, setPlaybackMode, startContinuousPlay, startShadowing, stopContinuousTracking]);
 
   const playRecording = useCallback(async () => {
     if (!currentSegment) {
@@ -217,75 +413,6 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
     setLatestRecordingReady(true);
   }, [clearRecordingAudio, currentSegment, setPlaybackMode, trackId]);
 
-  const recorder = useRecorder({
-    onComplete: async ({ blob, durationMs, mimeType }) => {
-      const targetIndex = recordingTargetRef.current;
-      const targetSegment = segments[targetIndex];
-      if (!targetSegment) {
-        return;
-      }
-
-      await saveLatestRecording({
-        trackId,
-        segmentIndex: targetSegment.index,
-        blob,
-        durationMs,
-        mimeType
-      });
-
-      setLatestRecordingReady(true);
-      setRecordingReadySet((prev) => new Set(prev).add(targetSegment.index));
-      setPlaybackMode("attempt");
-
-      if (usePracticeStore.getState().autoAdvance) {
-        setTimeout(() => goNext(), AUTO_ADVANCE_DELAY_MS);
-      }
-    },
-    onError: (message) => {
-      setMicrophoneError(message);
-    }
-  });
-
-  useEffect(() => {
-    setIsRecording(recorder.isRecording);
-  }, [recorder.isRecording, setIsRecording]);
-
-  const toggleRecording = useCallback(async () => {
-    setMicrophoneError(undefined);
-    playerRef.current?.pause();
-
-    if (recorder.isRecording) {
-      await recorder.stop();
-    } else {
-      recordingTargetRef.current = currentIndex;
-      await recorder.start();
-    }
-  }, [currentIndex, recorder, setMicrophoneError]);
-
-  const navigateToSegment = useCallback(
-    (index: number) => {
-      setCurrentIndex(index);
-      const seg = segments[index];
-      if (!seg) return;
-      clearRecordingAudio();
-      playerRef.current?.playSegment(seg.startMs, seg.endMs, playbackSpeed);
-      setPlaybackMode("source");
-    },
-    [clearRecordingAudio, playbackSpeed, segments, setCurrentIndex, setPlaybackMode]
-  );
-
-  const goPrev = useCallback(() => {
-    const newIndex = Math.max(0, currentIndex - 1);
-    if (newIndex === currentIndex) return;
-    navigateToSegment(newIndex);
-  }, [currentIndex, navigateToSegment]);
-
-  const goNext = useCallback(() => {
-    const newIndex = Math.min(segments.length - 1, currentIndex + 1);
-    if (newIndex === currentIndex) return;
-    navigateToSegment(newIndex);
-  }, [currentIndex, navigateToSegment, segments.length]);
-
   const selectSegment = useCallback(
     (index: number) => navigateToSegment(index),
     [navigateToSegment]
@@ -303,9 +430,11 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
       },
       onPrevSegment: goPrev,
       onNextSegment: goNext,
-      onToggleTranscript: usePracticeStore.getState().toggleTranscriptHidden
+      onToggleTranscript: usePracticeStore.getState().toggleTranscriptHidden,
+      onToggleShadowingMode: toggleShadowingMode,
+      onToggleContinuousPlay: toggleContinuousPlay
     }),
-    [goNext, goPrev, playOriginal, playRecording, toggleOriginal, toggleRecording]
+    [goNext, goPrev, playOriginal, playRecording, toggleContinuousPlay, toggleOriginal, toggleRecording, toggleShadowingMode]
   );
 
   useShortcuts(shortcutHandlers);
@@ -350,9 +479,13 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
           isPlaying={isPlaying}
           isRecording={isRecording}
           hasRecording={latestRecordingReady}
+          shadowingMode={shadowingMode}
+          continuousPlay={continuousPlay}
           onToggleOriginal={toggleOriginal}
           onToggleRecording={() => void toggleRecording()}
           onPlayRecording={() => void playRecording()}
+          onToggleShadowingMode={toggleShadowingMode}
+          onToggleContinuousPlay={toggleContinuousPlay}
           onPrev={goPrev}
           onNext={goNext}
           prevDisabled={currentIndex <= 0}
@@ -381,7 +514,7 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
         </div>
 
         <p className="muted shortcuts-hint">
-          Space: play/pause · R: record · A: replay · B: playback · T: toggle text · &larr;/&rarr;: prev/next
+          Space: play/pause · R: record · A: replay · B: playback · S: shadow · C: continuous · T: toggle text · &larr;/&rarr;: prev/next
         </p>
 
         <div aria-live="polite">

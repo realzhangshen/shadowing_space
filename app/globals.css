@@ -512,6 +512,49 @@ textarea {
   50% { opacity: 0.4; }
 }
 
+/* Control bar wrap (main bar + mode toggles) */
+
+.control-bar-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.mode-toggles {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.mode-toggle {
+  font-size: 0.82rem;
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+}
+
+.mode-toggle.active-mode {
+  background: var(--primary);
+  color: var(--primary-text);
+  border-color: var(--primary);
+}
+
+.mode-toggle.active-mode:hover {
+  background: var(--primary-hover);
+}
+
+.shadow-play-btn {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.headphone-hint {
+  font-size: 0.78rem;
+  color: var(--muted);
+  font-style: italic;
+}
+
 /* Transcript toggle in segment header */
 
 .transcript-toggle {

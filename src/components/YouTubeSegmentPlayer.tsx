@@ -67,7 +67,9 @@ function loadYouTubeApi(): Promise<void> {
 export type YouTubeSegmentPlayerHandle = {
   playSegment: (startMs: number, endMs: number, speed: PlaybackSpeed) => void;
   toggleSegment: (startMs: number, endMs: number, speed: PlaybackSpeed) => void;
+  playContinuous: (startMs: number, endMs: number, speed: PlaybackSpeed, onEnd: () => void) => void;
   pause: () => void;
+  getCurrentTimeMs: () => number;
   setPlaybackSpeed: (speed: PlaybackSpeed) => void;
 };
 
@@ -175,9 +177,29 @@ export const YouTubeSegmentPlayer = forwardRef<YouTubeSegmentPlayerHandle, YouTu
 
           seekAndPlay(startMs, endMs, speed);
         },
+        playContinuous: (startMs, endMs, speed, onEnd) => {
+          if (!isReady || !playerRef.current) return;
+          clearEndTimer();
+          const startSeconds = Math.max(0, startMs / 1_000);
+          const durationSeconds = Math.max(0.2, (endMs - startMs) / 1_000);
+
+          playerRef.current.setPlaybackRate(speed);
+          playerRef.current.seekTo(startSeconds, true);
+          playerRef.current.playVideo();
+
+          endTimerRef.current = window.setTimeout(() => {
+            playerRef.current?.pauseVideo();
+            onEnd();
+          }, (durationSeconds * 1_000) / speed);
+        },
         pause: () => {
           clearEndTimer();
           playerRef.current?.pauseVideo();
+        },
+        getCurrentTimeMs: () => {
+          if (!playerRef.current) return 0;
+          const player = playerRef.current as YT.Player & { getCurrentTime?: () => number };
+          return (player.getCurrentTime?.() ?? 0) * 1_000;
         },
         setPlaybackSpeed: (speed) => {
           playerRef.current?.setPlaybackRate(speed);

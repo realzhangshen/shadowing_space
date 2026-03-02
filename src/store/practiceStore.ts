@@ -11,6 +11,8 @@ type PracticeState = {
   isPlaying: boolean;
   transcriptHidden: boolean;
   autoAdvance: boolean;
+  shadowingMode: boolean;
+  continuousPlay: boolean;
   microphoneError?: string;
   playerError?: string;
   setCurrentIndex: (index: number) => void;
@@ -20,6 +22,8 @@ type PracticeState = {
   setIsPlaying: (value: boolean) => void;
   toggleTranscriptHidden: () => void;
   toggleAutoAdvance: () => void;
+  toggleShadowingMode: () => void;
+  toggleContinuousPlay: () => void;
   setMicrophoneError: (message?: string) => void;
   setPlayerError: (message?: string) => void;
   resetForSession: (startIndex: number) => void;
@@ -33,6 +37,8 @@ export const usePracticeStore = create<PracticeState>((set) => ({
   isPlaying: false,
   transcriptHidden: false,
   autoAdvance: false,
+  shadowingMode: false,
+  continuousPlay: false,
   setCurrentIndex: (currentIndex) => set({ currentIndex }),
   setPlaybackMode: (playbackMode) => set({ playbackMode }),
   setPlaybackSpeed: (playbackSpeed) => set({ playbackSpeed }),
@@ -40,6 +46,8 @@ export const usePracticeStore = create<PracticeState>((set) => ({
   setIsPlaying: (isPlaying) => set({ isPlaying }),
   toggleTranscriptHidden: () => set((s) => ({ transcriptHidden: !s.transcriptHidden })),
   toggleAutoAdvance: () => set((s) => ({ autoAdvance: !s.autoAdvance })),
+  toggleShadowingMode: () => set((s) => ({ shadowingMode: !s.shadowingMode })),
+  toggleContinuousPlay: () => set((s) => ({ continuousPlay: !s.continuousPlay })),
   setMicrophoneError: (microphoneError) => set({ microphoneError }),
   setPlayerError: (playerError) => set({ playerError }),
   resetForSession: (startIndex) =>
