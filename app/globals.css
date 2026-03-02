@@ -87,6 +87,7 @@ a:hover {
 
 .topnav {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.65rem;
 }
 
@@ -793,4 +794,210 @@ textarea {
 @keyframes fadeSlideUp {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+/* Eyebrow link */
+
+.eyebrow-link {
+  text-decoration: none;
+  color: inherit;
+}
+
+.eyebrow-link:hover {
+  color: inherit;
+}
+
+/* Homepage */
+
+.homepage {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.hero {
+  text-align: center;
+  padding: 3rem 1rem 2rem;
+}
+
+.hero-title {
+  font-size: clamp(1.8rem, 4vw, 2.6rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 0 0 0.75rem;
+  line-height: 1.2;
+}
+
+.hero-subtitle {
+  font-size: 1.1rem;
+  color: var(--text-secondary);
+  max-width: 540px;
+  margin: 0 auto 1.5rem;
+  line-height: 1.6;
+}
+
+.hero-actions {
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 1rem;
+}
+
+.feature-card {
+  padding: 1.25rem;
+}
+
+.feature-card h3 {
+  margin: 0 0 0.4rem;
+  font-size: 1.05rem;
+}
+
+.feature-card p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  line-height: 1.55;
+}
+
+.how-it-works {
+  padding: 1.5rem;
+  text-align: center;
+}
+
+.how-it-works h2 {
+  margin: 0 0 1.25rem;
+}
+
+.steps-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1.5rem;
+  text-align: center;
+}
+
+.step-item h3 {
+  margin: 0.5rem 0 0.3rem;
+  font-size: 1rem;
+}
+
+.step-item p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.93rem;
+  line-height: 1.5;
+}
+
+.step-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 50%;
+  background: var(--primary);
+  color: var(--primary-text);
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+/* Guide */
+
+.guide {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.guide-header {
+  margin-bottom: 0.25rem;
+}
+
+.guide-header h2 {
+  margin: 0 0 0.25rem;
+}
+
+.guide-header p {
+  margin: 0;
+  color: var(--text-secondary);
+}
+
+.guide-toc ul {
+  margin: 0.5rem 0 0;
+  padding-left: 1.25rem;
+}
+
+.guide-toc li {
+  margin-bottom: 0.3rem;
+}
+
+.guide-section h3 {
+  margin-top: 0;
+}
+
+.guide-section h4 {
+  margin: 1.25rem 0 0.4rem;
+}
+
+.guide-section ul {
+  padding-left: 1.25rem;
+  line-height: 1.8;
+}
+
+.shortcuts-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 0.5rem;
+}
+
+.shortcuts-table th,
+.shortcuts-table td {
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.shortcuts-table th {
+  font-weight: 600;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+kbd {
+  display: inline-block;
+  padding: 0.15rem 0.45rem;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.85rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--line-strong);
+  border-radius: 5px;
+  box-shadow: 0 1px 0 var(--line-strong);
+}
+
+.faq-item {
+  border-bottom: 1px solid var(--line);
+  padding: 0.75rem 0;
+}
+
+.faq-item:last-child {
+  border-bottom: none;
+}
+
+.faq-item summary {
+  cursor: pointer;
+  font-weight: 500;
+  padding: 0.25rem 0;
+}
+
+.faq-item p {
+  margin: 0.5rem 0 0.25rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
 }
