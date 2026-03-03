@@ -4,10 +4,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { PlaybackControlBar } from "@/components/PlaybackControlBar";
 import { SegmentNavigator } from "@/components/SegmentNavigator";
+import { WaveformCanvas } from "@/components/WaveformCanvas";
 import { YouTubeSegmentPlayer, type YouTubeSegmentPlayerHandle } from "@/components/YouTubeSegmentPlayer";
 import { useShortcuts } from "@/hooks/useShortcuts";
 import { useRecorder } from "@/hooks/useRecorder";
 import { useVAD } from "@/hooks/useVAD";
+import { useLiveWaveform } from "@/hooks/useLiveWaveform";
+import { useWaveform } from "@/hooks/useWaveform";
 import { fetchTranscriptSegments } from "@/lib/apiClient";
 import {
   getLatestRecording,
@@ -44,6 +47,7 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
   const [latestRecordingReady, setLatestRecordingReady] = useState(false);
   const [recordingReadySet, setRecordingReadySet] = useState<Set<number>>(new Set());
   const [resumeMessage, setResumeMessage] = useState<string | undefined>();
+  const [waveformBlob, setWaveformBlob] = useState<Blob | null>(null);
 
   const playerRef = useRef<YouTubeSegmentPlayerHandle | null>(null);
   const recordingAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -74,6 +78,8 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
     resetForSession
   } = usePracticeStore();
 
+  const { peaks: waveformPeaks } = useWaveform(waveformBlob);
+
   const segments = session?.segments ?? [];
   const currentSegment = segments[currentIndex];
   const recordedCount = recordingReadySet.size;
@@ -95,6 +101,7 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
   const loadRecordingState = useCallback(async (nextTrackId: string, nextIndex: number) => {
     const recording = await getLatestRecording(nextTrackId, nextIndex);
     setLatestRecordingReady(Boolean(recording));
+    setWaveformBlob(recording?.blob ?? null);
   }, []);
 
   const loadSession = useCallback(async () => {
@@ -213,6 +220,7 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
       });
 
       setLatestRecordingReady(true);
+      setWaveformBlob(blob);
       setRecordingReadySet((prev) => new Set(prev).add(targetSegment.index));
 
       // User-initiated stop: save recording but don't auto-advance
@@ -262,6 +270,18 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
   useEffect(() => {
     setIsRecording(recorder.isRecording);
   }, [recorder.isRecording, setIsRecording]);
+
+  // --- Live waveform ---
+
+  const { peaks: livePeaks, isLive: isLiveWaveform } = useLiveWaveform(
+    recorder.stream,
+    recorder.isRecording
+  );
+
+  // Display priority: live peaks during recording > decoded peaks for stored > nothing
+  const displayPeaks = livePeaks ?? waveformPeaks;
+  const waveformProgress = isLiveWaveform && livePeaks ? livePeaks.length / 150 : 1;
+  const waveformBarColor = isLiveWaveform ? "var(--primary)" : undefined;
 
   // --- VAD ---
 
@@ -475,12 +495,21 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
           </div>
         </div>
 
+        {displayPeaks ? (
+          <div className="waveform-wrap">
+            <WaveformCanvas
+              peaks={displayPeaks}
+              progress={waveformProgress}
+              barColor={waveformBarColor}
+            />
+          </div>
+        ) : null}
+
         <PlaybackControlBar
           isPlaying={isPlaying}
           isRecording={isRecording}
           hasRecording={latestRecordingReady}
           micStatus={recorder.micStatus}
-          volume={recorder.volume}
           repeatFlow={repeatFlow}
           onToggleOriginal={toggleOriginal}
           onToggleRecording={() => void toggleRecording()}

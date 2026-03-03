@@ -9,7 +9,6 @@ type PlaybackControlBarProps = {
   isRecording: boolean;
   hasRecording: boolean;
   micStatus: MicStatus;
-  volume: number;
   repeatFlow: RepeatFlow;
   onToggleOriginal: () => void;
   onToggleRecording: () => void;
@@ -25,9 +24,6 @@ const FLOWS: { value: RepeatFlow; label: string }[] = [
   { value: "manual", label: "Manual" },
   { value: "auto", label: "Auto" }
 ];
-
-const VOLUME_BARS = 5;
-const BAR_HEIGHTS = [0.3, 0.5, 0.7, 0.85, 1.0];
 
 function getPlayLabel(isAuto: boolean, isPlaying: boolean): string {
   if (isPlaying) return "⏸ Pause";
@@ -50,30 +46,11 @@ function MicStatusIndicator({ micStatus }: { micStatus: MicStatus }): JSX.Elemen
   return <span className="mic-status active" aria-label="Microphone active">🎤</span>;
 }
 
-function VolumeMeter({ volume }: { volume: number }): JSX.Element {
-  return (
-    <span className="volume-meter" aria-label={`Volume level: ${Math.round(volume * 100)}%`}>
-      {BAR_HEIGHTS.map((threshold, i) => {
-        const active = volume >= threshold * 0.5;
-        const scale = active ? Math.min(1, volume / threshold) : 0.15;
-        return (
-          <span
-            key={i}
-            className={`volume-bar${active ? " active" : ""}`}
-            style={{ height: `${scale * 100}%` }}
-          />
-        );
-      })}
-    </span>
-  );
-}
-
 export const PlaybackControlBar = memo(function PlaybackControlBar({
   isPlaying,
   isRecording,
   hasRecording,
   micStatus,
-  volume,
   repeatFlow,
   onToggleOriginal,
   onToggleRecording,
@@ -137,14 +114,6 @@ export const PlaybackControlBar = memo(function PlaybackControlBar({
         ) : null}
 
         <MicStatusIndicator micStatus={micStatus} />
-
-        {isRecording ? (
-          <span className="rec-indicator" aria-label="Recording in progress">
-            <span className="rec-dot" />
-            REC
-            <VolumeMeter volume={volume} />
-          </span>
-        ) : null}
       </div>
 
       {/* Tertiary: mode toggle + hints */}
