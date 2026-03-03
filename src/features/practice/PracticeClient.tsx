@@ -265,6 +265,8 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
 
   const {
     peaks: livePeaks,
+    peaksRef: livePeaksRef,
+    subscribe: subscribeLivePeaks,
     isLive: isLiveWaveform,
     status: liveWaveformStatus,
     error: liveWaveformError
@@ -275,8 +277,8 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
 
   // Display priority: live peaks during recording > decoded peaks for stored > nothing
   const displayPeaks = livePeaks ?? waveformPeaks;
-  const waveformProgress = isLiveWaveform && livePeaks
-    ? livePeaks.length / 150
+  const waveformProgress = isLiveWaveform
+    ? 1
     : recordingPlayback.isPlaying
       ? recordingPlayback.progress
       : latestRecordingReady ? 1 : 0;
@@ -521,13 +523,15 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
           </div>
         </div>
 
-        {displayPeaks ? (
+        {(displayPeaks || isLiveWaveform) ? (
           <div className="waveform-wrap">
             <WaveformCanvas
               peaks={displayPeaks}
               progress={waveformProgress}
               barColor={waveformBarColor}
               onSeek={waveformSeekable ? handleWaveformSeek : undefined}
+              livePeaksRef={isLiveWaveform ? livePeaksRef : undefined}
+              subscribeLivePeaks={isLiveWaveform ? subscribeLivePeaks : undefined}
             />
           </div>
         ) : null}

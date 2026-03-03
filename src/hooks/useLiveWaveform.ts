@@ -3,12 +3,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 const DEFAULT_BINS = 150;
-const SAMPLE_INTERVAL_MS = 50; // ~20 samples/sec
 
 export type LiveWaveformStatus = "idle" | "live" | "degraded";
 
 type LiveWaveformResult = {
   peaks: Float32Array | null;
+  peaksRef: { readonly current: Float32Array | null };
+  subscribe: (cb: () => void) => () => void;
   isLive: boolean;
   status: LiveWaveformStatus;
   error: string | null;
@@ -35,13 +36,19 @@ export function useLiveWaveform(
 
   const peaksBufferRef = useRef<number[]>([]);
   const rafRef = useRef<number>(0);
-  const lastSampleRef = useRef<number>(0);
+  const livePeaksRef = useRef<Float32Array | null>(null);
+  const subscribersRef = useRef(new Set<() => void>());
   const audioCtxRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const binsRef = useRef(bins);
   binsRef.current = bins;
   const warnedFailureRef = useRef(false);
+
+  const subscribe = useCallback((cb: () => void): (() => void) => {
+    subscribersRef.current.add(cb);
+    return () => { subscribersRef.current.delete(cb); };
+  }, []);
 
   const teardown = useCallback(() => {
     if (rafRef.current) {
@@ -76,10 +83,11 @@ export function useLiveWaveform(
   const wasRecordingRef = useRef(false);
   useEffect(() => {
     if (wasRecordingRef.current && !isRecording) {
-      // Just stopped: freeze current buffer
+      // Just stopped: freeze current buffer into React state
       if (peaksBufferRef.current.length > 0) {
         setPeaks(new Float32Array(peaksBufferRef.current));
       }
+      livePeaksRef.current = null;
     }
     wasRecordingRef.current = isRecording;
   }, [isRecording]);
@@ -95,7 +103,7 @@ export function useLiveWaveform(
 
     // Reset for new recording
     peaksBufferRef.current = [];
-    lastSampleRef.current = 0;
+    livePeaksRef.current = null;
     setPeaks(null);
 
     let cancelled = false;
@@ -137,7 +145,7 @@ export function useLiveWaveform(
       let source: MediaStreamAudioSourceNode;
       try {
         analyser = ctx.createAnalyser();
-        analyser.fftSize = 2048;
+        analyser.fftSize = 256;
         source = ctx.createMediaStreamSource(stream);
         source.connect(analyser);
       } catch (nodeError) {
@@ -163,46 +171,41 @@ export function useLiveWaveform(
       const timeDomainData = new Uint8Array(analyser.fftSize);
 
       const tick = () => {
-        if (cancelled) {
+        if (cancelled) return;
+
+        try {
+          analyser.getByteTimeDomainData(timeDomainData);
+        } catch (sampleError) {
+          reportFailure("Failed to read waveform sample.", sampleError);
           return;
         }
 
-        const now = performance.now();
-        if (now - lastSampleRef.current >= SAMPLE_INTERVAL_MS) {
-          lastSampleRef.current = now;
-
-          try {
-            analyser.getByteTimeDomainData(timeDomainData);
-          } catch (sampleError) {
-            reportFailure("Failed to read waveform sample.", sampleError);
-            return;
-          }
-
-          // Compute peak amplitude (0..1) from time-domain data
-          let peak = 0;
-          for (let i = 0; i < timeDomainData.length; i++) {
-            const amplitude = Math.abs(timeDomainData[i] - 128) / 128;
-            if (amplitude > peak) peak = amplitude;
-          }
-
-          const buffer = peaksBufferRef.current;
-          buffer.push(peak);
-
-          // Downsample: merge adjacent pairs when exceeding bin count
-          if (buffer.length > binsRef.current) {
-            const merged: number[] = [];
-            for (let i = 0; i < buffer.length - 1; i += 2) {
-              merged.push(Math.max(buffer[i], buffer[i + 1]));
-            }
-            // Keep last odd element if any
-            if (buffer.length % 2 !== 0) {
-              merged.push(buffer[buffer.length - 1]);
-            }
-            peaksBufferRef.current = merged;
-          }
-
-          setPeaks(new Float32Array(peaksBufferRef.current));
+        // Compute peak amplitude (0..1) from time-domain data
+        let peak = 0;
+        for (let i = 0; i < timeDomainData.length; i++) {
+          const amplitude = Math.abs(timeDomainData[i] - 128) / 128;
+          if (amplitude > peak) peak = amplitude;
         }
+
+        const buffer = peaksBufferRef.current;
+        buffer.push(peak);
+
+        // Downsample: merge adjacent pairs when exceeding bin count
+        if (buffer.length > binsRef.current) {
+          const merged: number[] = [];
+          for (let i = 0; i < buffer.length - 1; i += 2) {
+            merged.push(Math.max(buffer[i], buffer[i + 1]));
+          }
+          // Keep last odd element if any
+          if (buffer.length % 2 !== 0) {
+            merged.push(buffer[buffer.length - 1]);
+          }
+          peaksBufferRef.current = merged;
+        }
+
+        // Write to ref + notify subscribers (bypasses React)
+        livePeaksRef.current = new Float32Array(peaksBufferRef.current);
+        for (const cb of subscribersRef.current) cb();
 
         rafRef.current = requestAnimationFrame(tick);
       };
@@ -218,5 +221,5 @@ export function useLiveWaveform(
     };
   }, [isRecording, reportFailure, stream, teardown]);
 
-  return { peaks, isLive, status, error };
+  return { peaks, peaksRef: livePeaksRef, subscribe, isLive, status, error };
 }

@@ -10,6 +10,8 @@ type WaveformCanvasProps = {
   progress?: number; // 0..1 — bars after this fraction are dimmed
   className?: string;
   onSeek?: (fraction: number) => void; // click position as 0..1
+  livePeaksRef?: { readonly current: Float32Array | null };
+  subscribeLivePeaks?: (cb: () => void) => () => void;
 };
 
 const DEFAULT_HEIGHT = 64;
@@ -83,7 +85,9 @@ export const WaveformCanvas = memo(function WaveformCanvas({
   dimColor,
   progress = 1,
   className,
-  onSeek
+  onSeek,
+  livePeaksRef,
+  subscribeLivePeaks
 }: WaveformCanvasProps): JSX.Element | null {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const peaksRef = useRef(peaks);
@@ -100,9 +104,9 @@ export const WaveformCanvas = memo(function WaveformCanvas({
   progressRef.current = progress;
   onSeekRef.current = onSeek;
 
-  const redraw = useCallback(() => {
+  const redraw = useCallback((overridePeaks?: Float32Array) => {
     const canvas = canvasRef.current;
-    const p = peaksRef.current;
+    const p = overridePeaks ?? peaksRef.current;
     if (!canvas || !p) return;
 
     const style = getComputedStyle(canvas);
@@ -134,6 +138,16 @@ export const WaveformCanvas = memo(function WaveformCanvas({
     return () => observer.disconnect();
   }, [redraw]);
 
+  // Live subscription: bypass React reconciliation for real-time drawing
+  useEffect(() => {
+    if (!subscribeLivePeaks || !livePeaksRef) return;
+
+    return subscribeLivePeaks(() => {
+      const p = livePeaksRef.current;
+      if (p) redraw(p);
+    });
+  }, [subscribeLivePeaks, livePeaksRef, redraw]);
+
   const handleClick = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     if (!canvas || !onSeekRef.current) return;
@@ -143,7 +157,7 @@ export const WaveformCanvas = memo(function WaveformCanvas({
     onSeekRef.current(Math.min(1, Math.max(0, fraction)));
   }, []);
 
-  if (!peaks) return null;
+  if (!peaks && !subscribeLivePeaks) return null;
 
   return (
     <canvas
