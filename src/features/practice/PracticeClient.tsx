@@ -326,12 +326,12 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
 
   const toggleRecording = useCallback(async () => {
     setMicrophoneError(undefined);
-    // In manual mode, pause playback when toggling recording
-    if (usePracticeStore.getState().repeatFlow === "manual") {
-      playerRef.current?.pause();
-    }
 
     if (recorder.isRecording) {
+      // In manual mode, pause playback when stopping recording
+      if (usePracticeStore.getState().repeatFlow === "manual") {
+        playerRef.current?.pause();
+      }
       await recorder.stop();
     } else {
       recordingTargetRef.current = currentIndex;
