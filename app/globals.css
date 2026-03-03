@@ -528,6 +528,54 @@ textarea {
   background: var(--danger);
 }
 
+/* Mic status indicator */
+
+.mic-status {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-family: "JetBrains Mono", monospace;
+  letter-spacing: 0.03em;
+}
+
+.mic-status.acquiring {
+  color: var(--muted);
+  animation: pulse-record 1.2s infinite;
+}
+
+.mic-status.active {
+  color: var(--success);
+}
+
+.mic-status.error {
+  color: var(--danger);
+}
+
+/* Volume meter */
+
+.volume-meter {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 14px;
+  margin-left: 0.35rem;
+  vertical-align: middle;
+}
+
+.volume-bar {
+  width: 3px;
+  min-height: 2px;
+  border-radius: 1px;
+  background: var(--danger);
+  opacity: 0.35;
+  transition: height 0.08s ease-out, opacity 0.08s ease-out;
+}
+
+.volume-bar.active {
+  opacity: 1;
+}
+
 /* Control bar wrap (main bar + mode settings) */
 
 .control-bar-wrap {

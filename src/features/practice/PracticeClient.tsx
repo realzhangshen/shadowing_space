@@ -552,6 +552,8 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
           isPlaying={isPlaying}
           isRecording={isRecording}
           hasRecording={latestRecordingReady}
+          micStatus={recorder.micStatus}
+          volume={recorder.volume}
           practiceScope={practiceScope}
           repeatFlow={repeatFlow}
           onToggleOriginal={toggleOriginal}

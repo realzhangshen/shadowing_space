@@ -118,7 +118,16 @@ export const YouTubeSegmentPlayer = forwardRef<YouTubeSegmentPlayerHandle, YouTu
                 onPlayerError?.("YouTube player error. Please refresh and try again.");
               },
               onStateChange: (event: YT.PlayerEvent) => {
-                onPlayStateChange?.(event.data === window.YT.PlayerState.PLAYING);
+                const state = event.data;
+                if (state === window.YT.PlayerState.PLAYING) {
+                  onPlayStateChange?.(true);
+                } else if (
+                  state === window.YT.PlayerState.PAUSED ||
+                  state === window.YT.PlayerState.ENDED
+                ) {
+                  onPlayStateChange?.(false);
+                }
+                // BUFFERING, UNSTARTED, CUED → ignore (no emit)
               }
             }
           });
