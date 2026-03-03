@@ -2,8 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-const DEFAULT_BINS = 150;
-
 export type LiveWaveformStatus = "idle" | "live" | "degraded";
 
 type LiveWaveformResult = {
@@ -24,8 +22,7 @@ function toErrorMessage(error: unknown): string {
 
 export function useLiveWaveform(
   stream: MediaStream | null,
-  isRecording: boolean,
-  bins: number = DEFAULT_BINS
+  isRecording: boolean
 ): LiveWaveformResult {
   const [peaks, setPeaks] = useState<Float32Array | null>(null);
   const [status, setStatus] = useState<LiveWaveformStatus>("idle");
@@ -41,8 +38,6 @@ export function useLiveWaveform(
   const audioCtxRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
-  const binsRef = useRef(bins);
-  binsRef.current = bins;
   const warnedFailureRef = useRef(false);
 
   const subscribe = useCallback((cb: () => void): (() => void) => {
@@ -190,21 +185,8 @@ export function useLiveWaveform(
         const buffer = peaksBufferRef.current;
         buffer.push(peak);
 
-        // Downsample: merge adjacent pairs when exceeding bin count
-        if (buffer.length > binsRef.current) {
-          const merged: number[] = [];
-          for (let i = 0; i < buffer.length - 1; i += 2) {
-            merged.push(Math.max(buffer[i], buffer[i + 1]));
-          }
-          // Keep last odd element if any
-          if (buffer.length % 2 !== 0) {
-            merged.push(buffer[buffer.length - 1]);
-          }
-          peaksBufferRef.current = merged;
-        }
-
         // Write to ref + notify subscribers (bypasses React)
-        livePeaksRef.current = new Float32Array(peaksBufferRef.current);
+        livePeaksRef.current = new Float32Array(buffer);
         for (const cb of subscribersRef.current) cb();
 
         rafRef.current = requestAnimationFrame(tick);

@@ -7,19 +7,21 @@ type WaveformCanvasProps = {
   height?: number;
   barColor?: string;
   dimColor?: string;
-  progress?: number; // 0..1 — bars after this fraction are dimmed
+  progress?: number; // 0..1 — lines after this fraction are dimmed
   className?: string;
   onSeek?: (fraction: number) => void; // click position as 0..1
   livePeaksRef?: { readonly current: Float32Array | null };
   subscribeLivePeaks?: (cb: () => void) => () => void;
+  mode?: "scrolling" | "static";
 };
 
 const DEFAULT_HEIGHT = 64;
-const BAR_WIDTH = 2;
-const BAR_GAP = 1;
+const LINE_WIDTH = 1;
+const LINE_GAP = 1;
+const LINE_STEP = LINE_WIDTH + LINE_GAP; // 2px
 const PLAYHEAD_WIDTH = 1.5;
 
-function draw(
+function drawStatic(
   canvas: HTMLCanvasElement,
   peaks: Float32Array,
   height: number,
@@ -39,32 +41,24 @@ function draw(
   ctx.scale(dpr, dpr);
   ctx.clearRect(0, 0, cssWidth, height);
 
-  const step = BAR_WIDTH + BAR_GAP;
-  const barCount = Math.floor(cssWidth / step);
-  if (barCount <= 0 || peaks.length === 0) return;
+  const lineCount = Math.floor(cssWidth / LINE_STEP);
+  if (lineCount <= 0 || peaks.length === 0) return;
 
   const halfHeight = height / 2;
   const minBarHeight = 2;
   const normalizedProgress = Number.isFinite(progress) ? Math.min(1, Math.max(0, progress)) : 0;
-  const progressBar = Math.floor(normalizedProgress * barCount);
-  const canRoundRect = typeof ctx.roundRect === "function";
+  const progressLine = Math.floor(normalizedProgress * lineCount);
 
-  for (let i = 0; i < barCount; i++) {
-    const peakIdx = Math.floor((i / barCount) * peaks.length);
+  for (let i = 0; i < lineCount; i++) {
+    const peakIdx = Math.floor((i / lineCount) * peaks.length);
     const rawAmplitude = peaks[peakIdx];
     const amplitude = Number.isFinite(rawAmplitude) ? Math.min(1, Math.max(0, rawAmplitude)) : 0;
     const barHeight = Math.max(minBarHeight, amplitude * (height - 4));
-    const x = i * step;
+    const x = i * LINE_STEP;
     const y = halfHeight - barHeight / 2;
 
-    ctx.fillStyle = i < progressBar ? barColor : dimColor;
-    if (canRoundRect) {
-      ctx.beginPath();
-      ctx.roundRect(x, y, BAR_WIDTH, barHeight, 1);
-      ctx.fill();
-    } else {
-      ctx.fillRect(x, y, BAR_WIDTH, barHeight);
-    }
+    ctx.fillStyle = i < progressLine ? barColor : dimColor;
+    ctx.fillRect(x, y, LINE_WIDTH, barHeight);
   }
 
   // Draw playhead line when progress is between 0 and 1 (exclusive)
@@ -78,6 +72,48 @@ function draw(
   }
 }
 
+function drawScrolling(
+  canvas: HTMLCanvasElement,
+  peaks: Float32Array,
+  height: number,
+  barColor: string
+): void {
+  const dpr = window.devicePixelRatio || 1;
+  const cssWidth = canvas.clientWidth;
+
+  canvas.width = cssWidth * dpr;
+  canvas.height = height * dpr;
+
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, cssWidth, height);
+
+  const visibleCount = Math.floor(cssWidth / LINE_STEP);
+  if (visibleCount <= 0 || peaks.length === 0) return;
+
+  const halfHeight = height / 2;
+  const minBarHeight = 2;
+
+  // Show only the most recent peaks that fit on screen
+  const startIdx = Math.max(0, peaks.length - visibleCount);
+
+  ctx.fillStyle = barColor;
+  for (let i = 0; i < visibleCount; i++) {
+    const peakIdx = startIdx + i;
+    if (peakIdx >= peaks.length) break;
+
+    const rawAmplitude = peaks[peakIdx];
+    const amplitude = Number.isFinite(rawAmplitude) ? Math.min(1, Math.max(0, rawAmplitude)) : 0;
+    const barHeight = Math.max(minBarHeight, amplitude * (height - 4));
+    const x = i * LINE_STEP;
+    const y = halfHeight - barHeight / 2;
+
+    ctx.fillRect(x, y, LINE_WIDTH, barHeight);
+  }
+}
+
 export const WaveformCanvas = memo(function WaveformCanvas({
   peaks,
   height = DEFAULT_HEIGHT,
@@ -87,7 +123,8 @@ export const WaveformCanvas = memo(function WaveformCanvas({
   className,
   onSeek,
   livePeaksRef,
-  subscribeLivePeaks
+  subscribeLivePeaks,
+  mode = "static"
 }: WaveformCanvasProps): JSX.Element | null {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const peaksRef = useRef(peaks);
@@ -96,6 +133,7 @@ export const WaveformCanvas = memo(function WaveformCanvas({
   const dimColorRef = useRef(dimColor);
   const progressRef = useRef(progress);
   const onSeekRef = useRef(onSeek);
+  const modeRef = useRef(mode);
 
   peaksRef.current = peaks;
   heightRef.current = height;
@@ -103,6 +141,7 @@ export const WaveformCanvas = memo(function WaveformCanvas({
   dimColorRef.current = dimColor;
   progressRef.current = progress;
   onSeekRef.current = onSeek;
+  modeRef.current = mode;
 
   const redraw = useCallback((overridePeaks?: Float32Array) => {
     const canvas = canvasRef.current;
@@ -119,12 +158,16 @@ export const WaveformCanvas = memo(function WaveformCanvas({
       (style.getPropertyValue("--muted").trim() ||
       "rgba(38, 37, 30, 0.15)");
 
-    draw(canvas, p, heightRef.current, activeColor, dim, progressRef.current);
+    if (modeRef.current === "scrolling") {
+      drawScrolling(canvas, p, heightRef.current, activeColor);
+    } else {
+      drawStatic(canvas, p, heightRef.current, activeColor, dim, progressRef.current);
+    }
   }, []);
 
   useEffect(() => {
     redraw();
-  }, [peaks, progress, redraw]);
+  }, [peaks, progress, mode, redraw]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -157,6 +200,8 @@ export const WaveformCanvas = memo(function WaveformCanvas({
     onSeekRef.current(Math.min(1, Math.max(0, fraction)));
   }, []);
 
+  const isScrolling = mode === "scrolling";
+
   if (!peaks && !subscribeLivePeaks) return null;
 
   return (
@@ -167,9 +212,9 @@ export const WaveformCanvas = memo(function WaveformCanvas({
         width: "100%",
         height,
         display: "block",
-        cursor: onSeek ? "pointer" : undefined
+        cursor: !isScrolling && onSeek ? "pointer" : undefined
       }}
-      onClick={onSeek ? handleClick : undefined}
+      onClick={!isScrolling && onSeek ? handleClick : undefined}
     />
   );
 });

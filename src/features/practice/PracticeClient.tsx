@@ -532,6 +532,7 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
               onSeek={waveformSeekable ? handleWaveformSeek : undefined}
               livePeaksRef={isLiveWaveform ? livePeaksRef : undefined}
               subscribeLivePeaks={isLiveWaveform ? subscribeLivePeaks : undefined}
+              mode={isLiveWaveform ? "scrolling" : "static"}
             />
           </div>
         ) : null}
