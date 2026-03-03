@@ -21,7 +21,6 @@ export function useRecorder(params: UseRecorderParams): {
   isRecording: boolean;
   micStatus: MicStatus;
   stream: MediaStream | null;
-  volume: number;
   start: () => Promise<void>;
   stop: () => Promise<void>;
 } {
@@ -33,56 +32,8 @@ export function useRecorder(params: UseRecorderParams): {
   const [isRecording, setIsRecording] = useState(false);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [micStatus, setMicStatus] = useState<MicStatus>("idle");
-  const [volume, setVolume] = useState(0);
-
-  // AnalyserNode refs for volume metering
-  const audioCtxRef = useRef<AudioContext | null>(null);
-  const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
-  const analyserRef = useRef<AnalyserNode | null>(null);
-  const rafIdRef = useRef<number>(0);
-
-  const teardownAnalyser = useCallback(() => {
-    if (rafIdRef.current) {
-      cancelAnimationFrame(rafIdRef.current);
-      rafIdRef.current = 0;
-    }
-    sourceRef.current?.disconnect();
-    sourceRef.current = null;
-    analyserRef.current = null;
-    void audioCtxRef.current?.close();
-    audioCtxRef.current = null;
-    setVolume(0);
-  }, []);
-
-  const startAnalyser = useCallback((mediaStream: MediaStream) => {
-    const ctx = new AudioContext();
-    const source = ctx.createMediaStreamSource(mediaStream);
-    const analyser = ctx.createAnalyser();
-    analyser.fftSize = 256;
-    source.connect(analyser);
-
-    audioCtxRef.current = ctx;
-    sourceRef.current = source;
-    analyserRef.current = analyser;
-
-    const dataArray = new Uint8Array(analyser.fftSize);
-
-    const tick = () => {
-      analyser.getByteTimeDomainData(dataArray);
-      let sum = 0;
-      for (let i = 0; i < dataArray.length; i++) {
-        const v = (dataArray[i] - 128) / 128;
-        sum += v * v;
-      }
-      const rms = Math.sqrt(sum / dataArray.length);
-      setVolume(Math.min(1, rms * 3)); // amplify for visual range
-      rafIdRef.current = requestAnimationFrame(tick);
-    };
-    rafIdRef.current = requestAnimationFrame(tick);
-  }, []);
 
   const stopTracks = useCallback(() => {
-    teardownAnalyser();
     const s = streamRef.current;
     if (!s) {
       return;
@@ -94,7 +45,7 @@ export function useRecorder(params: UseRecorderParams): {
     streamRef.current = null;
     setStream(null);
     setMicStatus("idle");
-  }, [teardownAnalyser]);
+  }, []);
 
   const start = useCallback(async () => {
     if (isRecording) {
@@ -137,7 +88,6 @@ export function useRecorder(params: UseRecorderParams): {
       };
 
       recorder.start();
-      startAnalyser(stream);
       setIsRecording(true);
     } catch (error) {
       setMicStatus("error");
@@ -149,7 +99,7 @@ export function useRecorder(params: UseRecorderParams): {
           : "Cannot access microphone. Check browser permission settings.";
       onError?.(message);
     }
-  }, [isRecording, onComplete, onError, startAnalyser, stopTracks]);
+  }, [isRecording, onComplete, onError, stopTracks]);
 
   const stop = useCallback(async () => {
     const recorder = recorderRef.current;
@@ -165,7 +115,6 @@ export function useRecorder(params: UseRecorderParams): {
     isRecording,
     micStatus,
     stream,
-    volume,
     start,
     stop
   };

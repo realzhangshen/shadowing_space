@@ -408,7 +408,7 @@ textarea {
 /* Waveform visualization */
 
 .waveform-wrap {
-  padding: 0 0.25rem;
+  padding: 0.15rem 0.25rem;
   animation: waveform-fade-in 0.3s ease;
 }
 

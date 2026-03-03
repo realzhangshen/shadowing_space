@@ -8,6 +8,7 @@ import { WaveformCanvas } from "@/components/WaveformCanvas";
 import { YouTubeSegmentPlayer, type YouTubeSegmentPlayerHandle } from "@/components/YouTubeSegmentPlayer";
 import { useShortcuts } from "@/hooks/useShortcuts";
 import { useRecorder } from "@/hooks/useRecorder";
+import { useRecordingPlayback } from "@/hooks/useRecordingPlayback";
 import { useVAD } from "@/hooks/useVAD";
 import { useLiveWaveform } from "@/hooks/useLiveWaveform";
 import { useWaveform } from "@/hooks/useWaveform";
@@ -39,6 +40,7 @@ type SessionState = {
 const SPEEDS = [0.75, 1, 1.25, 1.5] as const;
 const RESUME_MESSAGE_TIMEOUT_MS = 3_000;
 const AUTO_ADVANCE_DELAY_MS = 400;
+const WAVEFORM_DEGRADE_HINT_DELAY_MS = 800;
 
 export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.Element {
   const [session, setSession] = useState<SessionState | null>(null);
@@ -48,10 +50,9 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
   const [recordingReadySet, setRecordingReadySet] = useState<Set<number>>(new Set());
   const [resumeMessage, setResumeMessage] = useState<string | undefined>();
   const [waveformBlob, setWaveformBlob] = useState<Blob | null>(null);
+  const [showWaveformUnavailableHint, setShowWaveformUnavailableHint] = useState(false);
 
   const playerRef = useRef<YouTubeSegmentPlayerHandle | null>(null);
-  const recordingAudioRef = useRef<HTMLAudioElement | null>(null);
-  const recordingAudioUrlRef = useRef<string | null>(null);
   const recordingTargetRef = useRef<number>(0);
   const audioFinishedRef = useRef(false);
   const manualStopRef = useRef(false);
@@ -78,25 +79,14 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
     resetForSession
   } = usePracticeStore();
 
-  const { peaks: waveformPeaks } = useWaveform(waveformBlob);
+  const { peaks: waveformPeaks } = useWaveform(waveformBlob, 200);
+  const recordingPlayback = useRecordingPlayback();
 
   const segments = session?.segments ?? [];
   const currentSegment = segments[currentIndex];
   const recordedCount = recordingReadySet.size;
   const totalCount = segments.length;
   const progressPct = totalCount > 0 ? Math.round((recordedCount / totalCount) * 100) : 0;
-
-  const clearRecordingAudio = useCallback(() => {
-    if (recordingAudioRef.current) {
-      recordingAudioRef.current.pause();
-      recordingAudioRef.current = null;
-    }
-
-    if (recordingAudioUrlRef.current) {
-      URL.revokeObjectURL(recordingAudioUrlRef.current);
-      recordingAudioUrlRef.current = null;
-    }
-  }, []);
 
   const loadRecordingState = useCallback(async (nextTrackId: string, nextIndex: number) => {
     const recording = await getLatestRecording(nextTrackId, nextIndex);
@@ -158,9 +148,9 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
     void loadSession();
 
     return () => {
-      clearRecordingAudio();
+      recordingPlayback.stop();
     };
-  }, [clearRecordingAudio, loadSession]);
+  }, [recordingPlayback.stop, loadSession]);
 
   useEffect(() => {
     if (!session || !segments.length) {
@@ -183,12 +173,12 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
       setCurrentIndex(index);
       const seg = segments[index];
       if (!seg) return;
-      clearRecordingAudio();
+      recordingPlayback.stop();
       audioFinishedRef.current = false;
       playerRef.current?.playSegment(seg.startMs, seg.endMs, playbackSpeed);
       setPlaybackMode("source");
     },
-    [clearRecordingAudio, playbackSpeed, segments, setCurrentIndex, setPlaybackMode]
+    [recordingPlayback.stop, playbackSpeed, segments, setCurrentIndex, setPlaybackMode]
   );
 
   const goPrev = useCallback(() => {
@@ -251,7 +241,7 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
           const nextSeg = segments[nextIdx];
           if (!nextSeg) return;
 
-          clearRecordingAudio();
+          recordingPlayback.stop();
           audioFinishedRef.current = false;
           playerRef.current?.playSegment(nextSeg.startMs, nextSeg.endMs, s.playbackSpeed);
           setPlaybackMode("source");
@@ -273,15 +263,49 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
 
   // --- Live waveform ---
 
-  const { peaks: livePeaks, isLive: isLiveWaveform } = useLiveWaveform(
+  const {
+    peaks: livePeaks,
+    isLive: isLiveWaveform,
+    status: liveWaveformStatus,
+    error: liveWaveformError
+  } = useLiveWaveform(
     recorder.stream,
     recorder.isRecording
   );
 
   // Display priority: live peaks during recording > decoded peaks for stored > nothing
   const displayPeaks = livePeaks ?? waveformPeaks;
-  const waveformProgress = isLiveWaveform && livePeaks ? livePeaks.length / 150 : 1;
+  const waveformProgress = isLiveWaveform && livePeaks
+    ? livePeaks.length / 150
+    : recordingPlayback.isPlaying
+      ? recordingPlayback.progress
+      : latestRecordingReady ? 1 : 0;
   const waveformBarColor = isLiveWaveform ? "var(--primary)" : undefined;
+  const waveformSeekable = !isLiveWaveform && latestRecordingReady && waveformBlob;
+
+  useEffect(() => {
+    if (!recorder.isRecording) {
+      setShowWaveformUnavailableHint(false);
+      return;
+    }
+
+    if (livePeaks || liveWaveformStatus !== "degraded") {
+      setShowWaveformUnavailableHint(false);
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      setShowWaveformUnavailableHint(true);
+    }, WAVEFORM_DEGRADE_HINT_DELAY_MS);
+    return () => window.clearTimeout(timer);
+  }, [livePeaks, liveWaveformStatus, recorder.isRecording]);
+
+  useEffect(() => {
+    if (!liveWaveformError) {
+      return;
+    }
+    console.debug("[PracticeClient] Live waveform unavailable:", liveWaveformError);
+  }, [liveWaveformError]);
 
   // --- VAD ---
 
@@ -316,10 +340,10 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
       return;
     }
 
-    clearRecordingAudio();
+    recordingPlayback.stop();
     playerRef.current?.playSegment(currentSegment.startMs, currentSegment.endMs, playbackSpeed);
     setPlaybackMode("source");
-  }, [clearRecordingAudio, currentSegment, playbackSpeed, setPlaybackMode]);
+  }, [recordingPlayback.stop, currentSegment, playbackSpeed, setPlaybackMode]);
 
   const toggleRecording = useCallback(async () => {
     setMicrophoneError(undefined);
@@ -339,7 +363,7 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
   const startShadowing = useCallback(async () => {
     if (!currentSegment) return;
     setMicrophoneError(undefined);
-    clearRecordingAudio();
+    recordingPlayback.stop();
     audioFinishedRef.current = false;
 
     playerRef.current?.playSegment(currentSegment.startMs, currentSegment.endMs, playbackSpeed);
@@ -347,7 +371,7 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
 
     recordingTargetRef.current = currentIndex;
     await recorder.start();
-  }, [clearRecordingAudio, currentIndex, currentSegment, playbackSpeed, recorder, setMicrophoneError, setPlaybackMode]);
+  }, [recordingPlayback.stop, currentIndex, currentSegment, playbackSpeed, recorder, setMicrophoneError, setPlaybackMode]);
 
   // toggleOriginal: dispatches based on flow
   const toggleOriginal = useCallback(() => {
@@ -374,11 +398,28 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
     }
 
     // Manual mode: just play the original
-    clearRecordingAudio();
+    recordingPlayback.stop();
     audioFinishedRef.current = false;
     playerRef.current?.toggleSegment(currentSegment.startMs, currentSegment.endMs, playbackSpeed);
     setPlaybackMode("source");
-  }, [clearRecordingAudio, currentSegment, isPlaying, playbackSpeed, recorder, setPlaybackMode, startShadowing]);
+  }, [recordingPlayback.stop, currentSegment, isPlaying, playbackSpeed, recorder, setPlaybackMode, startShadowing]);
+
+  const handleWaveformSeek = useCallback(
+    (fraction: number) => {
+      if (!waveformBlob) return;
+      playerRef.current?.pause();
+
+      if (recordingPlayback.isPlaying) {
+        recordingPlayback.seek(fraction);
+      } else {
+        recordingPlayback.play(waveformBlob);
+        // Small delay to let audio load before seeking
+        requestAnimationFrame(() => recordingPlayback.seek(fraction));
+      }
+      setPlaybackMode("attempt");
+    },
+    [recordingPlayback, setPlaybackMode, waveformBlob]
+  );
 
   const playRecording = useCallback(async () => {
     if (!currentSegment) {
@@ -392,25 +433,10 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
     }
 
     playerRef.current?.pause();
-    clearRecordingAudio();
-
-    const url = URL.createObjectURL(recording.blob);
-    const audio = new Audio(url);
-    recordingAudioRef.current = audio;
-    recordingAudioUrlRef.current = url;
-
-    audio.onended = () => {
-      clearRecordingAudio();
-    };
-
-    audio.play().catch(() => {
-      setError("Failed to play your recording.");
-      clearRecordingAudio();
-    });
-
+    recordingPlayback.play(recording.blob);
     setPlaybackMode("attempt");
     setLatestRecordingReady(true);
-  }, [clearRecordingAudio, currentSegment, setPlaybackMode, trackId]);
+  }, [recordingPlayback, currentSegment, setPlaybackMode, trackId]);
 
   const selectSegment = useCallback(
     (index: number) => navigateToSegment(index),
@@ -501,9 +527,11 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
               peaks={displayPeaks}
               progress={waveformProgress}
               barColor={waveformBarColor}
+              onSeek={waveformSeekable ? handleWaveformSeek : undefined}
             />
           </div>
         ) : null}
+        {showWaveformUnavailableHint ? <p className="muted">录音正常，波形暂不可用</p> : null}
 
         <PlaybackControlBar
           isPlaying={isPlaying}

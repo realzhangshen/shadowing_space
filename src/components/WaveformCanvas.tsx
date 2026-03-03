@@ -9,11 +9,13 @@ type WaveformCanvasProps = {
   dimColor?: string;
   progress?: number; // 0..1 — bars after this fraction are dimmed
   className?: string;
+  onSeek?: (fraction: number) => void; // click position as 0..1
 };
 
-const DEFAULT_HEIGHT = 48;
+const DEFAULT_HEIGHT = 64;
 const BAR_WIDTH = 2;
 const BAR_GAP = 1;
+const PLAYHEAD_WIDTH = 1.5;
 
 function draw(
   canvas: HTMLCanvasElement,
@@ -37,23 +39,40 @@ function draw(
 
   const step = BAR_WIDTH + BAR_GAP;
   const barCount = Math.floor(cssWidth / step);
-  if (barCount <= 0) return;
+  if (barCount <= 0 || peaks.length === 0) return;
 
   const halfHeight = height / 2;
   const minBarHeight = 2;
-  const progressBar = Math.floor(progress * barCount);
+  const normalizedProgress = Number.isFinite(progress) ? Math.min(1, Math.max(0, progress)) : 0;
+  const progressBar = Math.floor(normalizedProgress * barCount);
+  const canRoundRect = typeof ctx.roundRect === "function";
 
   for (let i = 0; i < barCount; i++) {
     const peakIdx = Math.floor((i / barCount) * peaks.length);
-    const amplitude = peaks[peakIdx];
+    const rawAmplitude = peaks[peakIdx];
+    const amplitude = Number.isFinite(rawAmplitude) ? Math.min(1, Math.max(0, rawAmplitude)) : 0;
     const barHeight = Math.max(minBarHeight, amplitude * (height - 4));
     const x = i * step;
     const y = halfHeight - barHeight / 2;
 
     ctx.fillStyle = i < progressBar ? barColor : dimColor;
-    ctx.beginPath();
-    ctx.roundRect(x, y, BAR_WIDTH, barHeight, 1);
-    ctx.fill();
+    if (canRoundRect) {
+      ctx.beginPath();
+      ctx.roundRect(x, y, BAR_WIDTH, barHeight, 1);
+      ctx.fill();
+    } else {
+      ctx.fillRect(x, y, BAR_WIDTH, barHeight);
+    }
+  }
+
+  // Draw playhead line when progress is between 0 and 1 (exclusive)
+  if (normalizedProgress > 0 && normalizedProgress < 1) {
+    const playheadX = normalizedProgress * cssWidth;
+    ctx.save();
+    ctx.globalAlpha = 0.7;
+    ctx.fillStyle = barColor;
+    ctx.fillRect(playheadX - PLAYHEAD_WIDTH / 2, 0, PLAYHEAD_WIDTH, height);
+    ctx.restore();
   }
 }
 
@@ -63,7 +82,8 @@ export const WaveformCanvas = memo(function WaveformCanvas({
   barColor,
   dimColor,
   progress = 1,
-  className
+  className,
+  onSeek
 }: WaveformCanvasProps): JSX.Element | null {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const peaksRef = useRef(peaks);
@@ -71,12 +91,14 @@ export const WaveformCanvas = memo(function WaveformCanvas({
   const colorRef = useRef(barColor);
   const dimColorRef = useRef(dimColor);
   const progressRef = useRef(progress);
+  const onSeekRef = useRef(onSeek);
 
   peaksRef.current = peaks;
   heightRef.current = height;
   colorRef.current = barColor;
   dimColorRef.current = dimColor;
   progressRef.current = progress;
+  onSeekRef.current = onSeek;
 
   const redraw = useCallback(() => {
     const canvas = canvasRef.current;
@@ -112,13 +134,28 @@ export const WaveformCanvas = memo(function WaveformCanvas({
     return () => observer.disconnect();
   }, [redraw]);
 
+  const handleClick = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas || !onSeekRef.current) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const fraction = (e.clientX - rect.left) / rect.width;
+    onSeekRef.current(Math.min(1, Math.max(0, fraction)));
+  }, []);
+
   if (!peaks) return null;
 
   return (
     <canvas
       ref={canvasRef}
       className={className ?? "waveform-canvas"}
-      style={{ width: "100%", height, display: "block" }}
+      style={{
+        width: "100%",
+        height,
+        display: "block",
+        cursor: onSeek ? "pointer" : undefined
+      }}
+      onClick={onSeek ? handleClick : undefined}
     />
   );
 });
