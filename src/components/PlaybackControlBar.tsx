@@ -2,7 +2,7 @@
 
 import { memo } from "react";
 import type { MicStatus } from "@/hooks/useRecorder";
-import type { PracticeScope, RepeatFlow } from "@/store/practiceStore";
+import type { RepeatFlow } from "@/store/practiceStore";
 
 type PlaybackControlBarProps = {
   isPlaying: boolean;
@@ -10,7 +10,6 @@ type PlaybackControlBarProps = {
   hasRecording: boolean;
   micStatus: MicStatus;
   volume: number;
-  practiceScope: PracticeScope;
   repeatFlow: RepeatFlow;
   onToggleOriginal: () => void;
   onToggleRecording: () => void;
@@ -75,7 +74,6 @@ export const PlaybackControlBar = memo(function PlaybackControlBar({
   hasRecording,
   micStatus,
   volume,
-  practiceScope,
   repeatFlow,
   onToggleOriginal,
   onToggleRecording,
@@ -86,20 +84,18 @@ export const PlaybackControlBar = memo(function PlaybackControlBar({
   prevDisabled,
   nextDisabled
 }: PlaybackControlBarProps): JSX.Element {
-  const isSentenceScope = practiceScope === "sentence";
   const isAuto = repeatFlow === "auto";
-  const showRecord = isSentenceScope && !isAuto;
-  const showReplay = isSentenceScope && hasRecording;
+  const showRecord = !isAuto;
+  const showReplay = hasRecording;
   const showHeadphoneHint = isAuto;
 
   return (
     <div className="control-bar-wrap">
+      {/* Primary controls: navigation + play */}
       <div className="control-bar">
-        {isSentenceScope ? (
-          <button type="button" className="btn secondary" onClick={onPrev} disabled={prevDisabled}>
-            ← Prev
-          </button>
-        ) : null}
+        <button type="button" className="btn secondary" onClick={onPrev} disabled={prevDisabled}>
+          ← Prev
+        </button>
 
         <button
           type="button"
@@ -110,16 +106,13 @@ export const PlaybackControlBar = memo(function PlaybackControlBar({
           {getPlayLabel(isAuto, isPlaying)}
         </button>
 
-        <MicStatusIndicator micStatus={micStatus} />
+        <button type="button" className="btn secondary" onClick={onNext} disabled={nextDisabled}>
+          Next →
+        </button>
+      </div>
 
-        {isRecording ? (
-          <span className="rec-indicator" aria-label="Recording in progress">
-            <span className="rec-dot" />
-            REC
-            <VolumeMeter volume={volume} />
-          </span>
-        ) : null}
-
+      {/* Secondary controls: recording */}
+      <div className="control-bar-secondary">
         {showRecord ? (
           <button
             type="button"
@@ -143,30 +136,33 @@ export const PlaybackControlBar = memo(function PlaybackControlBar({
           </button>
         ) : null}
 
-        {isSentenceScope ? (
-          <button type="button" className="btn secondary" onClick={onNext} disabled={nextDisabled}>
-            Next →
-          </button>
+        <MicStatusIndicator micStatus={micStatus} />
+
+        {isRecording ? (
+          <span className="rec-indicator" aria-label="Recording in progress">
+            <span className="rec-dot" />
+            REC
+            <VolumeMeter volume={volume} />
+          </span>
         ) : null}
       </div>
 
+      {/* Tertiary: mode toggle + hints */}
       <div className="mode-settings">
-        {isSentenceScope ? (
-          <div className="scope-toggle" role="radiogroup" aria-label="Practice flow">
-            {FLOWS.map((f) => (
-              <button
-                key={f.value}
-                type="button"
-                role="radio"
-                aria-checked={repeatFlow === f.value}
-                className={repeatFlow === f.value ? "scope-option active" : "scope-option"}
-                onClick={() => onSetRepeatFlow(f.value)}
-              >
-                {f.label}
-              </button>
-            ))}
-          </div>
-        ) : null}
+        <div className="scope-toggle" role="radiogroup" aria-label="Practice flow">
+          {FLOWS.map((f) => (
+            <button
+              key={f.value}
+              type="button"
+              role="radio"
+              aria-checked={repeatFlow === f.value}
+              className={repeatFlow === f.value ? "scope-option active" : "scope-option"}
+              onClick={() => onSetRepeatFlow(f.value)}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
 
         {showHeadphoneHint ? (
           <span className="headphone-hint">🎧 Use headphones</span>
