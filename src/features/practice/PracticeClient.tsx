@@ -168,31 +168,6 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
 
   // --- Recorder ---
 
-  const navigateToSegment = useCallback(
-    (index: number) => {
-      setCurrentIndex(index);
-      const seg = segments[index];
-      if (!seg) return;
-      recordingPlayback.stop();
-      audioFinishedRef.current = false;
-      playerRef.current?.playSegment(seg.startMs, seg.endMs, playbackSpeed);
-      setPlaybackMode("source");
-    },
-    [recordingPlayback.stop, playbackSpeed, segments, setCurrentIndex, setPlaybackMode]
-  );
-
-  const goPrev = useCallback(() => {
-    const newIndex = Math.max(0, currentIndex - 1);
-    if (newIndex === currentIndex) return;
-    navigateToSegment(newIndex);
-  }, [currentIndex, navigateToSegment]);
-
-  const goNext = useCallback(() => {
-    const newIndex = Math.min(segments.length - 1, currentIndex + 1);
-    if (newIndex === currentIndex) return;
-    navigateToSegment(newIndex);
-  }, [currentIndex, navigateToSegment, segments.length]);
-
   const recorder = useRecorder({
     onComplete: async ({ blob, durationMs, mimeType }) => {
       const targetIndex = recordingTargetRef.current;
@@ -260,6 +235,35 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
   useEffect(() => {
     setIsRecording(recorder.isRecording);
   }, [recorder.isRecording, setIsRecording]);
+
+  const navigateToSegment = useCallback(
+    async (index: number) => {
+      if (recorder.isRecording) {
+        manualStopRef.current = true;
+        await recorder.stop();
+      }
+      setCurrentIndex(index);
+      const seg = segments[index];
+      if (!seg) return;
+      recordingPlayback.stop();
+      audioFinishedRef.current = false;
+      playerRef.current?.playSegment(seg.startMs, seg.endMs, playbackSpeed);
+      setPlaybackMode("source");
+    },
+    [recorder, recordingPlayback.stop, playbackSpeed, segments, setCurrentIndex, setPlaybackMode]
+  );
+
+  const goPrev = useCallback(() => {
+    const newIndex = Math.max(0, currentIndex - 1);
+    if (newIndex === currentIndex) return;
+    void navigateToSegment(newIndex);
+  }, [currentIndex, navigateToSegment]);
+
+  const goNext = useCallback(() => {
+    const newIndex = Math.min(segments.length - 1, currentIndex + 1);
+    if (newIndex === currentIndex) return;
+    void navigateToSegment(newIndex);
+  }, [currentIndex, navigateToSegment, segments.length]);
 
   // --- Live waveform ---
 
@@ -343,15 +347,20 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
 
   // --- Mode-specific functions ---
 
-  const playOriginal = useCallback(() => {
+  const playOriginal = useCallback(async () => {
     if (!currentSegment) {
       return;
+    }
+
+    if (recorder.isRecording) {
+      manualStopRef.current = true;
+      await recorder.stop();
     }
 
     recordingPlayback.stop();
     playerRef.current?.playSegment(currentSegment.startMs, currentSegment.endMs, playbackSpeed);
     setPlaybackMode("source");
-  }, [recordingPlayback.stop, currentSegment, playbackSpeed, setPlaybackMode]);
+  }, [recorder, recordingPlayback.stop, currentSegment, playbackSpeed, setPlaybackMode]);
 
   const toggleRecording = useCallback(async () => {
     setMicrophoneError(undefined);
@@ -384,7 +393,7 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
   }, [recordingPlayback.stop, currentIndex, currentSegment, playbackSpeed, recorder, setMicrophoneError, setPlaybackMode]);
 
   // toggleOriginal: dispatches based on flow
-  const toggleOriginal = useCallback(() => {
+  const toggleOriginal = useCallback(async () => {
     if (!currentSegment) {
       return;
     }
@@ -399,10 +408,16 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
       return;
     }
 
+    // Stop recording if active before starting a new action
+    if (recorder.isRecording) {
+      manualStopRef.current = true;
+      await recorder.stop();
+    }
+
     const state = usePracticeStore.getState();
 
     // Auto mode: play + record simultaneously
-    if (state.repeatFlow === "auto" && !recorder.isRecording) {
+    if (state.repeatFlow === "auto") {
       void startShadowing();
       return;
     }
@@ -436,6 +451,11 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
       return;
     }
 
+    if (recorder.isRecording) {
+      manualStopRef.current = true;
+      await recorder.stop();
+    }
+
     const recording = await getLatestRecording(trackId, currentSegment.index);
     if (!recording) {
       setLatestRecordingReady(false);
@@ -446,25 +466,27 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
     recordingPlayback.play(recording.blob);
     setPlaybackMode("attempt");
     setLatestRecordingReady(true);
-  }, [recordingPlayback, currentSegment, setPlaybackMode, trackId]);
+  }, [recorder, recordingPlayback, currentSegment, setPlaybackMode, trackId]);
 
   const selectSegment = useCallback(
-    (index: number) => navigateToSegment(index),
+    (index: number) => void navigateToSegment(index),
     [navigateToSegment]
   );
 
   const toggleRepeatFlow = useCallback(() => {
+    if (recorder.isRecording) {
+      manualStopRef.current = true;
+      void recorder.stop();
+    }
     const state = usePracticeStore.getState();
     state.setRepeatFlow(state.repeatFlow === "manual" ? "auto" : "manual");
-  }, []);
+  }, [recorder]);
 
   const shortcutHandlers = useMemo(
     () => ({
-      onPlayOrPauseSource: toggleOriginal,
-      onToggleRecording: () => {
-        void toggleRecording();
-      },
-      onPlaySource: playOriginal,
+      onPlayOrPauseSource: () => { void toggleOriginal(); },
+      onToggleRecording: () => { void toggleRecording(); },
+      onPlaySource: () => { void playOriginal(); },
       onPlayAttempt: () => {
         void playRecording();
       },
@@ -552,7 +574,7 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
           hasRecording={latestRecordingReady}
           micStatus={recorder.micStatus}
           repeatFlow={repeatFlow}
-          onToggleOriginal={toggleOriginal}
+          onToggleOriginal={() => void toggleOriginal()}
           onToggleRecording={() => void toggleRecording()}
           onPlayRecording={() => void playRecording()}
           onSetRepeatFlow={setRepeatFlow}
