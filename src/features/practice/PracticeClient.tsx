@@ -363,10 +363,12 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
       }
       await recorder.stop();
     } else {
+      playerRef.current?.pause();
+      recordingPlayback.stop();
       recordingTargetRef.current = currentIndex;
       await recorder.start();
     }
-  }, [currentIndex, recorder, setMicrophoneError]);
+  }, [currentIndex, recorder, recordingPlayback, setMicrophoneError]);
 
   const startShadowing = useCallback(async () => {
     if (!currentSegment) return;
