@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ApiError, fetchTranscriptSegments, fetchTranscriptTracks } from "@/lib/apiClient";
+import { ApiError, fetchProxyHealth, fetchTranscriptSegments, fetchTranscriptTracks } from "@/lib/apiClient";
 import { buildTrackId, mapSegments, mapTracks, saveImportBundle } from "@/features/storage/repository";
-import type { FetchTranscriptResponse, TrackSummary } from "@/types/api";
+import type { FetchTranscriptResponse, ProxyHealthResponse, TrackSummary } from "@/types/api";
 import type { VideoRecord } from "@/types/models";
 
 const DEFAULT_YOUTUBE_URL = "";
@@ -146,8 +146,23 @@ export function ImportClient(): JSX.Element {
   const [isImporting, setIsImporting] = useState(false);
   const [error, setError] = useState<ErrorDisplay | undefined>();
   const [useProxy, setUseProxy] = useState(true);
+  const [proxyStatus, setProxyStatus] = useState<ProxyHealthResponse | null>(null);
+  const [proxyChecking, setProxyChecking] = useState(false);
 
   const canImport = Boolean(fetchResult && selectedTrackToken) && !isImporting;
+
+  const onTestProxy = async () => {
+    setProxyChecking(true);
+    setProxyStatus(null);
+    try {
+      const result = await fetchProxyHealth();
+      setProxyStatus(result);
+    } catch {
+      setProxyStatus({ status: "down", proxyConfigured: false, latencyMs: null, httpStatus: null, checkedAt: new Date().toISOString(), cached: false, error: "Request failed" });
+    } finally {
+      setProxyChecking(false);
+    }
+  };
 
   const onFetchTracks = async () => {
     setError(undefined);
@@ -278,14 +293,32 @@ export function ImportClient(): JSX.Element {
         />
       </label>
 
-      <label className="proxy-toggle">
-        <input
-          type="checkbox"
-          checked={useProxy}
-          onChange={(event) => setUseProxy(event.target.checked)}
-        />
-        <span>Use proxy</span>
-      </label>
+      <div className="proxy-row">
+        <label className="proxy-toggle">
+          <input
+            type="checkbox"
+            checked={useProxy}
+            onChange={(event) => { setUseProxy(event.target.checked); setProxyStatus(null); }}
+          />
+          <span>Use proxy</span>
+        </label>
+
+        {useProxy ? (
+          <>
+            <button className="btn-link" type="button" onClick={onTestProxy} disabled={proxyChecking}>
+              {proxyChecking ? "Testing..." : "Test Connection"}
+            </button>
+            {proxyStatus ? (
+              <span className="proxy-check">
+                <span className={`proxy-check-dot ${proxyStatus.status}`} />
+                <span className="proxy-check-text">
+                  {proxyStatus.status === "ok" ? `Operational (${proxyStatus.latencyMs}ms)` : proxyStatus.error ?? proxyStatus.status}
+                </span>
+              </span>
+            ) : null}
+          </>
+        ) : null}
+      </div>
 
       <div className="actions-row">
         <button className="btn primary" type="button" onClick={onFetchTracks} disabled={isFetching || isImporting}>

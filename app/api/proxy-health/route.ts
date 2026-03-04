@@ -6,16 +6,11 @@ import { createRequestLogger } from "@/server/logger";
 import { checkRateLimit, rateLimitHeaders } from "@/server/rateLimit";
 import type { ProxyHealthResponse } from "@/types/api";
 
-const CACHE_TTL_MS = 30_000;
-const PROBE_TIMEOUT_MS = 8_000;
 const PROBE_URL = "https://www.youtube.com/robots.txt";
+const PROBE_TIMEOUT_MS = 8_000;
+const CACHE_TTL_MS = 30_000;
 
-let cachedResult: { data: ProxyHealthResponse; expiresAt: number } | null = null;
-
-function clientIpFromRequest(request: Request): string {
-  const forwarded = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
-  return forwarded || "unknown";
-}
+let cachedResult: { data: ProxyHealthResponse; ts: number } | null = null;
 
 async function probeProxy(): Promise<ProxyHealthResponse> {
   const proxyUrl = env.pickYoutubeProxyUrl();
@@ -45,15 +40,7 @@ async function probeProxy(): Promise<ProxyHealthResponse> {
     const latencyMs = Math.round(performance.now() - start);
 
     if (res.ok) {
-      return {
-        status: "ok",
-        proxyConfigured: true,
-        latencyMs,
-        httpStatus: res.status,
-        checkedAt,
-        cached: false,
-        error: null
-      };
+      return { status: "ok", proxyConfigured: true, latencyMs, httpStatus: res.status, checkedAt, cached: false, error: null };
     }
 
     return {
@@ -78,11 +65,15 @@ async function probeProxy(): Promise<ProxyHealthResponse> {
   }
 }
 
+function clientIpFromRequest(request: Request): string {
+  const forwarded = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
+  return forwarded || "unknown";
+}
+
 export async function GET(request: Request): Promise<Response> {
   const requestId = randomUUID();
   const logger = createRequestLogger({ requestId, route: "/api/proxy-health" });
   const ip = clientIpFromRequest(request);
-  logger.debug("request.received", { ip });
 
   const limit = checkRateLimit(`${ip}:proxy-health`, 10, 60_000);
   const headers = {
@@ -99,23 +90,14 @@ export async function GET(request: Request): Promise<Response> {
     );
   }
 
-  const now = Date.now();
-  if (cachedResult && now < cachedResult.expiresAt) {
-    logger.debug("request.cache_hit");
-    return NextResponse.json(
-      { ...cachedResult.data, cached: true },
-      { status: 200, headers }
-    );
+  if (cachedResult && Date.now() - cachedResult.ts < CACHE_TTL_MS) {
+    logger.debug("request.cache_hit", { ip });
+    return NextResponse.json({ ...cachedResult.data, cached: true }, { status: 200, headers });
   }
 
   const result = await probeProxy();
-  cachedResult = { data: result, expiresAt: now + CACHE_TTL_MS };
+  cachedResult = { data: result, ts: Date.now() };
 
-  logger.info("request.probe_complete", {
-    status: result.status,
-    latencyMs: result.latencyMs,
-    httpStatus: result.httpStatus
-  });
-
+  logger.info("request.complete", { status: result.status });
   return NextResponse.json(result, { status: 200, headers });
 }
