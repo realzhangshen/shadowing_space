@@ -6,7 +6,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Shadowing Space",
-  description: "YouTube-based English shadowing practice app"
+  description: "YouTube-based shadowing practice app"
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }): JSX.Element {
