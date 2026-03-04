@@ -9,21 +9,11 @@ export default function GuidePage(): JSX.Element {
     <div className="guide">
       <header className="guide-header">
         <h2>Guide</h2>
-        <p>Everything you need to know about using Shadowing Space.</p>
+        <p>Everything you need to know about Shadowing Space.</p>
       </header>
 
-      <nav className="guide-toc card">
-        <strong>Contents</strong>
-        <ul>
-          <li><a href="#what-is-shadowing">What is Shadowing?</a></li>
-          <li><a href="#features">App Features</a></li>
-          <li><a href="#tutorial">Step-by-Step Tutorial</a></li>
-          <li><a href="#shortcuts">Keyboard Shortcuts</a></li>
-          <li><a href="#faq">FAQ</a></li>
-        </ul>
-      </nav>
-
-      <section id="what-is-shadowing" className="guide-section card">
+      {/* What is Shadowing? */}
+      <section className="guide-section card">
         <h3>What is Shadowing?</h3>
         <p>
           Shadowing is a language learning technique where you listen to a native speaker
@@ -38,81 +28,84 @@ export default function GuidePage(): JSX.Element {
         </p>
       </section>
 
-      <section id="features" className="guide-section card">
-        <h3>App Features</h3>
-        <ul>
-          <li>Import any YouTube video with English subtitles</li>
-          <li>Automatic sentence-by-sentence segmentation</li>
-          <li>Adjustable playback speed (0.75x to 1.5x)</li>
-          <li>Built-in voice recorder for each sentence</li>
-          <li>Side-by-side comparison of original and your recording</li>
-          <li>Two practice methods: Listen &amp; Repeat and Shadow</li>
-          <li>Sentence or Free-form playback scope</li>
-          <li>Manual or Auto flow control with voice activity detection</li>
-          <li>Transcript toggle to hide text and train your ear</li>
-          <li>Progress tracking per video</li>
-          <li>100% client-side — all data stays in your browser</li>
-        </ul>
+      {/* Getting Started */}
+      <section className="guide-section card">
+        <h3>Getting Started</h3>
+        <div className="guide-steps">
+          <div className="guide-step">
+            <span className="step-number">1</span>
+            <div>
+              <strong>Import a Video</strong>
+              <p>Paste a YouTube URL with English subtitles. The app extracts sentences automatically.</p>
+            </div>
+          </div>
+          <div className="guide-step">
+            <span className="step-number">2</span>
+            <div>
+              <strong>Practice</strong>
+              <p>Choose Manual or Auto flow, play each sentence, record yourself, and compare.</p>
+            </div>
+          </div>
+          <div className="guide-step">
+            <span className="step-number">3</span>
+            <div>
+              <strong>Review &amp; Improve</strong>
+              <p>Use seekable waveform playback to compare your recording with the original. Track your progress on the dashboard.</p>
+            </div>
+          </div>
+        </div>
       </section>
 
-      <section id="tutorial" className="guide-section card">
-        <h3>Step-by-Step Tutorial</h3>
-
-        <h4>1. Import a Video</h4>
-        <p>
-          Go to the <strong>Dashboard</strong> and click <strong>Import Video</strong>.
-          Paste a YouTube URL that has English subtitles. The app will fetch the video
-          and extract subtitle segments automatically.
-        </p>
-
-        <h4>2. Choose a Practice Method</h4>
-        <p>
-          Open any imported video to enter practice mode. Below the playback controls you
-          will see two selectors: <strong>Method</strong> and <strong>Scope</strong>.
-        </p>
-        <ul>
-          <li>
-            <strong>Listen &amp; Repeat</strong> (press <kbd>1</kbd>) — Play a sentence,
-            record yourself repeating it, then replay to compare.
-          </li>
-          <li>
-            <strong>Shadow</strong> (press <kbd>2</kbd> or <kbd>S</kbd>) — Play and record
-            at the same time. Speak along with the original audio in real time. Use headphones
-            so your microphone does not pick up the speaker.
-          </li>
-        </ul>
-
-        <h4>3. Choose a Flow</h4>
-        <p>
-          Press <kbd>M</kbd> to toggle between <strong>Manual</strong> and <strong>Auto</strong>.
-        </p>
-        <ul>
-          <li>
-            <strong>Manual</strong> — You control recording start/stop and navigation.
-          </li>
-          <li>
-            <strong>Auto</strong> — Automatic loop: recording starts after playback, voice
-            activity detection stops recording on silence, then auto-advances to the next sentence.
-          </li>
-        </ul>
-
-        <h4>4. Choose a Scope</h4>
-        <p>
-          Press <kbd>C</kbd> to toggle between <strong>Sentences</strong> and <strong>Free</strong>.
-        </p>
-        <ul>
-          <li>
-            <strong>Sentences</strong> — Plays one sentence at a time. Best for focused practice.
-          </li>
-          <li>
-            <strong>Free</strong> — Free-form mode. Scrub the YouTube player to any position,
-            then play and shadow along continuously. Sentences highlight as reference. Forces
-            Shadow method.
-          </li>
-        </ul>
+      {/* Practice Modes */}
+      <section className="guide-section">
+        <h3 className="guide-section-title">Practice Modes</h3>
+        <div className="guide-card-grid">
+          <div className="card guide-mode-card">
+            <h4>Manual</h4>
+            <p>You control play, record, and navigation. Step through sentences at your own pace.</p>
+            <p className="guide-hint">Best for focused, deliberate practice.</p>
+          </div>
+          <div className="card guide-mode-card">
+            <h4>Auto</h4>
+            <p>Hands-free loop: playback, then recording starts automatically. Voice activity detection stops recording on silence and advances to the next sentence.</p>
+            <p className="guide-hint">Best for immersive, flow-state sessions.</p>
+          </div>
+        </div>
       </section>
 
-      <section id="shortcuts" className="guide-section card">
+      {/* Features */}
+      <section className="guide-section">
+        <h3 className="guide-section-title">Features</h3>
+        <div className="features-grid">
+          <div className="card feature-card">
+            <h3>Live Waveform</h3>
+            <p>Scrolling voice-memo style visualization during recording.</p>
+          </div>
+          <div className="card feature-card">
+            <h3>Waveform Playback</h3>
+            <p>Seekable waveform display for recorded audio.</p>
+          </div>
+          <div className="card feature-card">
+            <h3>Speed Control</h3>
+            <p>Adjust playback speed from 0.75x to 1.5x.</p>
+          </div>
+          <div className="card feature-card">
+            <h3>Transcript Toggle</h3>
+            <p>Blur subtitles to train your ear (press <kbd>T</kbd>).</p>
+          </div>
+          <div className="card feature-card">
+            <h3>Progress Tracking</h3>
+            <p>Per-video completion tracking on the dashboard.</p>
+          </div>
+          <div className="card feature-card">
+            <h3>Fully Private</h3>
+            <p>IndexedDB storage, no servers, no accounts.</p>
+          </div>
+        </div>
+      </section>
+
+      {/* Keyboard Shortcuts */}
+      <section className="guide-section card">
         <h3>Keyboard Shortcuts</h3>
         <table className="shortcuts-table">
           <thead>
@@ -126,10 +119,7 @@ export default function GuidePage(): JSX.Element {
             <tr><td><kbd>R</kbd></td><td>Record your voice</td></tr>
             <tr><td><kbd>A</kbd></td><td>Replay original sentence</td></tr>
             <tr><td><kbd>B</kbd></td><td>Play your recording</td></tr>
-            <tr><td><kbd>1</kbd></td><td>Method: Listen &amp; Repeat</td></tr>
-            <tr><td><kbd>2</kbd> / <kbd>S</kbd></td><td>Method: Shadow</td></tr>
             <tr><td><kbd>M</kbd></td><td>Toggle flow (Manual / Auto)</td></tr>
-            <tr><td><kbd>C</kbd></td><td>Toggle scope (Sentences / Free)</td></tr>
             <tr><td><kbd>T</kbd></td><td>Toggle transcript visibility</td></tr>
             <tr><td><kbd>&larr;</kbd></td><td>Previous sentence</td></tr>
             <tr><td><kbd>&rarr;</kbd></td><td>Next sentence</td></tr>
@@ -137,7 +127,8 @@ export default function GuidePage(): JSX.Element {
         </table>
       </section>
 
-      <section id="faq" className="guide-section card">
+      {/* FAQ */}
+      <section className="guide-section card">
         <h3>FAQ</h3>
 
         <details className="faq-item">
