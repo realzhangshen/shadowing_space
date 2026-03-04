@@ -38,3 +38,13 @@ export type ResolveTranscriptResponse = {
   track: TrackSummary;
   segments: SegmentDTO[];
 };
+
+export type ProxyHealthResponse = {
+  status: "ok" | "degraded" | "down";
+  proxyConfigured: boolean;
+  latencyMs: number | null;
+  httpStatus: number | null;
+  checkedAt: string;
+  cached: boolean;
+  error: string | null;
+};

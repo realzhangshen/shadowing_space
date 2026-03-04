@@ -1,6 +1,7 @@
 import type {
   FetchTranscriptRequest,
   FetchTranscriptResponse,
+  ProxyHealthResponse,
   ResolveTranscriptRequest,
   ResolveTranscriptResponse
 } from "@/types/api";
@@ -56,6 +57,11 @@ export async function fetchTranscriptTracks(input: FetchTranscriptRequest): Prom
   });
 
   return parseResponse<FetchTranscriptResponse>(response);
+}
+
+export async function fetchProxyHealth(): Promise<ProxyHealthResponse> {
+  const response = await fetch("/api/proxy-health");
+  return parseResponse<ProxyHealthResponse>(response);
 }
 
 export async function fetchTranscriptSegments(input: ResolveTranscriptRequest): Promise<ResolveTranscriptResponse> {
