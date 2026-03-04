@@ -8,6 +8,7 @@ type LiveWaveformResult = {
   peaks: Float32Array | null;
   peaksRef: { readonly current: Float32Array | null };
   subscribe: (cb: () => void) => () => void;
+  clearPeaks: () => void;
   isLive: boolean;
   status: LiveWaveformStatus;
   error: string | null;
@@ -43,6 +44,10 @@ export function useLiveWaveform(
   const subscribe = useCallback((cb: () => void): (() => void) => {
     subscribersRef.current.add(cb);
     return () => { subscribersRef.current.delete(cb); };
+  }, []);
+
+  const clearPeaks = useCallback(() => {
+    setPeaks(null);
   }, []);
 
   const teardown = useCallback(() => {
@@ -203,5 +208,5 @@ export function useLiveWaveform(
     };
   }, [isRecording, reportFailure, stream, teardown]);
 
-  return { peaks, peaksRef: livePeaksRef, subscribe, isLive, status, error };
+  return { peaks, peaksRef: livePeaksRef, subscribe, clearPeaks, isLive, status, error };
 }

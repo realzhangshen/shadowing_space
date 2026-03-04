@@ -267,6 +267,7 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
     peaks: livePeaks,
     peaksRef: livePeaksRef,
     subscribe: subscribeLivePeaks,
+    clearPeaks: clearLivePeaks,
     isLive: isLiveWaveform,
     status: liveWaveformStatus,
     error: liveWaveformError
@@ -274,6 +275,11 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
     recorder.stream,
     recorder.isRecording
   );
+
+  // Clear stale live peaks when switching segments
+  useEffect(() => {
+    clearLivePeaks();
+  }, [currentIndex, clearLivePeaks]);
 
   // Display priority: live peaks during recording > decoded peaks for stored > nothing
   const displayPeaks = livePeaks ?? waveformPeaks;
