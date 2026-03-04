@@ -84,15 +84,11 @@ export async function POST(request: Request): Promise<Response> {
       headers
     });
   } catch (error) {
-    const statusCode = error instanceof AppError ? error.statusCode : 400;
-    const message =
-      error instanceof AppError
-        ? error.message
-        : error instanceof Error
-          ? error.message
-          : "Request failed";
-    const errorCode = error instanceof AppError ? error.errorCode : undefined;
-    const details = error instanceof AppError ? error.details : undefined;
+    const isAppError = error instanceof AppError;
+    const statusCode = isAppError ? error.statusCode : 500;
+    const message = isAppError ? error.message : "Internal server error";
+    const errorCode = isAppError ? error.errorCode : undefined;
+    const details = isAppError ? error.details : undefined;
 
     logger.error("request.failed", {
       statusCode,

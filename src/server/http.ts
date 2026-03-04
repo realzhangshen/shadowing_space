@@ -106,5 +106,6 @@ export async function fetchWithProxy(
     });
   } finally {
     clearTimeout(timeout);
+    await dispatcher.close();
   }
 }

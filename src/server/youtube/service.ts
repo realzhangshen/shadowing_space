@@ -77,6 +77,11 @@ function buildCandidateUrls(baseUrl: string, logger?: RequestLogger): string[] {
   noFmt.searchParams.delete("fmt");
   candidateUrls.push(noFmt.toString());
 
+  // Fallback: try fmt=vtt (parsed by existing normalizeVttSegments)
+  const vtt = new URL(parsed);
+  vtt.searchParams.set("fmt", "vtt");
+  candidateUrls.push(vtt.toString());
+
   // Fallback: try fmt=json3
   const json3 = new URL(parsed);
   json3.searchParams.set("fmt", "json3");

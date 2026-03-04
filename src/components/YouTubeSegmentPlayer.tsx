@@ -35,6 +35,8 @@ function loadYouTubeApi(): Promise<void> {
       script.src = "https://www.youtube.com/iframe_api";
       script.async = true;
       script.onerror = () => {
+        script.remove();
+        apiReadyPromise = null;
         reject(new Error("Failed to load YouTube API"));
       };
       document.body.appendChild(script);
@@ -56,6 +58,8 @@ function loadYouTubeApi(): Promise<void> {
     window.setTimeout(() => {
       if (!resolved && !window.YT?.Player) {
         window.clearInterval(checker);
+        document.getElementById(SCRIPT_ID)?.remove();
+        apiReadyPromise = null;
         reject(new Error("Timed out while loading YouTube API"));
       }
     }, API_LOAD_TIMEOUT_MS);

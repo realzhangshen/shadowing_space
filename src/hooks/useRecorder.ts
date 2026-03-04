@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export type MicStatus = "idle" | "acquiring" | "active" | "error";
 
@@ -29,6 +29,7 @@ export function useRecorder(params: UseRecorderParams): {
   const chunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
   const startedAtRef = useRef<number>(0);
+  const stopResolveRef = useRef<(() => void) | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [micStatus, setMicStatus] = useState<MicStatus>("idle");
@@ -46,6 +47,16 @@ export function useRecorder(params: UseRecorderParams): {
     setStream(null);
     setMicStatus("idle");
   }, []);
+
+  useEffect(() => {
+    return () => {
+      const recorder = recorderRef.current;
+      if (recorder && recorder.state !== "inactive") {
+        recorder.stop();
+      }
+      stopTracks();
+    };
+  }, [stopTracks]);
 
   const start = useCallback(async () => {
     if (isRecording) {
@@ -84,6 +95,8 @@ export function useRecorder(params: UseRecorderParams): {
         } finally {
           chunksRef.current = [];
           stopTracks();
+          stopResolveRef.current?.();
+          stopResolveRef.current = null;
         }
       };
 
@@ -107,7 +120,10 @@ export function useRecorder(params: UseRecorderParams): {
       return;
     }
 
-    recorder.stop();
+    await new Promise<void>((resolve) => {
+      stopResolveRef.current = resolve;
+      recorder.stop();
+    });
     setIsRecording(false);
   }, []);
 

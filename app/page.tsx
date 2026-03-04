@@ -42,7 +42,7 @@ export default function HomePage(): JSX.Element {
           <div className="feature-card-home">
             <span className="feature-icon-home">&#9711;</span>
             <h3>Free &amp; private</h3>
-            <p>No account, no tracking. Everything stays in your browser.</p>
+            <p>No account needed. Your practice data stays in your browser.</p>
           </div>
         </div>
       </section>
