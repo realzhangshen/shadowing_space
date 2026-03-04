@@ -9,45 +9,43 @@ export default function HomePage(): JSX.Element {
   return (
     <div className="homepage">
       <section className="hero">
-        <h2 className="hero-title">Practice Speaking with YouTube</h2>
+        <h2 className="hero-title">
+          Practice Speaking{" "}
+          <span className="hero-title-accent">with YouTube</span>
+        </h2>
         <p className="hero-subtitle">
           Shadowing is a proven technique: listen, then repeat what you hear
           to train your pronunciation, rhythm, and fluency — one sentence at a time.
         </p>
         <div className="hero-actions">
-          <Link href="/dashboard" className="btn primary">
+          <Link href="/dashboard" className="btn primary hero-btn">
             Go to Dashboard
+          </Link>
+          <Link href="/guide" className="btn secondary hero-btn">
+            Learn More
           </Link>
         </div>
       </section>
 
-      <section className="feature-list">
-        <div className="feature-row">
-          <span className="feature-icon">🎧</span>
-          <div>
-            <strong>Shadowing practice</strong>
-            <span>Follow along sentence by sentence with real-time waveform recording</span>
+      <section className="features-section">
+        <div className="features-row">
+          <div className="feature-card-home">
+            <span className="feature-icon-home">&#9835;</span>
+            <h3>Shadowing practice</h3>
+            <p>Follow along sentence by sentence with real-time waveform recording</p>
           </div>
-        </div>
-        <div className="feature-row">
-          <span className="feature-icon">▶️</span>
-          <div>
-            <strong>Works with any YouTube video</strong>
-            <span>Paste any link — subtitles are automatically split into segments</span>
+          <div className="feature-card-home">
+            <span className="feature-icon-home">&#9654;</span>
+            <h3>Works with any YouTube video</h3>
+            <p>Paste any link — subtitles are automatically split into segments</p>
           </div>
-        </div>
-        <div className="feature-row">
-          <span className="feature-icon">🔒</span>
-          <div>
-            <strong>Free &amp; private</strong>
-            <span>No account, no tracking. Everything stays in your browser.</span>
+          <div className="feature-card-home">
+            <span className="feature-icon-home">&#9711;</span>
+            <h3>Free &amp; private</h3>
+            <p>No account, no tracking. Everything stays in your browser.</p>
           </div>
         </div>
       </section>
-
-      <p className="guide-nudge">
-        First time here? <Link href="/guide">Read the Guide</Link> to get started.
-      </p>
     </div>
   );
 }

@@ -31,28 +31,26 @@ export default function GuidePage(): JSX.Element {
       {/* Getting Started */}
       <section className="guide-section card">
         <h3>Getting Started</h3>
-        <div className="guide-steps">
-          <div className="guide-step">
+        <div className="steps-row">
+          <div className="step-card">
             <span className="step-number">1</span>
-            <div>
-              <strong>Import a Video</strong>
-              <p>Paste a YouTube URL with English subtitles. The app extracts sentences automatically.</p>
-            </div>
+            <h3>Paste a link</h3>
           </div>
-          <div className="guide-step">
+          <div className="step-connector" />
+          <div className="step-card">
             <span className="step-number">2</span>
-            <div>
-              <strong>Practice</strong>
-              <p>Choose Manual or Auto flow, play each sentence, record yourself, and compare.</p>
-            </div>
+            <h3>Practice</h3>
           </div>
-          <div className="guide-step">
+          <div className="step-connector" />
+          <div className="step-card">
             <span className="step-number">3</span>
-            <div>
-              <strong>Review &amp; Improve</strong>
-              <p>Use seekable waveform playback to compare your recording with the original. Track your progress on the dashboard.</p>
-            </div>
+            <h3>Compare</h3>
           </div>
+        </div>
+        <div className="guide-details">
+          <p>Paste a YouTube URL with English subtitles — the app extracts sentences automatically.
+             Choose Manual or Auto flow, play each sentence, then record yourself repeating it.
+             Use seekable waveform playback to compare side-by-side and track progress on the dashboard.</p>
         </div>
       </section>
 
