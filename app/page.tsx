@@ -2,9 +2,9 @@ import Link from "next/link";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Free YouTube Shadowing Practice Tool",
+  title: "YouTube Shadowing Practice Tool",
   description:
-    "Practice speaking with any YouTube video for free. Listen to native speakers, record yourself, and compare side-by-side. No account needed — your data stays in your browser.",
+    "Practice speaking with any YouTube video. Listen, record yourself, and compare side-by-side. All data stays in your browser.",
   alternates: { canonical: "/" },
 };
 
@@ -12,13 +12,14 @@ export default function HomePage(): JSX.Element {
   return (
     <div className="homepage">
       <section className="hero">
+        <span className="hero-badge">Open Source</span>
         <h2 className="hero-title">
           Practice Speaking{" "}
           <span className="hero-title-accent">with YouTube</span>
         </h2>
         <p className="hero-subtitle">
-          Shadowing is a proven technique: listen, then repeat what you hear
-          to train your pronunciation, rhythm, and fluency — one sentence at a time.
+          Listen to a sentence, repeat it, compare. That&apos;s shadowing — a
+          simple way to train pronunciation, rhythm, and fluency.
         </p>
         <div className="hero-actions">
           <Link href="/dashboard" className="btn primary hero-btn">
@@ -44,8 +45,13 @@ export default function HomePage(): JSX.Element {
           </div>
           <div className="feature-card-home">
             <span className="feature-icon-home">&#9711;</span>
-            <h3>Free &amp; private</h3>
-            <p>No account needed. Your practice data stays in your browser.</p>
+            <h3>Open source &amp; local-first</h3>
+            <p>
+              All data lives in your browser&apos;s IndexedDB. MIT-licensed, code on GitHub.{" "}
+              <Link href="/guide#open-source" className="feature-link">
+                Learn more
+              </Link>
+            </p>
           </div>
         </div>
       </section>

@@ -1071,6 +1071,38 @@ textarea {
   line-height: 1.55;
 }
 
+/* Hero badge */
+
+.hero-badge {
+  display: inline-block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.3rem 1rem;
+  margin-bottom: 1.25rem;
+  background: var(--bg-surface);
+}
+
+.feature-link {
+  color: var(--text-secondary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  transition: color 0.15s ease;
+}
+
+.feature-link:hover {
+  color: var(--text);
+}
+
+.open-source-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 /* How it works */
 
 .how-it-works {

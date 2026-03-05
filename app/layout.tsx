@@ -64,7 +64,7 @@ const webAppJsonLd = {
     "Manual and auto practice modes",
     "Adjustable playback speed",
     "Progress tracking",
-    "Fully private — no account required",
+    "Local-first — all data in browser IndexedDB",
   ],
 };
 
