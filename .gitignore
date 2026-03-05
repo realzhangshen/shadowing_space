@@ -8,7 +8,9 @@ coverage
 *.sqlite
 tsconfig.tsbuildinfo
 .claude
-.env*
+.env
+.env.local
+.env.*.local
 reference
 .playwright-mcp
 reports
