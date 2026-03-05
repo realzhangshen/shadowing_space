@@ -2,7 +2,10 @@ import Link from "next/link";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Shadowing Space - Practice Speaking with YouTube"
+  title: "Free YouTube Shadowing Practice Tool",
+  description:
+    "Practice speaking with any YouTube video for free. Listen to native speakers, record yourself, and compare side-by-side. No account needed — your data stays in your browser.",
+  alternates: { canonical: "/" },
 };
 
 export default function HomePage(): JSX.Element {

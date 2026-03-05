@@ -1,12 +1,88 @@
 import type { Metadata } from "next";
+import { JsonLd } from "@/components/JsonLd";
+import { siteConfig } from "@/lib/siteConfig";
 
 export const metadata: Metadata = {
-  title: "Guide - Shadowing Space"
+  title: "Guide",
+  description:
+    "Step-by-step guide to shadowing practice with YouTube videos. Learn manual and auto practice modes, keyboard shortcuts, and answers to common questions.",
+  alternates: { canonical: "/guide" },
+};
+
+const faqItems = [
+  {
+    question: "What kind of videos work best?",
+    answer:
+      "Videos with clear English speech and accurate subtitles work best. Try TED talks, news clips, interviews, or language learning channels. Avoid videos with heavy background music, multiple overlapping speakers, or auto-generated captions that may be inaccurate.",
+  },
+  {
+    question: "My video failed to import. What should I do?",
+    answer:
+      "Make sure the video has English subtitles (not just auto-generated ones, though those can work too). Some videos have embedding restrictions that prevent playback. Try a different video or check that the URL is correct.",
+  },
+  {
+    question: "Where is my data stored?",
+    answer:
+      "Everything is stored in your browser using IndexedDB. No data is sent to any server. Your recordings, progress, and imported videos all stay on your device.",
+  },
+  {
+    question: "How do I delete a video or my data?",
+    answer:
+      "On the Dashboard, each video card has a delete button. To clear all data, you can clear your browser site data for this domain.",
+  },
+  {
+    question: "Does it work on mobile?",
+    answer:
+      "The app is responsive and works on mobile browsers. However, keyboard shortcuts are only available on desktop. Recording works on most mobile browsers that support the MediaRecorder API.",
+  },
+];
+
+const faqJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: faqItems.map((item) => ({
+    "@type": "Question",
+    name: item.question,
+    acceptedAnswer: { "@type": "Answer", text: item.answer },
+  })),
+};
+
+const howToJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "HowTo",
+  name: "How to Practice Shadowing with YouTube Videos",
+  description:
+    "Use Shadowing Space to improve your pronunciation and fluency by practicing with any YouTube video.",
+  tool: [
+    { "@type": "HowToTool", name: "A web browser" },
+    { "@type": "HowToTool", name: "A microphone" },
+  ],
+  step: [
+    {
+      "@type": "HowToStep",
+      name: "Paste a YouTube URL",
+      text: "Go to the Import page, paste any YouTube video URL with English subtitles, and the app will extract sentences automatically.",
+    },
+    {
+      "@type": "HowToStep",
+      name: "Practice shadowing",
+      text: "Choose Manual or Auto flow mode. Listen to each sentence, then record yourself repeating it.",
+    },
+    {
+      "@type": "HowToStep",
+      name: "Compare and improve",
+      text: "Use seekable waveform playback to compare your recording side-by-side with the original and track your progress on the dashboard.",
+    },
+  ],
+  totalTime: "PT10M",
+  url: `${siteConfig.url}/guide`,
 };
 
 export default function GuidePage(): JSX.Element {
   return (
     <div className="guide">
+      <JsonLd data={faqJsonLd} />
+      <JsonLd data={howToJsonLd} />
       <header className="guide-header">
         <h2>Guide</h2>
         <p>Everything you need to know about Shadowing Space.</p>

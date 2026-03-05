@@ -1,4 +1,11 @@
 import { PracticeClient } from "@/features/practice/PracticeClient";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Practice Session",
+  description: "Shadowing practice session — listen, record, and compare your pronunciation.",
+  robots: { index: false, follow: false },
+};
 
 type PracticePageProps = {
   params: Promise<{
