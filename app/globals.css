@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+SC:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;600;700&display=swap");
 
 :root {
   color-scheme: light;
@@ -33,7 +33,7 @@
 
 body {
   margin: 0;
-  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: "Inter", "Noto Sans SC", "Noto Sans JP", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   background: var(--bg);
   color: var(--text);
   min-height: 100vh;
@@ -71,7 +71,7 @@ a:hover {
 
 .topbar h1 {
   margin: 0.1rem 0 0;
-  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: "Inter", "Noto Sans SC", "Noto Sans JP", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-size: clamp(1.3rem, 2.5vw, 1.75rem);
   font-weight: 600;
   letter-spacing: -0.01em;
@@ -89,6 +89,7 @@ a:hover {
   display: flex;
   flex-wrap: wrap;
   gap: 0.65rem;
+  align-items: center;
 }
 
 .nav-link {
@@ -111,6 +112,90 @@ a:hover {
   background: var(--primary);
   color: var(--primary-text);
   border-color: var(--primary);
+}
+
+.locale-switcher {
+  position: relative;
+}
+
+.locale-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+}
+
+.locale-globe {
+  width: 1em;
+  height: 1em;
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+.locale-chevron {
+  display: inline-block;
+  width: 0.4em;
+  height: 0.4em;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: translateY(-0.1em) rotate(45deg);
+  opacity: 0.6;
+  transition: transform 0.15s ease;
+}
+
+.locale-trigger[aria-expanded="true"] .locale-chevron {
+  transform: translateY(0.15em) rotate(-135deg);
+}
+
+.locale-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.4rem);
+  z-index: 100;
+  list-style: none;
+  margin: 0;
+  padding: 0.35rem;
+  min-width: 150px;
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: 10px;
+  box-shadow: var(--shadow-elevated);
+  animation: fadeSlideUp 0.15s ease;
+}
+
+.locale-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: 0.9rem;
+  padding: 0.5rem 0.65rem;
+  border-radius: 7px;
+  cursor: pointer;
+  color: var(--text);
+  transition: background 0.12s ease;
+}
+
+.locale-option:hover {
+  background: var(--bg-hover);
+}
+
+.locale-option.active {
+  font-weight: 600;
+}
+
+.locale-check {
+  display: inline-block;
+  width: 1rem;
+  text-align: center;
+  color: var(--primary);
+  font-size: 0.85rem;
 }
 
 /* Page layout */
