@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
+import { useRouter } from "@/i18n/navigation";
 import { ApiError, fetchProxyHealth, fetchTranscriptSegments, fetchTranscriptTracks } from "@/lib/apiClient";
 import { buildTrackId, mapSegments, mapTracks, saveImportBundle } from "@/features/storage/repository";
 import type { FetchTranscriptResponse, ProxyHealthResponse, TrackSummary } from "@/types/api";
@@ -16,48 +17,18 @@ type ErrorDisplay = {
   requestId?: string;
 };
 
-function friendlyMessage(errorCode: string | undefined): string | undefined {
-  switch (errorCode) {
-    case "INVALID_VIDEO_URL":
-      return "Please enter a valid single YouTube video URL.";
-    case "VIDEO_UNAVAILABLE":
-      return "This video is unavailable or has been removed.";
-    case "TRANSCRIPTS_DISABLED":
-      return "Transcripts are disabled for this video.";
-    case "NO_CAPTION_TRACKS":
-      return "No caption tracks were found for this video.";
-    case "CAPTION_CONTENT_EMPTY":
-      return "The caption track exists but has no content.";
-    case "CAPTION_PARSING_FAILED":
-      return "Failed to parse the caption data from YouTube.";
-    case "YOUTUBE_UPSTREAM_ERROR":
-      return "YouTube is not responding. Please try again later.";
-    case "TOO_MANY_REQUESTS":
-      return "Too many requests. Please wait a moment and try again.";
-    case "TRACK_TOKEN_INVALID":
-      return "The track selection is invalid. Please re-fetch tracks.";
-    case "TRACK_TOKEN_EXPIRED":
-      return "The track selection has expired. Please re-fetch tracks.";
-    default:
-      return undefined;
-  }
-}
-
-function normalizeApiError(error: unknown): ErrorDisplay {
-  if (error instanceof ApiError) {
-    const friendly = friendlyMessage(error.errorCode);
-    return {
-      message: friendly ?? error.message,
-      errorCode: error.errorCode,
-      details: error.details,
-      requestId: error.requestId
-    };
-  }
-
-  return {
-    message: error instanceof Error ? error.message : "Failed to process request."
-  };
-}
+const ERROR_CODE_KEYS: Record<string, string> = {
+  INVALID_VIDEO_URL: "errorINVALID_VIDEO_URL",
+  VIDEO_UNAVAILABLE: "errorVIDEO_UNAVAILABLE",
+  TRANSCRIPTS_DISABLED: "errorTRANSCRIPTS_DISABLED",
+  NO_CAPTION_TRACKS: "errorNO_CAPTION_TRACKS",
+  CAPTION_CONTENT_EMPTY: "errorCAPTION_CONTENT_EMPTY",
+  CAPTION_PARSING_FAILED: "errorCAPTION_PARSING_FAILED",
+  YOUTUBE_UPSTREAM_ERROR: "errorYOUTUBE_UPSTREAM_ERROR",
+  TOO_MANY_REQUESTS: "errorTOO_MANY_REQUESTS",
+  TRACK_TOKEN_INVALID: "errorTRACK_TOKEN_INVALID",
+  TRACK_TOKEN_EXPIRED: "errorTRACK_TOKEN_EXPIRED",
+};
 
 function isRecoverableCaptionError(error: unknown): error is ApiError {
   return error instanceof ApiError && error.status === 404;
@@ -71,7 +42,7 @@ function mergeTrackSummaries(original: TrackSummary[], resolved: TrackSummary): 
   return [resolved, ...original];
 }
 
-function ErrorBlock({ error }: { error: ErrorDisplay }): JSX.Element {
+function ErrorBlock({ error, t }: { error: ErrorDisplay; t: ReturnType<typeof useTranslations<"ImportClient">> }): JSX.Element {
   const hasDetails = error.errorCode || error.requestId || (error.details && Object.keys(error.details).length > 0);
 
   return (
@@ -79,53 +50,53 @@ function ErrorBlock({ error }: { error: ErrorDisplay }): JSX.Element {
       <p className="error-text">{error.message}</p>
       {hasDetails ? (
         <details className="error-details">
-          <summary>Details</summary>
+          <summary>{t("details")}</summary>
           <dl className="error-detail-list">
             {error.errorCode ? (
               <>
-                <dt>Error code</dt>
+                <dt>{t("errorCode")}</dt>
                 <dd>{error.errorCode}</dd>
               </>
             ) : null}
             {error.details?.videoId ? (
               <>
-                <dt>Video ID</dt>
+                <dt>{t("videoId")}</dt>
                 <dd>{String(error.details.videoId)}</dd>
               </>
             ) : null}
             {error.details?.step ? (
               <>
-                <dt>Failed step</dt>
+                <dt>{t("failedStep")}</dt>
                 <dd>{String(error.details.step)}</dd>
               </>
             ) : null}
             {Array.isArray(error.details?.strategiesAttempted) ? (
               <>
-                <dt>Strategies attempted</dt>
+                <dt>{t("strategiesAttempted")}</dt>
                 <dd>{(error.details.strategiesAttempted as string[]).join(", ")}</dd>
               </>
             ) : null}
             {error.details?.networkCause ? (
               <>
-                <dt>Network cause</dt>
+                <dt>{t("networkCause")}</dt>
                 <dd>{String(error.details.networkCause)}</dd>
               </>
             ) : null}
             {error.details?.reason ? (
               <>
-                <dt>Reason</dt>
+                <dt>{t("reason")}</dt>
                 <dd>{String(error.details.reason)}</dd>
               </>
             ) : null}
             {error.details?.languageCode ? (
               <>
-                <dt>Language</dt>
+                <dt>{t("languageLabel")}</dt>
                 <dd>{String(error.details.languageCode)}</dd>
               </>
             ) : null}
             {error.requestId ? (
               <>
-                <dt>Request ID</dt>
+                <dt>{t("requestId")}</dt>
                 <dd>{error.requestId}</dd>
               </>
             ) : null}
@@ -137,6 +108,7 @@ function ErrorBlock({ error }: { error: ErrorDisplay }): JSX.Element {
 }
 
 export function ImportClient(): JSX.Element {
+  const t = useTranslations("ImportClient");
   const router = useRouter();
 
   const [youtubeUrl, setYoutubeUrl] = useState(DEFAULT_YOUTUBE_URL);
@@ -150,6 +122,29 @@ export function ImportClient(): JSX.Element {
   const [proxyChecking, setProxyChecking] = useState(false);
 
   const canImport = Boolean(fetchResult && selectedTrackToken) && !isImporting;
+
+  function friendlyMessage(errorCode: string | undefined): string | undefined {
+    if (!errorCode) return undefined;
+    const key = ERROR_CODE_KEYS[errorCode];
+    if (!key) return undefined;
+    return t(key as Parameters<typeof t>[0]);
+  }
+
+  function normalizeApiError(apiError: unknown): ErrorDisplay {
+    if (apiError instanceof ApiError) {
+      const friendly = friendlyMessage(apiError.errorCode);
+      return {
+        message: friendly ?? apiError.message,
+        errorCode: apiError.errorCode,
+        details: apiError.details,
+        requestId: apiError.requestId
+      };
+    }
+
+    return {
+      message: apiError instanceof Error ? apiError.message : t("errorFallback")
+    };
+  }
 
   const onTestProxy = async () => {
     setProxyChecking(true);
@@ -170,7 +165,7 @@ export function ImportClient(): JSX.Element {
     setSelectedTrackToken("");
 
     if (!youtubeUrl.trim()) {
-      setError({ message: "Please enter a YouTube URL first." });
+      setError({ message: t("errorUrlEmpty") });
       return;
     }
 
@@ -194,7 +189,7 @@ export function ImportClient(): JSX.Element {
 
   const onImport = async () => {
     if (!fetchResult || !selectedTrackToken) {
-      setError({ message: "Please fetch tracks and choose one track first." });
+      setError({ message: t("errorFetchFirst") });
       return;
     }
 
@@ -237,7 +232,7 @@ export function ImportClient(): JSX.Element {
       if (!resolved) {
         throw (
           lastRecoverableError ??
-          new ApiError("No usable caption content was found in available tracks. Please try another video.", 404)
+          new ApiError(t("errorNoContent"), 404)
         );
       }
 
@@ -278,16 +273,14 @@ export function ImportClient(): JSX.Element {
 
   return (
     <section className="card">
-      <h2>Import YouTube Captions</h2>
-      <p className="muted">
-        Input a YouTube URL, fetch available tracks, choose one track, then start sentence-by-sentence shadowing.
-      </p>
+      <h2>{t("title")}</h2>
+      <p className="muted">{t("description")}</p>
 
       <label className="field">
-        <span>YouTube URL</span>
+        <span>{t("youtubeUrlLabel")}</span>
         <input
           type="url"
-          placeholder="https://www.youtube.com/watch?v=..."
+          placeholder={t("youtubeUrlPlaceholder")}
           value={youtubeUrl}
           onChange={(event) => setYoutubeUrl(event.target.value)}
         />
@@ -300,19 +293,19 @@ export function ImportClient(): JSX.Element {
             checked={useProxy}
             onChange={(event) => { setUseProxy(event.target.checked); setProxyStatus(null); }}
           />
-          <span>Use proxy</span>
+          <span>{t("useProxy")}</span>
         </label>
 
         {useProxy ? (
           <>
             <button className="btn-link" type="button" onClick={onTestProxy} disabled={proxyChecking}>
-              {proxyChecking ? "Testing..." : "Test Connection"}
+              {proxyChecking ? t("testing") : t("testConnection")}
             </button>
             {proxyStatus ? (
               <span className="proxy-check">
                 <span className={`proxy-check-dot ${proxyStatus.status}`} />
                 <span className="proxy-check-text">
-                  {proxyStatus.status === "ok" ? `Operational (${proxyStatus.latencyMs}ms)` : proxyStatus.error ?? proxyStatus.status}
+                  {proxyStatus.status === "ok" ? t("proxyOperational", { latencyMs: proxyStatus.latencyMs ?? 0 }) : proxyStatus.error ?? proxyStatus.status}
                 </span>
               </span>
             ) : null}
@@ -322,19 +315,19 @@ export function ImportClient(): JSX.Element {
 
       <div className="actions-row">
         <button className="btn primary" type="button" onClick={onFetchTracks} disabled={isFetching || isImporting}>
-          {isFetching ? "Fetching..." : "Fetch Tracks"}
+          {isFetching ? t("fetching") : t("fetchTracks")}
         </button>
         <button className="btn secondary" type="button" onClick={onImport} disabled={!canImport}>
-          {isImporting ? "Importing..." : "Import and Start"}
+          {isImporting ? t("importing") : t("importAndStart")}
         </button>
       </div>
 
       {fetchResult ? (
         <>
-          <h3>Available Tracks</h3>
+          <h3>{t("availableTracks")}</h3>
           <p className="muted">{fetchResult.title}</p>
 
-          <div className="track-list" role="radiogroup" aria-label="Caption tracks">
+          <div className="track-list" role="radiogroup" aria-label={t("captionTracks")}>
             {fetchResult.tracks.map((track) => (
               <label key={track.token} className="track-item">
                 <input
@@ -345,7 +338,7 @@ export function ImportClient(): JSX.Element {
                 />
                 <span>
                   {track.label}
-                  {track.isAutoGenerated ? " (auto)" : ""}
+                  {track.isAutoGenerated ? t("trackAutoSuffix") : ""}
                 </span>
                 <small>{track.languageCode}</small>
               </label>
@@ -354,7 +347,7 @@ export function ImportClient(): JSX.Element {
         </>
       ) : null}
 
-      {error ? <ErrorBlock error={error} /> : null}
+      {error ? <ErrorBlock error={error} t={t} /> : null}
     </section>
   );
 }
