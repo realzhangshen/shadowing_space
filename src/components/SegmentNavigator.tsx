@@ -1,6 +1,7 @@
 "use client";
 
 import { memo, useEffect, useRef } from "react";
+import { useTranslations } from "next-intl";
 import type { SegmentRecord } from "@/types/models";
 
 type SegmentNavigatorProps = {
@@ -20,6 +21,7 @@ export const SegmentNavigator = memo(function SegmentNavigator({
   transcriptHidden,
   onToggleTranscriptHidden
 }: SegmentNavigatorProps): JSX.Element {
+  const t = useTranslations("SegmentNavigator");
   const activeRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -29,16 +31,16 @@ export const SegmentNavigator = memo(function SegmentNavigator({
   return (
     <section className="segment-card">
       <div className="segment-header">
-        <h3 className="segment-title">Sentences</h3>
+        <h3 className="segment-title">{t("title")}</h3>
         <div className="segment-header-right">
           <button
             type="button"
             className="transcript-toggle icon-btn"
             onClick={onToggleTranscriptHidden}
-            title={transcriptHidden ? "Show sentences" : "Hide sentences"}
+            title={transcriptHidden ? t("showTitle") : t("hideTitle")}
             aria-pressed={!transcriptHidden}
           >
-            {transcriptHidden ? "Show" : "Hide"}
+            {transcriptHidden ? t("show") : t("hide")}
           </button>
           <p className="muted">
             {Math.min(currentIndex + 1, segments.length)} / {segments.length}
@@ -46,7 +48,7 @@ export const SegmentNavigator = memo(function SegmentNavigator({
         </div>
       </div>
 
-      <div className="segment-list" role="list" aria-label="Sentence list">
+      <div className="segment-list" role="list" aria-label={t("sentenceList")}>
         {segments.map((segment, index) => {
           const isActive = index === currentIndex;
           const hasRecording = recordingReadySet.has(index);

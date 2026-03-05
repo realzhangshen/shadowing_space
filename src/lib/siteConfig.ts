@@ -9,7 +9,6 @@ export const siteConfig = {
     "pronunciation practice",
     "YouTube shadowing",
     "speaking practice",
-    "English practice",
     "shadowing technique",
     "language shadowing tool",
   ],

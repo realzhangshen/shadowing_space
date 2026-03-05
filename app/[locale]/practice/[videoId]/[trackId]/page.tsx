@@ -1,14 +1,19 @@
-import { PracticeClient } from "@/features/practice/PracticeClient";
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
+import { PracticeClient } from "@/features/practice/PracticeClient";
 
-export const metadata: Metadata = {
-  title: "Practice Session",
-  description: "Shadowing practice session — listen, record, and compare your pronunciation.",
-  robots: { index: false, follow: false },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("Metadata");
+  return {
+    title: t("practiceTitle"),
+    description: t("practiceDescription"),
+    robots: { index: false, follow: false },
+  };
+}
 
 type PracticePageProps = {
   params: Promise<{
+    locale: string;
     videoId: string;
     trackId: string;
   }>;
@@ -25,7 +30,6 @@ export default async function PracticePage({ params }: PracticePageProps): Promi
 function decodeRouteParam(value: string): string {
   let decoded = value;
 
-  // Decode multiple times to tolerate segments that were encoded before client-side routing.
   for (let index = 0; index < 2; index += 1) {
     try {
       const next = decodeURIComponent(decoded);

@@ -1,6 +1,7 @@
 "use client";
 
 import { memo } from "react";
+import { useTranslations } from "next-intl";
 import type { MicStatus } from "@/hooks/useRecorder";
 import type { RepeatFlow } from "@/store/practiceStore";
 
@@ -20,32 +21,6 @@ type PlaybackControlBarProps = {
   nextDisabled: boolean;
 };
 
-const FLOWS: { value: RepeatFlow; label: string }[] = [
-  { value: "manual", label: "Manual" },
-  { value: "auto", label: "Auto" }
-];
-
-function getPlayLabel(isAuto: boolean, isPlaying: boolean): string {
-  if (isPlaying) return "⏸ Pause";
-  if (isAuto) return "▶ Shadow";
-  return "▶ Play";
-}
-
-function MicStatusIndicator({ micStatus }: { micStatus: MicStatus }): JSX.Element | null {
-  if (micStatus === "idle") return null;
-
-  if (micStatus === "acquiring") {
-    return <span className="mic-status acquiring">Preparing...</span>;
-  }
-
-  if (micStatus === "error") {
-    return <span className="mic-status error">No mic</span>;
-  }
-
-  // active
-  return <span className="mic-status active" aria-label="Microphone active">🎤</span>;
-}
-
 export const PlaybackControlBar = memo(function PlaybackControlBar({
   isPlaying,
   isRecording,
@@ -61,44 +36,65 @@ export const PlaybackControlBar = memo(function PlaybackControlBar({
   prevDisabled,
   nextDisabled
 }: PlaybackControlBarProps): JSX.Element {
+  const t = useTranslations("PlaybackControlBar");
   const isAuto = repeatFlow === "auto";
   const showRecord = !isAuto;
   const showReplay = hasRecording;
   const showHeadphoneHint = isAuto;
 
+  const flows: { value: RepeatFlow; label: string }[] = [
+    { value: "manual", label: t("manual") },
+    { value: "auto", label: t("auto") }
+  ];
+
+  function getPlayLabel(): string {
+    if (isPlaying) return t("pause");
+    if (isAuto) return t("shadow");
+    return t("play");
+  }
+
+  function MicStatusIndicator(): JSX.Element | null {
+    if (micStatus === "idle") return null;
+    if (micStatus === "acquiring") {
+      return <span className="mic-status acquiring">{t("preparing")}</span>;
+    }
+    if (micStatus === "error") {
+      return <span className="mic-status error">{t("noMic")}</span>;
+    }
+    return <span className="mic-status active" aria-label="Microphone active">🎤</span>;
+  }
+
   return (
     <div className="control-bar-wrap">
-      {/* Primary controls: navigation + play */}
       <div className="control-bar">
         <button type="button" className="btn secondary" onClick={onPrev} disabled={prevDisabled}>
-          ← Prev
+          {t("prev")}
         </button>
 
         <button
           type="button"
           className={isAuto && !isPlaying ? "btn secondary shadow-play-btn" : "btn secondary"}
-          title={isAuto ? "Play + Record simultaneously" : isPlaying ? "Pause" : "Play"}
+          title={isAuto ? t("playRecordTitle") : isPlaying ? t("pauseTitle") : t("playTitle")}
           onClick={onToggleOriginal}
         >
-          {getPlayLabel(isAuto, isPlaying)}
+          {getPlayLabel()}
         </button>
 
         <button type="button" className="btn secondary" onClick={onNext} disabled={nextDisabled}>
-          Next →
+          {t("next")}
         </button>
       </div>
 
-      {/* Secondary controls: recording */}
       <div className="control-bar-secondary">
         {showRecord ? (
           <button
             type="button"
             className={isRecording ? "btn primary recording" : "btn primary"}
-            title={isRecording ? "Stop recording" : "Record"}
+            title={isRecording ? t("stopRecordingTitle") : t("recordTitle")}
             aria-pressed={isRecording}
             onClick={onToggleRecording}
           >
-            {isRecording ? "⏹ Stop" : "🎤 Record"}
+            {isRecording ? t("stop") : t("record")}
           </button>
         ) : null}
 
@@ -106,20 +102,19 @@ export const PlaybackControlBar = memo(function PlaybackControlBar({
           <button
             type="button"
             className="btn secondary"
-            title="Play recording"
+            title={t("playRecordingTitle")}
             onClick={onPlayRecording}
           >
-            🎧 Replay
+            {t("replay")}
           </button>
         ) : null}
 
-        <MicStatusIndicator micStatus={micStatus} />
+        <MicStatusIndicator />
       </div>
 
-      {/* Tertiary: mode toggle + hints */}
       <div className="mode-settings">
-        <div className="scope-toggle" role="radiogroup" aria-label="Practice flow">
-          {FLOWS.map((f) => (
+        <div className="scope-toggle" role="radiogroup" aria-label={t("practiceFlow")}>
+          {flows.map((f) => (
             <button
               key={f.value}
               type="button"
@@ -134,7 +129,7 @@ export const PlaybackControlBar = memo(function PlaybackControlBar({
         </div>
 
         {showHeadphoneHint ? (
-          <span className="headphone-hint">🎧 Use headphones</span>
+          <span className="headphone-hint">{t("useHeadphones")}</span>
         ) : null}
       </div>
     </div>

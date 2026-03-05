@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
+import { useTranslations } from "next-intl";
+import { Link } from "@/i18n/navigation";
 import { PlaybackControlBar } from "@/components/PlaybackControlBar";
 import { SegmentNavigator } from "@/components/SegmentNavigator";
 import { WaveformCanvas } from "@/components/WaveformCanvas";
@@ -43,6 +44,7 @@ const AUTO_ADVANCE_DELAY_MS = 400;
 const WAVEFORM_DEGRADE_HINT_DELAY_MS = 800;
 
 export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.Element {
+  const t = useTranslations("PracticeClient");
   const [session, setSession] = useState<SessionState | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | undefined>();
@@ -101,7 +103,7 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
     try {
       const initial = await getPracticeSession(videoId, trackId);
       if (!initial.video || !initial.track) {
-        throw new Error("No local session found. Please import the video again.");
+        throw new Error(t("errorNoSession"));
       }
 
       let usableSegments = initial.segments;
@@ -116,7 +118,7 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
       }
 
       if (usableSegments.length === 0) {
-        throw new Error("Caption track has no playable sentence.");
+        throw new Error(t("errorNoSentence"));
       }
 
       const safeIndex = Math.min(initial.progress?.currentIndex ?? 0, usableSegments.length - 1);
@@ -133,16 +135,16 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
       setRecordingReadySet(indices);
 
       if (safeIndex > 0) {
-        setResumeMessage(`Resumed from sentence #${safeIndex + 1}`);
+        setResumeMessage(t("resumeMessage", { number: safeIndex + 1 }));
         setTimeout(() => setResumeMessage(undefined), RESUME_MESSAGE_TIMEOUT_MS);
       }
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : "Failed to load practice session.");
+      setError(loadError instanceof Error ? loadError.message : t("errorLoadSession"));
       setSession(null);
     } finally {
       setIsLoading(false);
     }
-  }, [loadRecordingState, resetForSession, trackId, videoId]);
+  }, [loadRecordingState, resetForSession, trackId, videoId, t]);
 
   useEffect(() => {
     void loadSession();
@@ -188,7 +190,6 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
       setWaveformBlob(blob);
       setRecordingReadySet((prev) => new Set(prev).add(targetSegment.index));
 
-      // User-initiated stop: save recording but don't auto-advance
       if (manualStopRef.current) {
         manualStopRef.current = false;
         setPlaybackMode("idle");
@@ -197,15 +198,12 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
 
       const state = usePracticeStore.getState();
 
-      // In auto mode, we skip "attempt" review — just advance
-      // In manual mode, show the recording for review
       if (state.repeatFlow === "auto") {
         setPlaybackMode("idle");
       } else {
         setPlaybackMode("attempt");
       }
 
-      // Auto-advance: play next + record simultaneously (unified shadow-style)
       if (state.repeatFlow === "auto") {
         setTimeout(() => {
           const s = usePracticeStore.getState();
@@ -221,7 +219,6 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
           playerRef.current?.playSegment(nextSeg.startMs, nextSeg.endMs, s.playbackSpeed);
           setPlaybackMode("source");
 
-          // Always start recording with playback in auto mode
           recordingTargetRef.current = nextIdx;
           void recorder.start();
         }, AUTO_ADVANCE_DELAY_MS);
@@ -280,12 +277,10 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
     recorder.isRecording
   );
 
-  // Clear stale live peaks when switching segments
   useEffect(() => {
     clearLivePeaks();
   }, [currentIndex, clearLivePeaks]);
 
-  // Display priority: live peaks during recording > decoded peaks for stored > nothing
   const displayPeaks = livePeaks ?? waveformPeaks;
   const waveformProgress = isLiveWaveform
     ? 1
@@ -340,7 +335,6 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
     prevIsPlayingRef.current = isPlaying;
 
     if (wasPlaying && !isPlaying) {
-      // Mark that original audio has finished (unblocks VAD gate)
       audioFinishedRef.current = true;
     }
   }, [isPlaying]);
@@ -366,7 +360,6 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
     setMicrophoneError(undefined);
 
     if (recorder.isRecording) {
-      // In manual mode, pause playback when stopping recording
       if (usePracticeStore.getState().repeatFlow === "manual") {
         playerRef.current?.pause();
       }
@@ -392,13 +385,11 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
     await recorder.start();
   }, [recordingPlayback.stop, currentIndex, currentSegment, playbackSpeed, recorder, setMicrophoneError, setPlaybackMode]);
 
-  // toggleOriginal: dispatches based on flow
   const toggleOriginal = useCallback(async () => {
     if (!currentSegment) {
       return;
     }
 
-    // If currently playing, pause (stop recording if active)
     if (isPlaying) {
       playerRef.current?.pause();
       if (recorder.isRecording) {
@@ -408,7 +399,6 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
       return;
     }
 
-    // Stop recording if active before starting a new action
     if (recorder.isRecording) {
       manualStopRef.current = true;
       await recorder.stop();
@@ -416,13 +406,11 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
 
     const state = usePracticeStore.getState();
 
-    // Auto mode: play + record simultaneously
     if (state.repeatFlow === "auto") {
       void startShadowing();
       return;
     }
 
-    // Manual mode: just play the original
     recordingPlayback.stop();
     audioFinishedRef.current = false;
     playerRef.current?.toggleSegment(currentSegment.startMs, currentSegment.endMs, playbackSpeed);
@@ -438,7 +426,6 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
         recordingPlayback.seek(fraction);
       } else {
         recordingPlayback.play(waveformBlob);
-        // Small delay to let audio load before seeking
         requestAnimationFrame(() => recordingPlayback.seek(fraction));
       }
       setPlaybackMode("attempt");
@@ -501,16 +488,16 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
   useShortcuts(shortcutHandlers);
 
   if (isLoading) {
-    return <p className="muted">Loading practice session...</p>;
+    return <p className="muted">{t("loading")}</p>;
   }
 
   if (!session) {
     return (
       <section className="card">
-        <h2>Unable to Start Practice</h2>
-        <p className="error-text">{error ?? "Unknown error"}</p>
+        <h2>{t("unableToStart")}</h2>
+        <p className="error-text">{error ?? t("unknownError")}</p>
         <Link className="btn secondary inline-btn" href="/import">
-          Back to Import
+          {t("backToImport")}
         </Link>
       </section>
     );
@@ -524,8 +511,8 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
           <div>
             <h2>{session.video.title}</h2>
             <p className="muted">
-              Track: {session.track.label}
-              {session.track.isAutoGenerated ? " (auto)" : ""}
+              {t("track", { label: session.track.label })}
+              {session.track.isAutoGenerated ? t("autoSuffix") : ""}
             </p>
           </div>
         </div>
@@ -537,10 +524,9 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
           onPlayStateChange={setIsPlaying}
         />
 
-        {/* Current sentence display — prominent, between video and controls */}
         <div className="current-sentence-wrap">
           <p className={transcriptHidden ? "current-sentence current-sentence-blurred" : "current-sentence"}>
-            {currentSegment?.text ?? "No segment"}
+            {currentSegment?.text ?? t("noSegment")}
           </p>
           <div className="progress-row">
             <span className="progress-pct">
@@ -549,7 +535,7 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
             <div className="progress-bar">
               <div className="progress-fill" style={{ width: `${progressPct}%` }} />
             </div>
-            <span className="progress-pct">{recordedCount} recorded</span>
+            <span className="progress-pct">{t("recorded", { count: recordedCount })}</span>
           </div>
         </div>
 
@@ -566,7 +552,7 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
             />
           </div>
         ) : null}
-        {showWaveformUnavailableHint ? <p className="muted">录音正常，波形暂不可用</p> : null}
+        {showWaveformUnavailableHint ? <p className="muted">{t("waveformUnavailable")}</p> : null}
 
         <PlaybackControlBar
           isPlaying={isPlaying}
@@ -585,7 +571,7 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
         />
 
         <div className="actions-row speed-row">
-          <span className="muted">Speed</span>
+          <span className="muted">{t("speed")}</span>
           {SPEEDS.map((speed) => (
             <button
               key={speed}
@@ -602,7 +588,7 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
         {resumeMessage ? <p className="resume-indicator">{resumeMessage}</p> : null}
 
         <p className="muted shortcuts-hint">
-          Space: play/pause · R: record · A: replay · B: playback · M: manual/auto · T: toggle text · &larr;/&rarr;: prev/next
+          {t("shortcutsHint")}
         </p>
 
         <div aria-live="polite">
