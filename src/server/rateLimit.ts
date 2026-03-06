@@ -3,6 +3,8 @@ type Bucket = {
   resetAt: number;
 };
 
+// Per-process only: each serverless instance has its own Map.
+// Does not share state across Vercel instances or after cold starts.
 const buckets = new Map<string, Bucket>();
 
 export type RateLimitResult = {

@@ -1,13 +1,21 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
+import { buildPageAlternates } from "@/lib/metadata";
 
-export async function generateMetadata(): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
   const t = await getTranslations("Metadata");
+  const alt = buildPageAlternates(locale, "/");
   return {
     title: t("homeTitle"),
     description: t("homeDescription"),
-    alternates: { canonical: "/" },
+    alternates: { canonical: alt.canonical, languages: alt.languages },
+    openGraph: { url: alt.url },
   };
 }
 

@@ -79,7 +79,9 @@
     "faq4Q": "How do I delete a video or my data?",
     "faq4A": "On the Dashboard, each video card has a delete button. To clear all data, you can clear your browser site data for this domain.",
     "faq5Q": "Does it work on mobile?",
-    "faq5A": "The app is responsive and works on mobile browsers. However, keyboard shortcuts are only available on desktop. Recording works on most mobile browsers that support the MediaRecorder API."
+    "faq5A": "The app is responsive and works on mobile browsers. However, keyboard shortcuts are only available on desktop. Recording works on most mobile browsers that support the MediaRecorder API.",
+    "howToName": "How to Practice Shadowing with YouTube Videos",
+    "howToDescription": "Use Shadowing Space to improve your pronunciation and fluency by practicing with any YouTube video."
   },
   "ImportClient": {
     "title": "Import YouTube Captions",

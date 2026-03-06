@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
-import { z } from "zod";
+import { z, ZodError } from "zod";
 import { env } from "@/server/env";
 import { AppError } from "@/server/errors";
 import { createRequestLogger } from "@/server/logger";
@@ -13,6 +13,7 @@ const requestSchema = z.object({
   useProxy: z.boolean().optional().default(true)
 });
 
+// Trusts Vercel's x-forwarded-for (safe on Vercel, spoofable if self-hosted behind untrusted proxies).
 function clientIpFromRequest(request: Request): string {
   const forwarded = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
   if (forwarded) {
@@ -87,11 +88,27 @@ export async function POST(request: Request): Promise<Response> {
       headers
     });
   } catch (error) {
-    const isAppError = error instanceof AppError;
-    const statusCode = isAppError ? error.statusCode : 500;
-    const message = isAppError ? error.message : "Internal server error";
-    const errorCode = isAppError ? error.errorCode : undefined;
-    const details = isAppError ? error.details : undefined;
+    let statusCode: number;
+    let message: string;
+    let errorCode: string | undefined;
+    let details: Record<string, unknown> | undefined;
+
+    if (error instanceof AppError) {
+      statusCode = error.statusCode;
+      message = error.message;
+      errorCode = error.errorCode;
+      details = error.details;
+    } else if (error instanceof ZodError) {
+      statusCode = 400;
+      message = "Invalid request body";
+      details = { fields: error.flatten().fieldErrors };
+    } else if (error instanceof SyntaxError) {
+      statusCode = 400;
+      message = "Malformed JSON in request body";
+    } else {
+      statusCode = 500;
+      message = "Internal server error";
+    }
 
     logger.error("request.failed", {
       statusCode,

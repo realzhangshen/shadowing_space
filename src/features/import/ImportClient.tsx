@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
 import { ApiError, fetchProxyHealth, fetchTranscriptSegments, fetchTranscriptTracks } from "@/lib/apiClient";
 import { buildTrackId, mapSegments, mapTracks, saveImportBundle } from "@/features/storage/repository";
@@ -109,6 +109,7 @@ function ErrorBlock({ error, t }: { error: ErrorDisplay; t: ReturnType<typeof us
 
 export function ImportClient(): JSX.Element {
   const t = useTranslations("ImportClient");
+  const locale = useLocale();
   const router = useRouter();
 
   const [youtubeUrl, setYoutubeUrl] = useState(DEFAULT_YOUTUBE_URL);
@@ -174,7 +175,7 @@ export function ImportClient(): JSX.Element {
     try {
       const data = await fetchTranscriptTracks({
         url: youtubeUrl.trim(),
-        preferredLanguage: "en",
+        preferredLanguage: locale,
         useProxy
       });
 
@@ -255,14 +256,14 @@ export function ImportClient(): JSX.Element {
         createdAt: now
       };
 
-      await saveImportBundle({
+      const { effectiveTargetTrackId } = await saveImportBundle({
         video: videoRecord,
         tracks: mappedTracks,
         targetTrackId,
         segments: mappedSegments
       });
 
-      const practiceUrl = `/practice/${fetchResult.videoId}/${encodeURIComponent(targetTrackId)}`;
+      const practiceUrl = `/practice/${fetchResult.videoId}/${encodeURIComponent(effectiveTargetTrackId)}`;
       router.push(practiceUrl);
     } catch (requestError) {
       setError(normalizeApiError(requestError));

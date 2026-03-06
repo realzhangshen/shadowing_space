@@ -258,7 +258,7 @@ export async function resolveTranscriptSegments(params: {
   const candidateUrls = buildCandidateUrls(payload.baseUrl, logger);
   logger?.info("youtube.resolve_segments.base_url", {
     videoId,
-    baseUrl: payload.baseUrl
+    baseUrl: new URL(payload.baseUrl).pathname
   });
   logger?.debug("youtube.resolve_segments.candidates", {
     candidateCount: candidateUrls.length,

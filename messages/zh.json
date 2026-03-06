@@ -79,7 +79,9 @@
     "faq4Q": "如何删除视频或数据？",
     "faq4A": "在仪表盘上，每个视频卡片都有删除按钮。要清除所有数据，可以在浏览器设置中清除本站的站点数据。",
     "faq5Q": "手机上能用吗？",
-    "faq5A": "应用支持响应式设计，可在手机浏览器上使用。不过键盘快捷键仅在桌面端可用。录音功能在大多数支持 MediaRecorder API 的手机浏览器上都可以使用。"
+    "faq5A": "应用支持响应式设计，可在手机浏览器上使用。不过键盘快捷键仅在桌面端可用。录音功能在大多数支持 MediaRecorder API 的手机浏览器上都可以使用。",
+    "howToName": "如何使用 YouTube 视频练习跟读",
+    "howToDescription": "使用 Shadowing Space，通过任何 YouTube 视频练习发音和流利度。"
   },
   "ImportClient": {
     "title": "导入 YouTube 字幕",

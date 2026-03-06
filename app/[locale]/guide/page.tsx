@@ -2,17 +2,30 @@ import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { JsonLd } from "@/components/JsonLd";
 import { siteConfig } from "@/lib/siteConfig";
+import { buildPageAlternates } from "@/lib/metadata";
 
-export async function generateMetadata(): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
   const t = await getTranslations("Metadata");
+  const alt = buildPageAlternates(locale, "/guide");
   return {
     title: t("guideTitle"),
     description: t("guideDescription"),
-    alternates: { canonical: "/guide" },
+    alternates: { canonical: alt.canonical, languages: alt.languages },
+    openGraph: { url: alt.url },
   };
 }
 
-export default async function GuidePage(): Promise<JSX.Element> {
+export default async function GuidePage({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<JSX.Element> {
+  const { locale } = await params;
   const t = await getTranslations("GuidePage");
 
   const faqItems = [
@@ -33,12 +46,17 @@ export default async function GuidePage(): Promise<JSX.Element> {
     })),
   };
 
+  const guideUrl =
+    locale === "en"
+      ? `${siteConfig.url}/guide`
+      : `${siteConfig.url}/${locale}/guide`;
+
   const howToJsonLd = {
     "@context": "https://schema.org",
     "@type": "HowTo",
-    name: "How to Practice Shadowing with YouTube Videos",
-    description:
-      "Use Shadowing Space to improve your pronunciation and fluency by practicing with any YouTube video.",
+    name: t("howToName"),
+    description: t("howToDescription"),
+    inLanguage: locale,
     tool: [
       { "@type": "HowToTool", name: "A web browser" },
       { "@type": "HowToTool", name: "A microphone" },
@@ -61,7 +79,7 @@ export default async function GuidePage(): Promise<JSX.Element> {
       },
     ],
     totalTime: "PT10M",
-    url: `${siteConfig.url}/guide`,
+    url: guideUrl,
   };
 
   return (

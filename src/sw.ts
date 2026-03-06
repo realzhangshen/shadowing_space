@@ -16,6 +16,8 @@ const serwist = new Serwist({
   clientsClaim: true,
   navigationPreload: true,
   runtimeCaching: defaultCache,
+  // Universal /offline fallback — the SW doesn't have locale context at registration time,
+  // so we serve a single page for all locales rather than locale-prefixed paths.
   fallbacks: {
     entries: [
       {

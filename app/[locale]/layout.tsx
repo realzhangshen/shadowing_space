@@ -28,12 +28,6 @@ export async function generateMetadata({
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: "Metadata" });
 
-  const alternateLanguages: Record<string, string> = {};
-  for (const l of locales) {
-    alternateLanguages[l] = l === "en" ? siteConfig.url : `${siteConfig.url}/${l}`;
-  }
-  alternateLanguages["x-default"] = siteConfig.url;
-
   return {
     metadataBase: new URL(siteConfig.url),
     title: {
@@ -50,7 +44,6 @@ export async function generateMetadata({
       siteName: siteConfig.name,
       title: siteConfig.name,
       description: t("homeDescription"),
-      url: siteConfig.url,
     },
     twitter: {
       card: "summary_large_image",
@@ -67,9 +60,6 @@ export async function generateMetadata({
         "max-image-preview": "large",
         "max-video-preview": -1,
       },
-    },
-    alternates: {
-      languages: alternateLanguages,
     },
     appleWebApp: {
       capable: true,
