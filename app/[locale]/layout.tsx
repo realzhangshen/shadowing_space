@@ -18,8 +18,10 @@ type LocaleLayoutProps = {
 
 const localeToOg: Record<Locale, string> = {
   en: "en_US",
-  zh: "zh_CN",
+  "zh-Hans": "zh_CN",
+  "zh-Hant": "zh_TW",
   ja: "ja_JP",
+  ru: "ru_RU",
 };
 
 export async function generateMetadata({

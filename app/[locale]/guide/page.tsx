@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { JsonLd } from "@/components/JsonLd";
 import { siteConfig } from "@/lib/siteConfig";
+import { defaultLocale } from "@/i18n/config";
 import { buildPageAlternates } from "@/lib/metadata";
 
 export async function generateMetadata({
@@ -47,7 +48,7 @@ export default async function GuidePage({
   };
 
   const guideUrl =
-    locale === "en"
+    locale === defaultLocale
       ? `${siteConfig.url}/guide`
       : `${siteConfig.url}/${locale}/guide`;
 

@@ -8,8 +8,10 @@ import { locales } from "@/i18n/config";
 
 const localeLabels: Record<Locale, { short: string; full: string }> = {
   en: { short: "EN", full: "English" },
-  zh: { short: "中文", full: "简体中文" },
+  "zh-Hans": { short: "简体", full: "简体中文" },
+  "zh-Hant": { short: "繁體", full: "繁體中文" },
   ja: { short: "日本語", full: "日本語" },
+  ru: { short: "RU", full: "Русский" },
 };
 
 export function AppHeader(): JSX.Element {
