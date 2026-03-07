@@ -263,7 +263,7 @@ export function ImportClient(): JSX.Element {
         segments: mappedSegments
       });
 
-      const practiceUrl = `/practice/${fetchResult.videoId}/${encodeURIComponent(effectiveTargetTrackId).replace(/\./g, '%2E')}`;
+      const practiceUrl = `/practice/${fetchResult.videoId}/${encodeURIComponent(effectiveTargetTrackId)}`;
       router.push(practiceUrl);
     } catch (requestError) {
       setError(normalizeApiError(requestError));

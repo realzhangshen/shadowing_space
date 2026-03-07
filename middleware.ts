@@ -17,6 +17,6 @@ export default function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     // Match all pathnames except API routes, Next.js internals, and static files
-    "/((?!api|_next|_vercel|.*\\..*).*)",
+    "/((?!api|_next|_vercel|icons/|sw\\.js$).*)",
   ],
 };

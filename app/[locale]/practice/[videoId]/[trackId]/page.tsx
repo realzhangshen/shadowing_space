@@ -28,19 +28,9 @@ export default async function PracticePage({ params }: PracticePageProps): Promi
 }
 
 function decodeRouteParam(value: string): string {
-  let decoded = value;
-
-  for (let index = 0; index < 2; index += 1) {
-    try {
-      const next = decodeURIComponent(decoded);
-      if (next === decoded) {
-        break;
-      }
-      decoded = next;
-    } catch {
-      break;
-    }
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
   }
-
-  return decoded;
 }

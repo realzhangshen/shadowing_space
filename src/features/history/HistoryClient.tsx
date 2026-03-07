@@ -178,7 +178,7 @@ export function HistoryClient(): JSX.Element {
                       return;
                     }
                     router.push(
-                      `/practice/${item.video.id}/${encodeURIComponent(item.activeTrack.id).replace(/\./g, '%2E')}`
+                      `/practice/${item.video.id}/${encodeURIComponent(item.activeTrack.id)}`
                     );
                   }}
                 >
