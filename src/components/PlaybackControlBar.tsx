@@ -19,6 +19,9 @@ type PlaybackControlBarProps = {
   onNext: () => void;
   prevDisabled: boolean;
   nextDisabled: boolean;
+  freeSessionActive?: boolean;
+  onStartFree?: () => void;
+  onStopFree?: () => void;
 };
 
 export const PlaybackControlBar = memo(function PlaybackControlBar({
@@ -34,17 +37,22 @@ export const PlaybackControlBar = memo(function PlaybackControlBar({
   onPrev,
   onNext,
   prevDisabled,
-  nextDisabled
+  nextDisabled,
+  freeSessionActive,
+  onStartFree,
+  onStopFree
 }: PlaybackControlBarProps): JSX.Element {
   const t = useTranslations("PlaybackControlBar");
   const isAuto = repeatFlow === "auto";
-  const showRecord = !isAuto;
-  const showReplay = hasRecording;
-  const showHeadphoneHint = isAuto;
+  const isFree = repeatFlow === "free";
+  const showRecord = !isAuto && !isFree;
+  const showReplay = hasRecording && !isFree;
+  const showHeadphoneHint = isAuto || isFree;
 
   const flows: { value: RepeatFlow; label: string }[] = [
     { value: "manual", label: t("manual") },
-    { value: "auto", label: t("auto") }
+    { value: "auto", label: t("auto") },
+    { value: "free", label: t("free") }
   ];
 
   function getPlayLabel(): string {
@@ -66,51 +74,66 @@ export const PlaybackControlBar = memo(function PlaybackControlBar({
 
   return (
     <div className="control-bar-wrap">
-      <div className="control-bar">
-        <button type="button" className="btn secondary" onClick={onPrev} disabled={prevDisabled}>
-          {t("prev")}
-        </button>
-
-        <button
-          type="button"
-          className={isAuto && !isPlaying ? "btn secondary shadow-play-btn" : "btn secondary"}
-          title={isAuto ? t("playRecordTitle") : isPlaying ? t("pauseTitle") : t("playTitle")}
-          onClick={onToggleOriginal}
-        >
-          {getPlayLabel()}
-        </button>
-
-        <button type="button" className="btn secondary" onClick={onNext} disabled={nextDisabled}>
-          {t("next")}
-        </button>
-      </div>
-
-      <div className="control-bar-secondary">
-        {showRecord ? (
+      {isFree ? (
+        <div className="control-bar">
           <button
             type="button"
-            className={isRecording ? "btn primary recording" : "btn primary"}
-            title={isRecording ? t("stopRecordingTitle") : t("recordTitle")}
-            aria-pressed={isRecording}
-            onClick={onToggleRecording}
+            className={freeSessionActive ? "btn primary recording free-start-btn" : "btn primary free-start-btn"}
+            onClick={freeSessionActive ? onStopFree : onStartFree}
           >
-            {isRecording ? t("stop") : t("record")}
+            {freeSessionActive ? t("stopFree") : t("startFree")}
           </button>
-        ) : null}
+          <MicStatusIndicator />
+        </div>
+      ) : (
+        <>
+          <div className="control-bar">
+            <button type="button" className="btn secondary" onClick={onPrev} disabled={prevDisabled}>
+              {t("prev")}
+            </button>
 
-        {showReplay ? (
-          <button
-            type="button"
-            className="btn secondary"
-            title={t("playRecordingTitle")}
-            onClick={onPlayRecording}
-          >
-            {t("replay")}
-          </button>
-        ) : null}
+            <button
+              type="button"
+              className={isAuto && !isPlaying ? "btn secondary shadow-play-btn" : "btn secondary"}
+              title={isAuto ? t("playRecordTitle") : isPlaying ? t("pauseTitle") : t("playTitle")}
+              onClick={onToggleOriginal}
+            >
+              {getPlayLabel()}
+            </button>
 
-        <MicStatusIndicator />
-      </div>
+            <button type="button" className="btn secondary" onClick={onNext} disabled={nextDisabled}>
+              {t("next")}
+            </button>
+          </div>
+
+          <div className="control-bar-secondary">
+            {showRecord ? (
+              <button
+                type="button"
+                className={isRecording ? "btn primary recording" : "btn primary"}
+                title={isRecording ? t("stopRecordingTitle") : t("recordTitle")}
+                aria-pressed={isRecording}
+                onClick={onToggleRecording}
+              >
+                {isRecording ? t("stop") : t("record")}
+              </button>
+            ) : null}
+
+            {showReplay ? (
+              <button
+                type="button"
+                className="btn secondary"
+                title={t("playRecordingTitle")}
+                onClick={onPlayRecording}
+              >
+                {t("replay")}
+              </button>
+            ) : null}
+
+            <MicStatusIndicator />
+          </div>
+        </>
+      )}
 
       <div className="mode-settings">
         <div className="scope-toggle" role="radiogroup" aria-label={t("practiceFlow")}>
@@ -121,6 +144,7 @@ export const PlaybackControlBar = memo(function PlaybackControlBar({
               role="radio"
               aria-checked={repeatFlow === f.value}
               className={repeatFlow === f.value ? "scope-option active" : "scope-option"}
+              disabled={freeSessionActive}
               onClick={() => onSetRepeatFlow(f.value)}
             >
               {f.label}

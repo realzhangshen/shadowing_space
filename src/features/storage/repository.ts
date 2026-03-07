@@ -1,7 +1,7 @@
 import Dexie from "dexie";
 import { db } from "@/features/storage/db";
 import type { TrackSummary } from "@/types/api";
-import type { HistoryItem, ProgressRecord, RecordingRecord, SegmentRecord, TrackRecord, VideoRecord } from "@/types/models";
+import type { FreeRecordingRecord, HistoryItem, ProgressRecord, RecordingRecord, SegmentRecord, TrackRecord, VideoRecord } from "@/types/models";
 
 export function buildTrackId(videoId: string, token: string): string {
   return `${videoId}:${token}`;
@@ -74,7 +74,7 @@ export async function saveImportBundle(params: {
   const { video, tracks, targetTrackId, segments } = params;
   let effectiveTargetId = targetTrackId;
 
-  await db.transaction("rw", [db.videos, db.tracks, db.segments, db.progress, db.recordings], async () => {
+  await db.transaction("rw", [db.videos, db.tracks, db.segments, db.progress, db.recordings, db.freeRecordings], async () => {
     await db.videos.put(video);
 
     const existingTracks = await db.tracks.where("videoId").equals(video.id).toArray();
@@ -101,6 +101,7 @@ export async function saveImportBundle(params: {
       if (!matchedOldIds.has(oldTrack.id)) {
         await db.segments.where("trackId").equals(oldTrack.id).delete();
         await db.recordings.where("trackId").equals(oldTrack.id).delete();
+        await db.freeRecordings.where("trackId").equals(oldTrack.id).delete();
         await db.progress.delete(oldTrack.id);
       }
     }
@@ -189,11 +190,12 @@ export async function getPracticeSession(videoId: string, trackId: string): Prom
 }
 
 export async function deleteVideo(videoId: string): Promise<void> {
-  await db.transaction("rw", [db.videos, db.tracks, db.segments, db.progress, db.recordings], async () => {
+  await db.transaction("rw", [db.videos, db.tracks, db.segments, db.progress, db.recordings, db.freeRecordings], async () => {
     const tracks = await db.tracks.where("videoId").equals(videoId).toArray();
     for (const track of tracks) {
       await db.segments.where("trackId").equals(track.id).delete();
       await db.recordings.where("trackId").equals(track.id).delete();
+      await db.freeRecordings.where("trackId").equals(track.id).delete();
       await db.progress.delete(track.id);
     }
     await db.tracks.where("videoId").equals(videoId).delete();
@@ -202,10 +204,11 @@ export async function deleteVideo(videoId: string): Promise<void> {
 }
 
 export async function deleteRecordingsForVideo(videoId: string): Promise<void> {
-  await db.transaction("rw", [db.tracks, db.recordings], async () => {
+  await db.transaction("rw", [db.tracks, db.recordings, db.freeRecordings], async () => {
     const tracks = await db.tracks.where("videoId").equals(videoId).toArray();
     for (const track of tracks) {
       await db.recordings.where("trackId").equals(track.id).delete();
+      await db.freeRecordings.where("trackId").equals(track.id).delete();
     }
   });
 }
@@ -216,12 +219,11 @@ export async function getRecordedSegmentIndices(trackId: string): Promise<Set<nu
 }
 
 export async function listHistory(): Promise<HistoryItem[]> {
-  const [videos, tracks, progressItems, allSegments, allRecordings] = await Promise.all([
+  // Phase 1: load lightweight metadata only (no segment text or recording blobs)
+  const [videos, tracks, progressItems] = await Promise.all([
     db.videos.toArray(),
     db.tracks.toArray(),
-    db.progress.toArray(),
-    db.segments.toArray(),
-    db.recordings.toArray()
+    db.progress.toArray()
   ]);
 
   const tracksByVideo = new Map<string, TrackRecord[]>();
@@ -236,30 +238,23 @@ export async function listHistory(): Promise<HistoryItem[]> {
     progressByTrack.set(item.trackId, item);
   }
 
-  const segmentCountByTrack = new Map<string, number>();
-  for (const segment of allSegments) {
-    segmentCountByTrack.set(segment.trackId, (segmentCountByTrack.get(segment.trackId) ?? 0) + 1);
-  }
+  // Determine the active track per video before querying segments/recordings
+  const videoEntries: Array<{
+    video: VideoRecord;
+    activeTrack?: TrackRecord;
+    activeProgress?: ProgressRecord;
+  }> = [];
 
-  const recordingCountByTrack = new Map<string, number>();
-  const recordingSizeByTrack = new Map<string, number>();
-  for (const recording of allRecordings) {
-    recordingCountByTrack.set(recording.trackId, (recordingCountByTrack.get(recording.trackId) ?? 0) + 1);
-    recordingSizeByTrack.set(recording.trackId, (recordingSizeByTrack.get(recording.trackId) ?? 0) + recording.blob.size);
-  }
+  const activeTrackIds: string[] = [];
 
-  const items = videos.map((video) => {
+  for (const video of videos) {
     const videoTracks = tracksByVideo.get(video.id) ?? [];
-
     let activeTrack: TrackRecord | undefined;
     let activeProgress: ProgressRecord | undefined;
 
     for (const track of videoTracks) {
       const progress = progressByTrack.get(track.id);
-      if (!progress) {
-        continue;
-      }
-
+      if (!progress) continue;
       if (!activeProgress || progress.updatedAt > activeProgress.updatedAt) {
         activeProgress = progress;
         activeTrack = track;
@@ -270,6 +265,50 @@ export async function listHistory(): Promise<HistoryItem[]> {
       activeTrack = videoTracks[0];
     }
 
+    videoEntries.push({ video, activeTrack, activeProgress });
+    if (activeTrack) {
+      activeTrackIds.push(activeTrack.id);
+    }
+  }
+
+  // Phase 2: count segments (index-only, no text loaded) and load recordings
+  // only for active tracks
+  const [segmentCounts, recordingStats, freeRecordingStats] = await Promise.all([
+    Promise.all(activeTrackIds.map(async (trackId) => {
+      const count = await db.segments.where("trackId").equals(trackId).count();
+      return [trackId, count] as const;
+    })),
+    Promise.all(activeTrackIds.map(async (trackId) => {
+      const recordings = await db.recordings.where("trackId").equals(trackId).toArray();
+      let totalSize = 0;
+      for (const r of recordings) {
+        totalSize += r.blob.size;
+      }
+      return [trackId, recordings.length, totalSize] as const;
+    })),
+    Promise.all(activeTrackIds.map(async (trackId) => {
+      const freeRecs = await db.freeRecordings.where("trackId").equals(trackId).toArray();
+      let totalSize = 0;
+      for (const r of freeRecs) {
+        totalSize += r.blob.size;
+      }
+      return [trackId, freeRecs.length, totalSize] as const;
+    }))
+  ]);
+
+  const segmentCountByTrack = new Map(segmentCounts);
+  const recordingCountByTrack = new Map<string, number>();
+  const recordingSizeByTrack = new Map<string, number>();
+  for (const [trackId, count, size] of recordingStats) {
+    recordingCountByTrack.set(trackId, count);
+    recordingSizeByTrack.set(trackId, size);
+  }
+  for (const [trackId, count, size] of freeRecordingStats) {
+    recordingCountByTrack.set(trackId, (recordingCountByTrack.get(trackId) ?? 0) + count);
+    recordingSizeByTrack.set(trackId, (recordingSizeByTrack.get(trackId) ?? 0) + size);
+  }
+
+  const items = videoEntries.map(({ video, activeTrack, activeProgress }) => {
     const segmentCount = activeTrack ? segmentCountByTrack.get(activeTrack.id) ?? 0 : 0;
     const recordingCount = activeTrack ? recordingCountByTrack.get(activeTrack.id) ?? 0 : 0;
     const recordingSizeBytes = activeTrack ? recordingSizeByTrack.get(activeTrack.id) ?? 0 : 0;
@@ -326,9 +365,47 @@ export async function saveLatestRecording(params: {
   return record;
 }
 
+export async function saveFreeRecording(params: {
+  trackId: string;
+  startSegmentIndex: number;
+  endSegmentIndex: number;
+  blob: Blob;
+  mimeType: string;
+  durationMs: number;
+  playbackSpeed: number;
+}): Promise<FreeRecordingRecord> {
+  const now = Date.now();
+  const record: FreeRecordingRecord = {
+    id: `${params.trackId}:free:${now}`,
+    trackId: params.trackId,
+    startSegmentIndex: params.startSegmentIndex,
+    endSegmentIndex: params.endSegmentIndex,
+    blob: params.blob,
+    mimeType: params.mimeType,
+    durationMs: params.durationMs,
+    playbackSpeed: params.playbackSpeed,
+    createdAt: now
+  };
+  await db.freeRecordings.put(record);
+  return record;
+}
+
+export async function getFreeRecordings(trackId: string): Promise<FreeRecordingRecord[]> {
+  return db.freeRecordings
+    .where("[trackId+createdAt]")
+    .between([trackId, Dexie.minKey], [trackId, Dexie.maxKey])
+    .reverse()
+    .toArray();
+}
+
+export async function deleteFreeRecording(id: string): Promise<void> {
+  await db.freeRecordings.delete(id);
+}
+
 export async function clearAllData(): Promise<void> {
-  await db.transaction("rw", [db.videos, db.tracks, db.segments, db.progress, db.recordings], async () => {
+  await db.transaction("rw", [db.videos, db.tracks, db.segments, db.progress, db.recordings, db.freeRecordings], async () => {
     await Promise.all([
+      db.freeRecordings.clear(),
       db.recordings.clear(),
       db.progress.clear(),
       db.segments.clear(),

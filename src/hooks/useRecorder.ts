@@ -21,10 +21,15 @@ export function useRecorder(params: UseRecorderParams): {
   isRecording: boolean;
   micStatus: MicStatus;
   stream: MediaStream | null;
-  start: () => Promise<void>;
+  start: () => Promise<boolean>;
   stop: () => Promise<void>;
 } {
   const { onComplete, onError } = params;
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
+  const onErrorRef = useRef(onError);
+  onErrorRef.current = onError;
+
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
@@ -58,9 +63,9 @@ export function useRecorder(params: UseRecorderParams): {
     };
   }, [stopTracks]);
 
-  const start = useCallback(async () => {
+  const start = useCallback(async (): Promise<boolean> => {
     if (isRecording) {
-      return;
+      return true;
     }
 
     setMicStatus("acquiring");
@@ -87,11 +92,13 @@ export function useRecorder(params: UseRecorderParams): {
       recorder.onstop = async () => {
         try {
           const blob = new Blob(chunksRef.current, { type: recorder.mimeType || "audio/webm" });
-          await onComplete({
+          await onCompleteRef.current({
             blob,
             durationMs: Date.now() - startedAtRef.current,
             mimeType: blob.type || "audio/webm"
           });
+        } catch (err) {
+          onErrorRef.current?.(err instanceof Error ? err.message : "");
         } finally {
           chunksRef.current = [];
           stopTracks();
@@ -102,17 +109,16 @@ export function useRecorder(params: UseRecorderParams): {
 
       recorder.start();
       setIsRecording(true);
+      return true;
     } catch (error) {
       setMicStatus("error");
       stopTracks();
       setIsRecording(false);
-      const message =
-        error instanceof Error
-          ? error.message
-          : "Cannot access microphone. Check browser permission settings.";
-      onError?.(message);
+      const message = error instanceof Error ? error.message : "";
+      onErrorRef.current?.(message);
+      return false;
     }
-  }, [isRecording, onComplete, onError, stopTracks]);
+  }, [isRecording, stopTracks]);
 
   const stop = useCallback(async () => {
     const recorder = recorderRef.current;
