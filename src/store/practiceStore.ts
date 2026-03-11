@@ -1,8 +1,8 @@
 import { create } from "zustand";
 
 export type PlaybackMode = "idle" | "source" | "attempt";
-export type PlaybackSpeed = 0.75 | 1 | 1.25 | 1.5;
-export type RepeatFlow = "manual" | "auto";
+export type PlaybackSpeed = 0.5 | 0.75 | 1 | 1.25 | 1.5;
+export type RepeatFlow = "manual" | "auto" | "free";
 
 type PracticeState = {
   currentIndex: number;
@@ -14,6 +14,9 @@ type PracticeState = {
   repeatFlow: RepeatFlow;
   microphoneError?: string;
   playerError?: string;
+  freeRange: { startIndex: number; endIndex: number } | null;
+  freeHighlightIndex: number;
+  freeSessionActive: boolean;
   setCurrentIndex: (index: number) => void;
   setPlaybackMode: (mode: PlaybackMode) => void;
   setPlaybackSpeed: (speed: PlaybackSpeed) => void;
@@ -23,6 +26,9 @@ type PracticeState = {
   setRepeatFlow: (flow: RepeatFlow) => void;
   setMicrophoneError: (message?: string) => void;
   setPlayerError: (message?: string) => void;
+  setFreeRange: (range: { startIndex: number; endIndex: number } | null) => void;
+  setFreeHighlightIndex: (index: number) => void;
+  setFreeSessionActive: (active: boolean) => void;
   resetForSession: (startIndex: number) => void;
 };
 
@@ -34,6 +40,9 @@ export const usePracticeStore = create<PracticeState>((set) => ({
   isPlaying: false,
   transcriptHidden: false,
   repeatFlow: "manual",
+  freeRange: null,
+  freeHighlightIndex: 0,
+  freeSessionActive: false,
   setCurrentIndex: (currentIndex) => set({ currentIndex }),
   setPlaybackMode: (playbackMode) => set({ playbackMode }),
   setPlaybackSpeed: (playbackSpeed) => set({ playbackSpeed }),
@@ -43,6 +52,9 @@ export const usePracticeStore = create<PracticeState>((set) => ({
   setRepeatFlow: (repeatFlow) => set({ repeatFlow }),
   setMicrophoneError: (microphoneError) => set({ microphoneError }),
   setPlayerError: (playerError) => set({ playerError }),
+  setFreeRange: (freeRange) => set({ freeRange }),
+  setFreeHighlightIndex: (freeHighlightIndex) => set({ freeHighlightIndex }),
+  setFreeSessionActive: (freeSessionActive) => set({ freeSessionActive }),
   resetForSession: (startIndex) =>
     set({
       currentIndex: startIndex,
@@ -52,6 +64,9 @@ export const usePracticeStore = create<PracticeState>((set) => ({
       isPlaying: false,
       repeatFlow: "manual",
       microphoneError: undefined,
-      playerError: undefined
+      playerError: undefined,
+      freeRange: null,
+      freeHighlightIndex: 0,
+      freeSessionActive: false
     })
 }));

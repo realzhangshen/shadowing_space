@@ -1,4 +1,4 @@
-import type { Metadata, Viewport } from "next";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { hasLocale } from "next-intl";
 import { NextIntlClientProvider } from "next-intl";
@@ -71,12 +71,6 @@ export async function generateMetadata({
   };
 }
 
-export const viewport: Viewport = {
-  themeColor: siteConfig.themeColor,
-  width: "device-width",
-  initialScale: 1,
-};
-
 export default async function LocaleLayout({
   children,
   params,
@@ -118,29 +112,21 @@ export default async function LocaleLayout({
     inLanguage: locale,
   };
 
+  const tLayout = await getTranslations({ locale, namespace: "Layout" });
+
   return (
-    <html lang={locale}>
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link
-          rel="preconnect"
-          href="https://fonts.gstatic.com"
-          crossOrigin="anonymous"
-        />
-        <link rel="apple-touch-icon" href="/icons/apple-touch-icon.svg" />
-        <JsonLd data={webAppJsonLd} />
-        <JsonLd data={webSiteJsonLd} />
-      </head>
-      <body>
-        <NextIntlClientProvider messages={messages}>
-          <div className="app-bg">
-            <AppHeader />
-            <main className="page-wrap">{children}</main>
-          </div>
-        </NextIntlClientProvider>
-        <Analytics />
-        <SpeedInsights />
-      </body>
-    </html>
+    <NextIntlClientProvider messages={messages}>
+      <JsonLd data={webAppJsonLd} />
+      <JsonLd data={webSiteJsonLd} />
+      <div className="app-bg">
+        <a className="skip-to-content" href="#main-content">
+          {tLayout("skipToContent")}
+        </a>
+        <AppHeader />
+        <main id="main-content" tabIndex={-1} className="page-wrap">{children}</main>
+      </div>
+      <Analytics />
+      <SpeedInsights />
+    </NextIntlClientProvider>
   );
 }

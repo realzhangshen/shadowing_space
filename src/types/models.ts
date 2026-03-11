@@ -41,6 +41,18 @@ export type RecordingRecord = {
   updatedAt: number;
 };
 
+export type FreeRecordingRecord = {
+  id: string;
+  trackId: string;
+  startSegmentIndex: number;
+  endSegmentIndex: number;
+  blob: Blob;
+  mimeType: string;
+  durationMs: number;
+  playbackSpeed: number;
+  createdAt: number;
+};
+
 export type HistoryItem = {
   video: VideoRecord;
   activeTrack?: TrackRecord;

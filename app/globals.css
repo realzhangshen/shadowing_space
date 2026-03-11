@@ -57,6 +57,73 @@ a:hover {
   padding: 1.2rem;
 }
 
+/* Skip to content (accessibility) */
+
+.skip-to-content {
+  position: absolute;
+  left: -9999px;
+  top: auto;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  z-index: 100;
+}
+
+.skip-to-content:focus {
+  position: fixed;
+  top: 0.5rem;
+  left: 0.5rem;
+  width: auto;
+  height: auto;
+  padding: 0.5rem 1rem;
+  background: var(--primary);
+  color: var(--primary-text);
+  border-radius: 6px;
+  font-size: 0.9rem;
+  text-decoration: none;
+  z-index: 100;
+}
+
+/* Error boundary + not-found cards */
+
+.error-boundary-card,
+.not-found-card {
+  text-align: center;
+  margin-top: 2rem;
+}
+
+.error-boundary-actions {
+  display: flex;
+  gap: 0.6rem;
+  justify-content: center;
+  margin-top: 0.8rem;
+}
+
+/* Loading skeleton */
+
+.loading-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.skeleton-block {
+  height: 120px;
+  background: var(--bg-elevated);
+  border-radius: 12px;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.skeleton-block-short {
+  height: 60px;
+  width: 60%;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
 /* Navigation */
 
 .topbar {
@@ -602,6 +669,24 @@ textarea {
 .segment-blurred {
   filter: blur(6px);
   user-select: none;
+}
+
+.segment-item.in-range {
+  border-left: 3px solid var(--primary);
+}
+
+.segment-item.out-of-range {
+  opacity: 0.4;
+}
+
+.free-start-btn {
+  padding: 0.75rem 1.8rem;
+  font-size: 1rem;
+}
+
+.free-range-header {
+  display: flex;
+  gap: 0.35rem;
 }
 
 

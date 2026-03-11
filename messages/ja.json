@@ -160,11 +160,13 @@
     "recorded": "{count} 録音済み",
     "speed": "速度",
     "resumeMessage": "文 #{number} から再開しました",
-    "shortcutsHint": "Space：再生/一時停止 · R：録音 · A：再生 · B：再生 · M：マニュアル/オート · T：テキスト切替 · ←/→：前/次",
+    "shortcutsHint": "Space：再生/一時停止 · R：録音 · A：再生 · B：再生 · M：モード切替 · T：テキスト切替 · ←/→：前/次",
+    "shortcutsHintFree": "F：自由シャドーイング開始/停止 · M：モード切替 · T：テキスト切替",
     "waveformUnavailable": "録音中、波形は利用不可",
     "errorNoSession": "ローカルセッションが見つかりません。動画を再インポートしてください。",
     "errorNoSentence": "字幕トラックに再生可能な文がありません。",
-    "errorLoadSession": "練習セッションの読み込みに失敗しました。"
+    "errorLoadSession": "練習セッションの読み込みに失敗しました。",
+    "micAccessError": "マイクにアクセスできません。ブラウザの権限設定を確認してください。"
   },
   "PlaybackControlBar": {
     "prev": "← 前へ",
@@ -177,6 +179,9 @@
     "replay": "🎧 リプレイ",
     "manual": "マニュアル",
     "auto": "オート",
+    "free": "自由",
+    "startFree": "▶ 自由シャドーイング開始",
+    "stopFree": "⏹ 停止",
     "preparing": "準備中...",
     "noMic": "マイクなし",
     "useHeadphones": "🎧 ヘッドホン推奨",
@@ -194,7 +199,10 @@
     "hide": "非表示",
     "showTitle": "文を表示",
     "hideTitle": "文を非表示",
-    "sentenceList": "文リスト"
+    "sentenceList": "文リスト",
+    "freeRangeTitle": "範囲選択",
+    "selectAll": "すべて",
+    "fromCurrent": "ここから"
   },
   "Metadata": {
     "homeTitle": "YouTubeシャドーイング練習ツール",
@@ -207,6 +215,20 @@
     "dashboardDescription": "シャドーイング練習の履歴と動画ごとの進捗を確認。",
     "practiceTitle": "練習セッション",
     "practiceDescription": "シャドーイング練習セッション——聞いて、録音して、発音を比較。"
+  },
+  "Layout": {
+    "skipToContent": "メインコンテンツへスキップ"
+  },
+  "ErrorBoundary": {
+    "title": "問題が発生しました",
+    "message": "予期しないエラーが発生しました。もう一度お試しいただくか、ダッシュボードにお戻りください。",
+    "retry": "もう一度試す",
+    "backToDashboard": "ダッシュボードに戻る"
+  },
+  "NotFoundPage": {
+    "title": "ページが見つかりません",
+    "message": "お探しのページは存在しないか、移動されました。",
+    "backHome": "ホームへ戻る"
   },
   "OfflinePage": {
     "title": "オフラインです",

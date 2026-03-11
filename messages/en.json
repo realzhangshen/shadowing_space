@@ -160,11 +160,13 @@
     "recorded": "{count} recorded",
     "speed": "Speed",
     "resumeMessage": "Resumed from sentence #{number}",
-    "shortcutsHint": "Space: play/pause \u00b7 R: record \u00b7 A: replay \u00b7 B: playback \u00b7 M: manual/auto \u00b7 T: toggle text \u00b7 \u2190/\u2192: prev/next",
+    "shortcutsHint": "Space: play/pause \u00b7 R: record \u00b7 A: replay \u00b7 B: playback \u00b7 M: mode \u00b7 T: toggle text \u00b7 \u2190/\u2192: prev/next",
+    "shortcutsHintFree": "F: start/stop free shadowing \u00b7 M: mode \u00b7 T: toggle text",
     "waveformUnavailable": "Recording active, waveform unavailable",
     "errorNoSession": "No local session found. Please import the video again.",
     "errorNoSentence": "Caption track has no playable sentence.",
-    "errorLoadSession": "Failed to load practice session."
+    "errorLoadSession": "Failed to load practice session.",
+    "micAccessError": "Cannot access microphone. Check browser permission settings."
   },
   "PlaybackControlBar": {
     "prev": "\u2190 Prev",
@@ -177,6 +179,9 @@
     "replay": "\ud83c\udfa7 Replay",
     "manual": "Manual",
     "auto": "Auto",
+    "free": "Free",
+    "startFree": "\u25b6 Start Free Shadowing",
+    "stopFree": "\u23f9 Stop",
     "preparing": "Preparing...",
     "noMic": "No mic",
     "useHeadphones": "\ud83c\udfa7 Use headphones",
@@ -194,7 +199,10 @@
     "hide": "Hide",
     "showTitle": "Show sentences",
     "hideTitle": "Hide sentences",
-    "sentenceList": "Sentence list"
+    "sentenceList": "Sentence list",
+    "freeRangeTitle": "Select Range",
+    "selectAll": "All",
+    "fromCurrent": "From Here"
   },
   "Metadata": {
     "homeTitle": "YouTube Shadowing Practice Tool",
@@ -207,6 +215,20 @@
     "dashboardDescription": "View your shadowing practice history and track progress across videos.",
     "practiceTitle": "Practice Session",
     "practiceDescription": "Shadowing practice session — listen, record, and compare your pronunciation."
+  },
+  "Layout": {
+    "skipToContent": "Skip to main content"
+  },
+  "ErrorBoundary": {
+    "title": "Something went wrong",
+    "message": "An unexpected error occurred. You can try again or go back to the dashboard.",
+    "retry": "Try again",
+    "backToDashboard": "Back to Dashboard"
+  },
+  "NotFoundPage": {
+    "title": "Page not found",
+    "message": "The page you're looking for doesn't exist or has been moved.",
+    "backHome": "Go to Home"
   },
   "OfflinePage": {
     "title": "You are offline",

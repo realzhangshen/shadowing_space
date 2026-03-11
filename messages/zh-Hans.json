@@ -160,11 +160,13 @@
     "recorded": "已录制 {count} 句",
     "speed": "速度",
     "resumeMessage": "已从第 {number} 句恢复",
-    "shortcutsHint": "Space：播放/暂停 · R：录音 · A：重放 · B：回放 · M：手动/自动 · T：切换文本 · ←/→：上/下一句",
+    "shortcutsHint": "Space：播放/暂停 · R：录音 · A：重放 · B：回放 · M：切换模式 · T：切换文本 · ←/→：上/下一句",
+    "shortcutsHintFree": "F：开始/停止自由跟读 · M：切换模式 · T：切换文本",
     "waveformUnavailable": "录音正常，波形暂不可用",
     "errorNoSession": "未找到本地会话。请重新导入视频。",
     "errorNoSentence": "字幕轨道没有可播放的句子。",
-    "errorLoadSession": "加载练习会话失败。"
+    "errorLoadSession": "加载练习会话失败。",
+    "micAccessError": "无法访问麦克风。请检查浏览器权限设置。"
   },
   "PlaybackControlBar": {
     "prev": "← 上一句",
@@ -177,6 +179,9 @@
     "replay": "🎧 回放",
     "manual": "手动",
     "auto": "自动",
+    "free": "自由",
+    "startFree": "▶ 开始自由跟读",
+    "stopFree": "⏹ 停止",
     "preparing": "准备中...",
     "noMic": "无麦克风",
     "useHeadphones": "🎧 建议使用耳机",
@@ -194,7 +199,10 @@
     "hide": "隐藏",
     "showTitle": "显示句子",
     "hideTitle": "隐藏句子",
-    "sentenceList": "句子列表"
+    "sentenceList": "句子列表",
+    "freeRangeTitle": "选择范围",
+    "selectAll": "全部",
+    "fromCurrent": "从此处"
   },
   "Metadata": {
     "homeTitle": "YouTube 跟读练习工具",
@@ -207,6 +215,20 @@
     "dashboardDescription": "查看你的跟读练习历史记录和各视频的进度。",
     "practiceTitle": "练习中",
     "practiceDescription": "跟读练习——听原声、录制、对比你的发音。"
+  },
+  "Layout": {
+    "skipToContent": "跳至主要内容"
+  },
+  "ErrorBoundary": {
+    "title": "出了点问题",
+    "message": "发生了意外错误。你可以重试或返回仪表盘。",
+    "retry": "重试",
+    "backToDashboard": "返回仪表盘"
+  },
+  "NotFoundPage": {
+    "title": "页面未找到",
+    "message": "你要找的页面不存在或已被移动。",
+    "backHome": "返回首页"
   },
   "OfflinePage": {
     "title": "当前处于离线状态",

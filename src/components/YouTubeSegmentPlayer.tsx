@@ -72,6 +72,13 @@ export type YouTubeSegmentPlayerHandle = {
   playSegment: (startMs: number, endMs: number, speed: PlaybackSpeed) => void;
   toggleSegment: (startMs: number, endMs: number, speed: PlaybackSpeed) => void;
   playContinuous: (startMs: number, endMs: number, speed: PlaybackSpeed, onEnd: () => void) => void;
+  playFreeRange: (
+    startMs: number,
+    endMs: number,
+    speed: PlaybackSpeed,
+    onTimeUpdate: (currentMs: number) => void,
+    onEnd: () => void
+  ) => void;
   pause: () => void;
   getCurrentTimeMs: () => number;
   setPlaybackSpeed: (speed: PlaybackSpeed) => void;
@@ -88,12 +95,17 @@ export const YouTubeSegmentPlayer = forwardRef<YouTubeSegmentPlayerHandle, YouTu
     const elementId = useId().replace(/[:]/g, "");
     const playerRef = useRef<YT.Player | null>(null);
     const endTimerRef = useRef<number | null>(null);
+    const pollIntervalRef = useRef<number | null>(null);
     const [isReady, setIsReady] = useState(false);
 
-    const clearEndTimer = () => {
+    const clearTimers = () => {
       if (endTimerRef.current) {
         window.clearTimeout(endTimerRef.current);
         endTimerRef.current = null;
+      }
+      if (pollIntervalRef.current) {
+        window.clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
       }
     };
 
@@ -142,7 +154,7 @@ export const YouTubeSegmentPlayer = forwardRef<YouTubeSegmentPlayerHandle, YouTu
 
       return () => {
         mounted = false;
-        clearEndTimer();
+        clearTimers();
         playerRef.current?.destroy();
         playerRef.current = null;
       };
@@ -155,11 +167,11 @@ export const YouTubeSegmentPlayer = forwardRef<YouTubeSegmentPlayerHandle, YouTu
       }
 
       playerRef.current.cueVideoById(videoId, 0);
-      clearEndTimer();
+      clearTimers();
     }, [isReady, videoId]);
 
     const seekAndPlay = (startMs: number, endMs: number, speed: PlaybackSpeed) => {
-      clearEndTimer();
+      clearTimers();
       const startSeconds = Math.max(0, startMs / 1_000);
       const durationSeconds = Math.max(0.2, (endMs - startMs) / 1_000);
 
@@ -183,7 +195,7 @@ export const YouTubeSegmentPlayer = forwardRef<YouTubeSegmentPlayerHandle, YouTu
           if (!isReady || !playerRef.current) return;
 
           if (playerRef.current.getPlayerState() === window.YT.PlayerState.PLAYING) {
-            clearEndTimer();
+            clearTimers();
             playerRef.current.pauseVideo();
             return;
           }
@@ -192,7 +204,7 @@ export const YouTubeSegmentPlayer = forwardRef<YouTubeSegmentPlayerHandle, YouTu
         },
         playContinuous: (startMs, endMs, speed, onEnd) => {
           if (!isReady || !playerRef.current) return;
-          clearEndTimer();
+          clearTimers();
           const startSeconds = Math.max(0, startMs / 1_000);
           const durationSeconds = Math.max(0.2, (endMs - startMs) / 1_000);
 
@@ -205,8 +217,31 @@ export const YouTubeSegmentPlayer = forwardRef<YouTubeSegmentPlayerHandle, YouTu
             onEnd();
           }, (durationSeconds * 1_000) / speed);
         },
+        playFreeRange: (startMs, endMs, speed, onTimeUpdate, onEnd) => {
+          if (!isReady || !playerRef.current) return;
+          clearTimers();
+          const startSeconds = Math.max(0, startMs / 1_000);
+          const endSeconds = endMs / 1_000;
+
+          playerRef.current.setPlaybackRate(speed);
+          playerRef.current.seekTo(startSeconds, true);
+          playerRef.current.playVideo();
+
+          pollIntervalRef.current = window.setInterval(() => {
+            if (!playerRef.current) return;
+            const player = playerRef.current as YT.Player & { getCurrentTime?: () => number };
+            const currentMs = (player.getCurrentTime?.() ?? 0) * 1_000;
+            onTimeUpdate(currentMs);
+
+            if (currentMs / 1_000 >= endSeconds) {
+              clearTimers();
+              playerRef.current?.pauseVideo();
+              onEnd();
+            }
+          }, 250);
+        },
         pause: () => {
-          clearEndTimer();
+          clearTimers();
           playerRef.current?.pauseVideo();
         },
         getCurrentTimeMs: () => {
