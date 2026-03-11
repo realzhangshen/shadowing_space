@@ -51,6 +51,7 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | undefined>();
   const [latestRecordingReady, setLatestRecordingReady] = useState(false);
+  const [freeRecordingReady, setFreeRecordingReady] = useState(false);
   const [recordingReadySet, setRecordingReadySet] = useState<Set<number>>(new Set());
   const [resumeMessage, setResumeMessage] = useState<string | undefined>();
   const [waveformBlob, setWaveformBlob] = useState<Blob | null>(null);
@@ -183,6 +184,13 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
     playerRef.current?.setPlaybackSpeed(playbackSpeed);
   }, [playbackSpeed]);
 
+  // Auto-select all segments when switching to free mode
+  useEffect(() => {
+    if (repeatFlow === "free" && freeRange === null && segments.length > 0) {
+      setFreeRange({ startIndex: 0, endIndex: segments.length - 1 });
+    }
+  }, [repeatFlow, freeRange, segments.length, setFreeRange]);
+
   // --- Recorder ---
 
   const recorder = useRecorder({
@@ -193,7 +201,7 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
       if (state.repeatFlow === "free") {
         freeRecordingBlobRef.current = blob;
         setWaveformBlob(blob);
-        setLatestRecordingReady(true);
+        setFreeRecordingReady(true);
 
         const range = state.freeRange;
         if (range) {
@@ -552,6 +560,7 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
 
     setFreeHighlightIndex(range.startIndex);
     freeRecordingBlobRef.current = null;
+    setFreeRecordingReady(false);
 
     const started = await recorder.start();
     if (!started) return;
@@ -657,15 +666,29 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
               ? (segments[freeHighlightIndex]?.text ?? t("noSegment"))
               : (currentSegment?.text ?? t("noSegment"))}
           </p>
-          <div className="progress-row">
-            <span className="progress-pct">
-              {Math.min(currentIndex + 1, segments.length)} / {segments.length}
-            </span>
-            <div className="progress-bar">
-              <div className="progress-fill" style={{ width: `${progressPct}%` }} />
+          {repeatFlow === "free" ? (
+            <div className="progress-row">
+              <span className="progress-pct">
+                {freeRange && !(freeRange.startIndex === 0 && freeRange.endIndex === segments.length - 1)
+                  ? t("rangeInfo", {
+                      start: freeRange.startIndex + 1,
+                      end: freeRange.endIndex + 1,
+                      count: freeRange.endIndex - freeRange.startIndex + 1
+                    })
+                  : t("allSelected")}
+              </span>
             </div>
-            <span className="progress-pct">{t("recorded", { count: recordedCount })}</span>
-          </div>
+          ) : (
+            <div className="progress-row">
+              <span className="progress-pct">
+                {Math.min(currentIndex + 1, segments.length)} / {segments.length}
+              </span>
+              <div className="progress-bar">
+                <div className="progress-fill" style={{ width: `${progressPct}%` }} />
+              </div>
+              <span className="progress-pct">{t("recorded", { count: recordedCount })}</span>
+            </div>
+          )}
         </div>
 
         {(displayPeaks || isLiveWaveform) ? (
@@ -686,7 +709,7 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
         <PlaybackControlBar
           isPlaying={isPlaying}
           isRecording={isRecording}
-          hasRecording={latestRecordingReady}
+          hasRecording={repeatFlow === "free" ? freeRecordingReady : latestRecordingReady}
           micStatus={recorder.micStatus}
           repeatFlow={repeatFlow}
           onToggleOriginal={() => void toggleOriginal()}

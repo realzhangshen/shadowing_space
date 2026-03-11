@@ -83,6 +83,16 @@ export const PlaybackControlBar = memo(function PlaybackControlBar({
           >
             {freeSessionActive ? t("stopFree") : t("startFree")}
           </button>
+          {!freeSessionActive && hasRecording ? (
+            <button
+              type="button"
+              className="btn secondary"
+              title={t("playRecordingTitle")}
+              onClick={onPlayRecording}
+            >
+              {t("replay")}
+            </button>
+          ) : null}
           <MicStatusIndicator />
         </div>
       ) : (

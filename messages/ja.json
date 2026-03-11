@@ -158,6 +158,8 @@
     "autoSuffix": "（自動生成）",
     "noSegment": "セグメントなし",
     "recorded": "{count} 録音済み",
+    "rangeInfo": "範囲：{start} → {end}（{count} 文）",
+    "allSelected": "全文選択済み",
     "speed": "速度",
     "resumeMessage": "文 #{number} から再開しました",
     "shortcutsHint": "Space：再生/一時停止 · R：録音 · A：再生 · B：再生 · M：モード切替 · T：テキスト切替 · ←/→：前/次",
@@ -202,7 +204,8 @@
     "sentenceList": "文リスト",
     "freeRangeTitle": "範囲選択",
     "selectAll": "すべて",
-    "fromCurrent": "ここから"
+    "fromCurrent": "ここから",
+    "clickEndPoint": "終点をクリックして設定"
   },
   "Metadata": {
     "homeTitle": "YouTubeシャドーイング練習ツール",

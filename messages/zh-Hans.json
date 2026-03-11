@@ -158,6 +158,8 @@
     "autoSuffix": "（自动生成）",
     "noSegment": "无片段",
     "recorded": "已录制 {count} 句",
+    "rangeInfo": "范围：{start} → {end}（{count} 句）",
+    "allSelected": "已选择全部句子",
     "speed": "速度",
     "resumeMessage": "已从第 {number} 句恢复",
     "shortcutsHint": "Space：播放/暂停 · R：录音 · A：重放 · B：回放 · M：切换模式 · T：切换文本 · ←/→：上/下一句",
@@ -202,7 +204,8 @@
     "sentenceList": "句子列表",
     "freeRangeTitle": "选择范围",
     "selectAll": "全部",
-    "fromCurrent": "从此处"
+    "fromCurrent": "从此处",
+    "clickEndPoint": "点击设置终点"
   },
   "Metadata": {
     "homeTitle": "YouTube 跟读练习工具",

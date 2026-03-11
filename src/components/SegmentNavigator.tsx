@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useCallback, useEffect, useRef } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { SegmentRecord } from "@/types/models";
 
@@ -35,12 +35,12 @@ export const SegmentNavigator = memo(function SegmentNavigator({
 }: SegmentNavigatorProps): JSX.Element {
   const t = useTranslations("SegmentNavigator");
   const activeRef = useRef<HTMLDivElement | null>(null);
-  const rangeClickState = useRef<"idle" | "start-set">("idle");
+  const [rangeClickState, setRangeClickState] = useState<"idle" | "start-set">("idle");
 
   const effectiveHighlight = freeMode && freeSessionActive ? freeHighlightIndex ?? 0 : currentIndex;
 
   useEffect(() => {
-    rangeClickState.current = "idle";
+    setRangeClickState("idle");
   }, [freeMode]);
 
   useEffect(() => {
@@ -50,9 +50,9 @@ export const SegmentNavigator = memo(function SegmentNavigator({
   const handleFreeClick = useCallback((index: number) => {
     if (!onSetFreeRange || freeSessionActive) return;
 
-    if (rangeClickState.current === "idle") {
+    if (rangeClickState === "idle") {
       onSetFreeRange({ startIndex: index, endIndex: index });
-      rangeClickState.current = "start-set";
+      setRangeClickState("start-set");
     } else {
       const currentRange = freeRange;
       if (currentRange) {
@@ -60,21 +60,22 @@ export const SegmentNavigator = memo(function SegmentNavigator({
         const end = Math.max(currentRange.startIndex, index);
         onSetFreeRange({ startIndex: start, endIndex: end });
       }
-      rangeClickState.current = "idle";
+      setRangeClickState("idle");
     }
-  }, [freeRange, freeSessionActive, onSetFreeRange]);
+  }, [freeRange, freeSessionActive, onSetFreeRange, rangeClickState]);
 
   const selectAll = useCallback(() => {
     if (segments.length === 0 || !onSetFreeRange) return;
     onSetFreeRange({ startIndex: 0, endIndex: segments.length - 1 });
-    rangeClickState.current = "idle";
+    setRangeClickState("idle");
   }, [onSetFreeRange, segments.length]);
 
   const fromCurrent = useCallback(() => {
     if (segments.length === 0 || !onSetFreeRange) return;
-    onSetFreeRange({ startIndex: currentIndex, endIndex: segments.length - 1 });
-    rangeClickState.current = "idle";
-  }, [currentIndex, onSetFreeRange, segments.length]);
+    const fromIndex = freeMode && freeRange ? freeRange.startIndex : currentIndex;
+    onSetFreeRange({ startIndex: fromIndex, endIndex: segments.length - 1 });
+    setRangeClickState("idle");
+  }, [currentIndex, freeMode, freeRange, onSetFreeRange, segments.length]);
 
   return (
     <section className="segment-card">
@@ -87,6 +88,9 @@ export const SegmentNavigator = memo(function SegmentNavigator({
             <div className="free-range-header">
               <button type="button" className="icon-btn" onClick={selectAll}>{t("selectAll")}</button>
               <button type="button" className="icon-btn" onClick={fromCurrent}>{t("fromCurrent")}</button>
+              {rangeClickState === "start-set" ? (
+                <span className="range-hint">{t("clickEndPoint")}</span>
+              ) : null}
             </div>
           ) : null}
           <button

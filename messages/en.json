@@ -158,6 +158,8 @@
     "autoSuffix": " (auto)",
     "noSegment": "No segment",
     "recorded": "{count} recorded",
+    "rangeInfo": "Range: {start} → {end} ({count} sentences)",
+    "allSelected": "All sentences selected",
     "speed": "Speed",
     "resumeMessage": "Resumed from sentence #{number}",
     "shortcutsHint": "Space: play/pause \u00b7 R: record \u00b7 A: replay \u00b7 B: playback \u00b7 M: mode \u00b7 T: toggle text \u00b7 \u2190/\u2192: prev/next",
@@ -202,7 +204,8 @@
     "sentenceList": "Sentence list",
     "freeRangeTitle": "Select Range",
     "selectAll": "All",
-    "fromCurrent": "From Here"
+    "fromCurrent": "From Here",
+    "clickEndPoint": "Click to set end point"
   },
   "Metadata": {
     "homeTitle": "YouTube Shadowing Practice Tool",

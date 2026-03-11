@@ -158,6 +158,8 @@
     "autoSuffix": "（自動產生）",
     "noSegment": "無片段",
     "recorded": "已錄製 {count} 句",
+    "rangeInfo": "範圍：{start} → {end}（{count} 句）",
+    "allSelected": "已選擇全部句子",
     "speed": "速度",
     "resumeMessage": "已從第 {number} 句恢復",
     "shortcutsHint": "Space：播放/暫停 · R：錄音 · A：重播 · B：回放 · M：切換模式 · T：切換文字 · ←/→：上/下一句",
@@ -202,7 +204,8 @@
     "sentenceList": "句子列表",
     "freeRangeTitle": "選擇範圍",
     "selectAll": "全部",
-    "fromCurrent": "從此處"
+    "fromCurrent": "從此處",
+    "clickEndPoint": "點擊設置終點"
   },
   "Metadata": {
     "homeTitle": "YouTube 跟讀練習工具",

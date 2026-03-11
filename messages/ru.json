@@ -158,6 +158,8 @@
     "autoSuffix": " (авто)",
     "noSegment": "Нет сегмента",
     "recorded": "Записано {count}",
+    "rangeInfo": "Диапазон: {start} → {end} ({count} предложений)",
+    "allSelected": "Все предложения выбраны",
     "speed": "Скорость",
     "resumeMessage": "Продолжение с предложения #{number}",
     "shortcutsHint": "Space: воспр./пауза · R: запись · A: повтор · B: воспроизв. · M: режим · T: текст · ←/→: пред./след.",
@@ -202,7 +204,8 @@
     "sentenceList": "Список предложений",
     "freeRangeTitle": "Выбрать диапазон",
     "selectAll": "Все",
-    "fromCurrent": "Отсюда"
+    "fromCurrent": "Отсюда",
+    "clickEndPoint": "Нажмите, чтобы задать конечную точку"
   },
   "Metadata": {
     "homeTitle": "Инструмент для шедоуинга с YouTube",
