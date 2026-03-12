@@ -3,7 +3,7 @@ import type {
   FetchTranscriptResponse,
   ProxyHealthResponse,
   ResolveTranscriptRequest,
-  ResolveTranscriptResponse
+  ResolveTranscriptResponse,
 } from "@/types/api";
 
 export class ApiError extends Error {
@@ -12,7 +12,13 @@ export class ApiError extends Error {
   errorCode?: string;
   details?: Record<string, unknown>;
 
-  constructor(message: string, status: number, requestId?: string, errorCode?: string, details?: Record<string, unknown>) {
+  constructor(
+    message: string,
+    status: number,
+    requestId?: string,
+    errorCode?: string,
+    details?: Record<string, unknown>,
+  ) {
     super(message);
     this.name = "ApiError";
     this.status = status;
@@ -38,22 +44,25 @@ async function parseResponse<T>(response: Response): Promise<T> {
     const message = typeof payload.message === "string" ? payload.message : "Request failed";
     const requestId = typeof payload.requestId === "string" ? payload.requestId : undefined;
     const errorCode = typeof payload.errorCode === "string" ? payload.errorCode : undefined;
-    const details = typeof payload.details === "object" && payload.details !== null
-      ? payload.details as Record<string, unknown>
-      : undefined;
+    const details =
+      typeof payload.details === "object" && payload.details !== null
+        ? (payload.details as Record<string, unknown>)
+        : undefined;
     throw new ApiError(message, response.status, requestId, errorCode, details);
   }
 
   return payload as T;
 }
 
-export async function fetchTranscriptTracks(input: FetchTranscriptRequest): Promise<FetchTranscriptResponse> {
+export async function fetchTranscriptTracks(
+  input: FetchTranscriptRequest,
+): Promise<FetchTranscriptResponse> {
   const response = await fetch("/api/youtube/transcript/fetch", {
     method: "POST",
     headers: {
-      "Content-Type": "application/json"
+      "Content-Type": "application/json",
     },
-    body: JSON.stringify(input)
+    body: JSON.stringify(input),
   });
 
   return parseResponse<FetchTranscriptResponse>(response);
@@ -64,13 +73,15 @@ export async function fetchProxyHealth(): Promise<ProxyHealthResponse> {
   return parseResponse<ProxyHealthResponse>(response);
 }
 
-export async function fetchTranscriptSegments(input: ResolveTranscriptRequest): Promise<ResolveTranscriptResponse> {
+export async function fetchTranscriptSegments(
+  input: ResolveTranscriptRequest,
+): Promise<ResolveTranscriptResponse> {
   const response = await fetch("/api/youtube/transcript/segments", {
     method: "POST",
     headers: {
-      "Content-Type": "application/json"
+      "Content-Type": "application/json",
     },
-    body: JSON.stringify(input)
+    body: JSON.stringify(input),
   });
 
   return parseResponse<ResolveTranscriptResponse>(response);

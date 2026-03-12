@@ -67,6 +67,6 @@ export const usePracticeStore = create<PracticeState>((set) => ({
       playerError: undefined,
       freeRange: null,
       freeHighlightIndex: 0,
-      freeSessionActive: false
-    })
+      freeSessionActive: false,
+    }),
 }));

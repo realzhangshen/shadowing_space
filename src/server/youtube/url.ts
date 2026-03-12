@@ -4,7 +4,7 @@ const YOUTUBE_HOSTS = new Set([
   "youtube.com",
   "www.youtube.com",
   "m.youtube.com",
-  "music.youtube.com"
+  "music.youtube.com",
 ]);
 
 const SHORT_HOSTS = new Set(["youtu.be", "www.youtu.be"]);

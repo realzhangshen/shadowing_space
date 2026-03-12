@@ -49,9 +49,7 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
-export default async function RootLayout({
-  children,
-}: RootLayoutProps): Promise<JSX.Element> {
+export default async function RootLayout({ children }: RootLayoutProps): Promise<JSX.Element> {
   const locale = await getLocale();
 
   return (

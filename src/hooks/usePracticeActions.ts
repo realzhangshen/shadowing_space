@@ -80,7 +80,15 @@ export function usePracticeActions(deps: PracticeActionsDeps) {
   // --- Recorder onComplete handler ---
 
   const onRecordingComplete = useCallback(
-    async ({ blob, durationMs, mimeType }: { blob: Blob; durationMs: number; mimeType: string }) => {
+    async ({
+      blob,
+      durationMs,
+      mimeType,
+    }: {
+      blob: Blob;
+      durationMs: number;
+      mimeType: string;
+    }) => {
       const state = usePracticeStore.getState();
       const { segments: segs } = depsRef.current;
       const recorder = recorderRef.current;
@@ -160,7 +168,25 @@ export function usePracticeActions(deps: PracticeActionsDeps) {
         }, autoAdvanceDelayMs);
       }
     },
-    [trackId, recorderRef, segmentsRef, playerRef, recordingPlayback, recordingTargetRef, audioFinishedRef, manualStopRef, autoAdvanceTimerRef, freeRecordingBlobRef, setLatestRecordingReady, setFreeRecordingReady, setRecordingReadySet, setWaveformBlob, setCurrentIndex, setPlaybackMode, autoAdvanceDelayMs],
+    [
+      trackId,
+      recorderRef,
+      segmentsRef,
+      playerRef,
+      recordingPlayback,
+      recordingTargetRef,
+      audioFinishedRef,
+      manualStopRef,
+      autoAdvanceTimerRef,
+      freeRecordingBlobRef,
+      setLatestRecordingReady,
+      setFreeRecordingReady,
+      setRecordingReadySet,
+      setWaveformBlob,
+      setCurrentIndex,
+      setPlaybackMode,
+      autoAdvanceDelayMs,
+    ],
   );
 
   // --- Navigation ---
@@ -184,7 +210,18 @@ export function usePracticeActions(deps: PracticeActionsDeps) {
       playerRef.current?.playSegment(seg.startMs, seg.endMs, playbackSpeed);
       setPlaybackMode("source");
     },
-    [recorderRef, recordingPlayback.stop, playbackSpeed, segments, setCurrentIndex, setPlaybackMode, autoAdvanceTimerRef, manualStopRef, playerRef, audioFinishedRef],
+    [
+      recorderRef,
+      recordingPlayback.stop,
+      playbackSpeed,
+      segments,
+      setCurrentIndex,
+      setPlaybackMode,
+      autoAdvanceTimerRef,
+      manualStopRef,
+      playerRef,
+      audioFinishedRef,
+    ],
   );
 
   const goPrev = useCallback(() => {
@@ -214,7 +251,16 @@ export function usePracticeActions(deps: PracticeActionsDeps) {
     recordingPlayback.stop();
     playerRef.current?.playSegment(currentSegment.startMs, currentSegment.endMs, playbackSpeed);
     setPlaybackMode("source");
-  }, [recorderRef, recordingPlayback.stop, segments, currentIndex, playbackSpeed, setPlaybackMode, manualStopRef, playerRef]);
+  }, [
+    recorderRef,
+    recordingPlayback.stop,
+    segments,
+    currentIndex,
+    playbackSpeed,
+    setPlaybackMode,
+    manualStopRef,
+    playerRef,
+  ]);
 
   const startShadowing = useCallback(async () => {
     const recorder = recorderRef.current;
@@ -229,7 +275,18 @@ export function usePracticeActions(deps: PracticeActionsDeps) {
 
     recordingTargetRef.current = currentIndex;
     await recorder?.start();
-  }, [recorderRef, recordingPlayback.stop, currentIndex, segments, playbackSpeed, setMicrophoneError, setPlaybackMode, audioFinishedRef, playerRef, recordingTargetRef]);
+  }, [
+    recorderRef,
+    recordingPlayback.stop,
+    currentIndex,
+    segments,
+    playbackSpeed,
+    setMicrophoneError,
+    setPlaybackMode,
+    audioFinishedRef,
+    playerRef,
+    recordingTargetRef,
+  ]);
 
   const toggleRecording = useCallback(async () => {
     const recorder = recorderRef.current;
@@ -246,7 +303,14 @@ export function usePracticeActions(deps: PracticeActionsDeps) {
       recordingTargetRef.current = currentIndex;
       await recorder?.start();
     }
-  }, [currentIndex, recorderRef, recordingPlayback, setMicrophoneError, playerRef, recordingTargetRef]);
+  }, [
+    currentIndex,
+    recorderRef,
+    recordingPlayback,
+    setMicrophoneError,
+    playerRef,
+    recordingTargetRef,
+  ]);
 
   const toggleOriginal = useCallback(async () => {
     const recorder = recorderRef.current;
@@ -278,7 +342,19 @@ export function usePracticeActions(deps: PracticeActionsDeps) {
     audioFinishedRef.current = false;
     playerRef.current?.toggleSegment(currentSegment.startMs, currentSegment.endMs, playbackSpeed);
     setPlaybackMode("source");
-  }, [recorderRef, recordingPlayback.stop, segments, currentIndex, isPlaying, playbackSpeed, setPlaybackMode, startShadowing, manualStopRef, playerRef, audioFinishedRef]);
+  }, [
+    recorderRef,
+    recordingPlayback.stop,
+    segments,
+    currentIndex,
+    isPlaying,
+    playbackSpeed,
+    setPlaybackMode,
+    startShadowing,
+    manualStopRef,
+    playerRef,
+    audioFinishedRef,
+  ]);
 
   const handleWaveformSeek = useCallback(
     (fraction: number) => {
@@ -323,7 +399,19 @@ export function usePracticeActions(deps: PracticeActionsDeps) {
     recordingPlayback.play(recording.blob);
     setPlaybackMode("attempt");
     setLatestRecordingReady(true);
-  }, [recorderRef, recordingPlayback, segments, currentIndex, repeatFlow, setPlaybackMode, trackId, manualStopRef, playerRef, freeRecordingBlobRef, setLatestRecordingReady]);
+  }, [
+    recorderRef,
+    recordingPlayback,
+    segments,
+    currentIndex,
+    repeatFlow,
+    setPlaybackMode,
+    trackId,
+    manualStopRef,
+    playerRef,
+    freeRecordingBlobRef,
+    setLatestRecordingReady,
+  ]);
 
   const selectSegment = useCallback(
     (index: number) => void navigateToSegment(index),
@@ -405,7 +493,21 @@ export function usePracticeActions(deps: PracticeActionsDeps) {
         void stopFreeShadowing();
       },
     );
-  }, [hasSession, segments, segmentsRef, recorderRef, recordingPlayback, setMicrophoneError, setFreeRange, setFreeHighlightIndex, setFreeSessionActive, freeRecordingBlobRef, playerRef, stopFreeShadowing, setFreeRecordingReady]);
+  }, [
+    hasSession,
+    segments,
+    segmentsRef,
+    recorderRef,
+    recordingPlayback,
+    setMicrophoneError,
+    setFreeRange,
+    setFreeHighlightIndex,
+    setFreeSessionActive,
+    freeRecordingBlobRef,
+    playerRef,
+    stopFreeShadowing,
+    setFreeRecordingReady,
+  ]);
 
   const toggleFreeSession = useCallback(() => {
     if (repeatFlow !== "free") return;
@@ -420,17 +522,34 @@ export function usePracticeActions(deps: PracticeActionsDeps) {
 
   const shortcutHandlers = useMemo(
     () => ({
-      onPlayOrPauseSource: () => { void toggleOriginal(); },
-      onToggleRecording: () => { void toggleRecording(); },
-      onPlaySource: () => { void playOriginal(); },
-      onPlayAttempt: () => { void playRecording(); },
+      onPlayOrPauseSource: () => {
+        void toggleOriginal();
+      },
+      onToggleRecording: () => {
+        void toggleRecording();
+      },
+      onPlaySource: () => {
+        void playOriginal();
+      },
+      onPlayAttempt: () => {
+        void playRecording();
+      },
       onPrevSegment: goPrev,
       onNextSegment: goNext,
       onToggleTranscript: usePracticeStore.getState().toggleTranscriptHidden,
       onToggleRepeatFlow: toggleRepeatFlow,
       onToggleFreeSession: toggleFreeSession,
     }),
-    [goNext, goPrev, playOriginal, playRecording, toggleOriginal, toggleRecording, toggleRepeatFlow, toggleFreeSession],
+    [
+      goNext,
+      goPrev,
+      playOriginal,
+      playRecording,
+      toggleOriginal,
+      toggleRecording,
+      toggleRepeatFlow,
+      toggleFreeSession,
+    ],
   );
 
   return {

@@ -27,7 +27,7 @@ function drawStatic(
   height: number,
   barColor: string,
   dimColor: string,
-  progress: number
+  progress: number,
 ): void {
   const dpr = window.devicePixelRatio || 1;
   const cssWidth = canvas.clientWidth;
@@ -76,7 +76,7 @@ function drawScrolling(
   canvas: HTMLCanvasElement,
   peaks: Float32Array,
   height: number,
-  barColor: string
+  barColor: string,
 ): void {
   const dpr = window.devicePixelRatio || 1;
   const cssWidth = canvas.clientWidth;
@@ -124,7 +124,7 @@ export const WaveformCanvas = memo(function WaveformCanvas({
   onSeek,
   livePeaksRef,
   subscribeLivePeaks,
-  mode = "static"
+  mode = "static",
 }: WaveformCanvasProps): JSX.Element | null {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const peaksRef = useRef(peaks);
@@ -151,12 +151,9 @@ export const WaveformCanvas = memo(function WaveformCanvas({
     const style = getComputedStyle(canvas);
     const activeColor =
       colorRef.current ??
-      (style.getPropertyValue("--text-secondary").trim() ||
-      "rgba(38, 37, 30, 0.55)");
+      (style.getPropertyValue("--text-secondary").trim() || "rgba(38, 37, 30, 0.55)");
     const dim =
-      dimColorRef.current ??
-      (style.getPropertyValue("--muted").trim() ||
-      "rgba(38, 37, 30, 0.15)");
+      dimColorRef.current ?? (style.getPropertyValue("--muted").trim() || "rgba(38, 37, 30, 0.15)");
 
     if (modeRef.current === "scrolling") {
       drawScrolling(canvas, p, heightRef.current, activeColor);
@@ -212,7 +209,7 @@ export const WaveformCanvas = memo(function WaveformCanvas({
         width: "100%",
         height,
         display: "block",
-        cursor: !isScrolling && onSeek ? "pointer" : undefined
+        cursor: !isScrolling && onSeek ? "pointer" : undefined,
       }}
       onClick={!isScrolling && onSeek ? handleClick : undefined}
     />

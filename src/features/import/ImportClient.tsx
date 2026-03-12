@@ -3,8 +3,18 @@
 import { useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
-import { ApiError, fetchProxyHealth, fetchTranscriptSegments, fetchTranscriptTracks } from "@/lib/apiClient";
-import { buildTrackId, mapSegments, mapTracks, saveImportBundle } from "@/features/storage/repository";
+import {
+  ApiError,
+  fetchProxyHealth,
+  fetchTranscriptSegments,
+  fetchTranscriptTracks,
+} from "@/lib/apiClient";
+import {
+  buildTrackId,
+  mapSegments,
+  mapTracks,
+  saveImportBundle,
+} from "@/features/storage/repository";
 import type { FetchTranscriptResponse, ProxyHealthResponse, TrackSummary } from "@/types/api";
 import type { VideoRecord } from "@/types/models";
 
@@ -42,8 +52,15 @@ function mergeTrackSummaries(original: TrackSummary[], resolved: TrackSummary): 
   return [resolved, ...original];
 }
 
-function ErrorBlock({ error, t }: { error: ErrorDisplay; t: ReturnType<typeof useTranslations<"ImportClient">> }): JSX.Element {
-  const hasDetails = error.errorCode || error.requestId || (error.details && Object.keys(error.details).length > 0);
+function ErrorBlock({
+  error,
+  t,
+}: {
+  error: ErrorDisplay;
+  t: ReturnType<typeof useTranslations<"ImportClient">>;
+}): JSX.Element {
+  const hasDetails =
+    error.errorCode || error.requestId || (error.details && Object.keys(error.details).length > 0);
 
   return (
     <div className="error-block">
@@ -138,12 +155,12 @@ export function ImportClient(): JSX.Element {
         message: friendly ?? apiError.message,
         errorCode: apiError.errorCode,
         details: apiError.details,
-        requestId: apiError.requestId
+        requestId: apiError.requestId,
       };
     }
 
     return {
-      message: apiError instanceof Error ? apiError.message : t("errorFallback")
+      message: apiError instanceof Error ? apiError.message : t("errorFallback"),
     };
   }
 
@@ -154,7 +171,15 @@ export function ImportClient(): JSX.Element {
       const result = await fetchProxyHealth();
       setProxyStatus(result);
     } catch {
-      setProxyStatus({ status: "down", proxyConfigured: false, latencyMs: null, httpStatus: null, checkedAt: new Date().toISOString(), cached: false, error: "Request failed" });
+      setProxyStatus({
+        status: "down",
+        proxyConfigured: false,
+        latencyMs: null,
+        httpStatus: null,
+        checkedAt: new Date().toISOString(),
+        cached: false,
+        error: "Request failed",
+      });
     } finally {
       setProxyChecking(false);
     }
@@ -176,7 +201,7 @@ export function ImportClient(): JSX.Element {
       const data = await fetchTranscriptTracks({
         url: youtubeUrl.trim(),
         preferredLanguage: locale,
-        useProxy
+        useProxy,
       });
 
       setFetchResult(data);
@@ -200,7 +225,9 @@ export function ImportClient(): JSX.Element {
     try {
       const trackTokensToTry = [
         selectedTrackToken,
-        ...fetchResult.tracks.map((track) => track.token).filter((token) => token !== selectedTrackToken)
+        ...fetchResult.tracks
+          .map((track) => track.token)
+          .filter((token) => token !== selectedTrackToken),
       ];
 
       let resolved: Awaited<ReturnType<typeof fetchTranscriptSegments>> | null = null;
@@ -211,7 +238,7 @@ export function ImportClient(): JSX.Element {
           const candidate = await fetchTranscriptSegments({
             videoId: fetchResult.videoId,
             trackToken,
-            useProxy
+            useProxy,
           });
 
           if (candidate.segments.length === 0) {
@@ -231,10 +258,7 @@ export function ImportClient(): JSX.Element {
       }
 
       if (!resolved) {
-        throw (
-          lastRecoverableError ??
-          new ApiError(t("errorNoContent"), 404)
-        );
+        throw lastRecoverableError ?? new ApiError(t("errorNoContent"), 404);
       }
 
       if (resolved.track.token !== selectedTrackToken) {
@@ -253,14 +277,14 @@ export function ImportClient(): JSX.Element {
         youtubeVideoId: fetchResult.videoId,
         title: fetchResult.title,
         thumbnailUrl: fetchResult.thumbnailUrl,
-        createdAt: now
+        createdAt: now,
       };
 
       const { effectiveTargetTrackId } = await saveImportBundle({
         video: videoRecord,
         tracks: mappedTracks,
         targetTrackId,
-        segments: mappedSegments
+        segments: mappedSegments,
       });
 
       const practiceUrl = `/practice/${fetchResult.videoId}/${encodeURIComponent(effectiveTargetTrackId)}`;
@@ -292,21 +316,31 @@ export function ImportClient(): JSX.Element {
           <input
             type="checkbox"
             checked={useProxy}
-            onChange={(event) => { setUseProxy(event.target.checked); setProxyStatus(null); }}
+            onChange={(event) => {
+              setUseProxy(event.target.checked);
+              setProxyStatus(null);
+            }}
           />
           <span>{t("useProxy")}</span>
         </label>
 
         {useProxy ? (
           <>
-            <button className="btn-link" type="button" onClick={onTestProxy} disabled={proxyChecking}>
+            <button
+              className="btn-link"
+              type="button"
+              onClick={onTestProxy}
+              disabled={proxyChecking}
+            >
               {proxyChecking ? t("testing") : t("testConnection")}
             </button>
             {proxyStatus ? (
               <span className="proxy-check">
                 <span className={`proxy-check-dot ${proxyStatus.status}`} />
                 <span className="proxy-check-text">
-                  {proxyStatus.status === "ok" ? t("proxyOperational", { latencyMs: proxyStatus.latencyMs ?? 0 }) : proxyStatus.error ?? proxyStatus.status}
+                  {proxyStatus.status === "ok"
+                    ? t("proxyOperational", { latencyMs: proxyStatus.latencyMs ?? 0 })
+                    : (proxyStatus.error ?? proxyStatus.status)}
                 </span>
               </span>
             ) : null}
@@ -315,7 +349,12 @@ export function ImportClient(): JSX.Element {
       </div>
 
       <div className="actions-row">
-        <button className="btn primary" type="button" onClick={onFetchTracks} disabled={isFetching || isImporting}>
+        <button
+          className="btn primary"
+          type="button"
+          onClick={onFetchTracks}
+          disabled={isFetching || isImporting}
+        >
           {isFetching ? t("fetching") : t("fetchTracks")}
         </button>
         <button className="btn secondary" type="button" onClick={onImport} disabled={!canImport}>

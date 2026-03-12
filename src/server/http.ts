@@ -1,10 +1,12 @@
 export const SHARED_HEADERS = {
   "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)",
-  "Accept-Language": "en-US,en;q=0.9"
+  "Accept-Language": "en-US,en;q=0.9",
 };
 
 function isAbortError(error: unknown): boolean {
-  return typeof error === "object" && error !== null && "name" in error && error.name === "AbortError";
+  return (
+    typeof error === "object" && error !== null && "name" in error && error.name === "AbortError"
+  );
 }
 
 function mapNetworkCode(code: string, fallback: string): string {
@@ -48,7 +50,7 @@ export function describeFetchError(error: unknown, fallback: string): string {
 export async function fetchWithTimeout(
   input: string,
   init: RequestInit,
-  timeoutMs: number
+  timeoutMs: number,
 ): Promise<Response> {
   const controller = new AbortController();
   const timeout = setTimeout(() => {
@@ -59,7 +61,7 @@ export async function fetchWithTimeout(
     return await fetch(input, {
       ...init,
       signal: controller.signal,
-      cache: "no-store"
+      cache: "no-store",
     });
   } finally {
     clearTimeout(timeout);
@@ -70,7 +72,7 @@ export async function fetchWithProxy(
   input: string,
   init: RequestInit,
   timeoutMs: number,
-  proxyUrl?: string
+  proxyUrl?: string,
 ): Promise<Response> {
   if (!proxyUrl) {
     return fetchWithTimeout(input, init, timeoutMs);
@@ -86,7 +88,7 @@ export async function fetchWithProxy(
   try {
     const headers: Record<string, string> = {
       ...(init.headers as Record<string, string> | undefined),
-      Connection: "close"
+      Connection: "close",
     };
 
     const res = await undiciFetch(input, {
@@ -94,7 +96,7 @@ export async function fetchWithProxy(
       headers,
       body: init.body as string | undefined,
       signal: controller.signal,
-      dispatcher
+      dispatcher,
     });
 
     // Wrap undici response to match global Response interface
@@ -102,7 +104,7 @@ export async function fetchWithProxy(
     return new Response(bodyText, {
       status: res.status,
       statusText: res.statusText,
-      headers: Object.fromEntries(res.headers.entries())
+      headers: Object.fromEntries(res.headers.entries()),
     });
   } finally {
     clearTimeout(timeout);

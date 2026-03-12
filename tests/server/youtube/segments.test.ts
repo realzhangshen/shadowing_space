@@ -8,9 +8,9 @@ test("parseTranscriptPayload parses json3", () => {
       {
         tStartMs: 1000,
         dDurationMs: 2000,
-        segs: [{ utf8: "Hello " }, { utf8: "world" }]
-      }
-    ]
+        segs: [{ utf8: "Hello " }, { utf8: "world" }],
+      },
+    ],
   });
 
   const result = parseTranscriptPayload(payload);
@@ -21,8 +21,8 @@ test("parseTranscriptPayload parses json3", () => {
       index: 0,
       startMs: 1000,
       endMs: 3000,
-      text: "Hello world"
-    }
+      text: "Hello world",
+    },
   ]);
 });
 
@@ -32,9 +32,9 @@ test("parseTranscriptPayload parses json3 when timestamps are numeric strings", 
       {
         tStartMs: "1000",
         dDurationMs: "2000",
-        segs: [{ utf8: "Hello " }, { utf8: "world" }]
-      }
-    ]
+        segs: [{ utf8: "Hello " }, { utf8: "world" }],
+      },
+    ],
   });
 
   const result = parseTranscriptPayload(payload);
@@ -45,8 +45,8 @@ test("parseTranscriptPayload parses json3 when timestamps are numeric strings", 
       index: 0,
       startMs: 1000,
       endMs: 3000,
-      text: "Hello world"
-    }
+      text: "Hello world",
+    },
   ]);
 });
 
@@ -56,9 +56,9 @@ test("parseTranscriptPayload decodes nested html entities in json3 text", () => 
       {
         tStartMs: 1000,
         dDurationMs: 2000,
-        segs: [{ utf8: "Don&amp;#39;t &amp;amp; go" }]
-      }
-    ]
+        segs: [{ utf8: "Don&amp;#39;t &amp;amp; go" }],
+      },
+    ],
   });
 
   const result = parseTranscriptPayload(payload);
@@ -69,8 +69,8 @@ test("parseTranscriptPayload decodes nested html entities in json3 text", () => 
       index: 0,
       startMs: 1000,
       endMs: 3000,
-      text: "Don't & go"
-    }
+      text: "Don't & go",
+    },
   ]);
 });
 
@@ -83,7 +83,7 @@ test("parseTranscriptPayload parses xml", () => {
     index: 0,
     startMs: 1200,
     endMs: 3200,
-    text: "Hello & team"
+    text: "Hello & team",
   });
 });
 
@@ -96,7 +96,7 @@ test("parseTranscriptPayload decodes nested html entities in xml text", () => {
     index: 0,
     startMs: 1200,
     endMs: 3200,
-    text: "Don't stop"
+    text: "Don't stop",
   });
 });
 
@@ -106,9 +106,9 @@ test("parseTranscriptPayload decodes triple-nested html entities", () => {
       {
         tStartMs: 1000,
         dDurationMs: 2000,
-        segs: [{ utf8: "&amp;amp;#39;" }]
-      }
-    ]
+        segs: [{ utf8: "&amp;amp;#39;" }],
+      },
+    ],
   });
 
   const result = parseTranscriptPayload(payload);
@@ -119,8 +119,8 @@ test("parseTranscriptPayload decodes triple-nested html entities", () => {
       index: 0,
       startMs: 1000,
       endMs: 3000,
-      text: "'"
-    }
+      text: "'",
+    },
   ]);
 });
 
@@ -138,9 +138,9 @@ test("parseTranscriptPayload handles malformed entities gracefully", () => {
       {
         tStartMs: 1000,
         dDurationMs: 2000,
-        segs: [{ utf8: "Hello &amp; world &invalid; goodbye" }]
-      }
-    ]
+        segs: [{ utf8: "Hello &amp; world &invalid; goodbye" }],
+      },
+    ],
   });
 
   const result = parseTranscriptPayload(payload);
@@ -190,25 +190,23 @@ test("mergeSegments merges adjacent segments without sentence-ending punctuation
   const input = [
     { index: 0, startMs: 0, endMs: 2000, text: "Hello" },
     { index: 1, startMs: 2000, endMs: 4000, text: "world" },
-    { index: 2, startMs: 4000, endMs: 6000, text: "today" }
+    { index: 2, startMs: 4000, endMs: 6000, text: "today" },
   ];
   const result = mergeSegments(input);
-  assert.deepEqual(result, [
-    { index: 0, startMs: 0, endMs: 6000, text: "Hello world today" }
-  ]);
+  assert.deepEqual(result, [{ index: 0, startMs: 0, endMs: 6000, text: "Hello world today" }]);
 });
 
 test("mergeSegments splits on sentence-ending punctuation", () => {
   const input = [
     { index: 0, startMs: 0, endMs: 2000, text: "Hello world." },
     { index: 1, startMs: 2000, endMs: 4000, text: "How are you?" },
-    { index: 2, startMs: 4000, endMs: 6000, text: "I am fine" }
+    { index: 2, startMs: 4000, endMs: 6000, text: "I am fine" },
   ];
   const result = mergeSegments(input);
   assert.deepEqual(result, [
     { index: 0, startMs: 0, endMs: 2000, text: "Hello world." },
     { index: 1, startMs: 2000, endMs: 4000, text: "How are you?" },
-    { index: 2, startMs: 4000, endMs: 6000, text: "I am fine" }
+    { index: 2, startMs: 4000, endMs: 6000, text: "I am fine" },
   ]);
 });
 
@@ -216,7 +214,7 @@ test("mergeSegments force-splits when duration exceeds 15 seconds", () => {
   const input = [
     { index: 0, startMs: 0, endMs: 5000, text: "one" },
     { index: 1, startMs: 5000, endMs: 10000, text: "two" },
-    { index: 2, startMs: 10000, endMs: 16000, text: "three" }
+    { index: 2, startMs: 10000, endMs: 16000, text: "three" },
   ];
   const result = mergeSegments(input);
   assert.equal(result.length, 2);

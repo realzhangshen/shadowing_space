@@ -1,5 +1,12 @@
 import Dexie, { type Table } from "dexie";
-import type { FreeRecordingRecord, ProgressRecord, RecordingRecord, SegmentRecord, TrackRecord, VideoRecord } from "@/types/models";
+import type {
+  FreeRecordingRecord,
+  ProgressRecord,
+  RecordingRecord,
+  SegmentRecord,
+  TrackRecord,
+  VideoRecord,
+} from "@/types/models";
 
 class ShadowingDB extends Dexie {
   videos!: Table<VideoRecord, string>;
@@ -16,7 +23,7 @@ class ShadowingDB extends Dexie {
       tracks: "id, videoId, createdAt, [videoId+createdAt]",
       segments: "id, trackId, [trackId+index], index",
       progress: "trackId, updatedAt",
-      recordings: "id, trackId, segmentIndex, updatedAt, [trackId+segmentIndex]"
+      recordings: "id, trackId, segmentIndex, updatedAt, [trackId+segmentIndex]",
     });
     this.version(2).stores({
       videos: "id, youtubeVideoId, createdAt",
@@ -24,7 +31,7 @@ class ShadowingDB extends Dexie {
       segments: "id, trackId, [trackId+index], index",
       progress: "trackId, updatedAt",
       recordings: "id, trackId, segmentIndex, updatedAt, [trackId+segmentIndex]",
-      freeRecordings: "id, trackId, createdAt, [trackId+createdAt]"
+      freeRecordings: "id, trackId, createdAt, [trackId+createdAt]",
     });
   }
 }

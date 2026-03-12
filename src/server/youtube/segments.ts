@@ -103,7 +103,7 @@ function decodeXmlEntities(value: string): string {
     lt: "<",
     gt: ">",
     quot: '"',
-    apos: "'"
+    apos: "'",
   };
 
   const toChar = (codePoint: number, fallback: string): string => {
@@ -180,7 +180,7 @@ function normalizeJson3Segments(events: TranscriptEvent[]): SegmentDTO[] {
     }
 
     const text = normalizeText(
-      decodeNestedXmlEntities(event.segs.map((item) => item.utf8 ?? item.text ?? "").join(""))
+      decodeNestedXmlEntities(event.segs.map((item) => item.utf8 ?? item.text ?? "").join("")),
     );
     if (!text) {
       continue;
@@ -193,7 +193,7 @@ function normalizeJson3Segments(events: TranscriptEvent[]): SegmentDTO[] {
       index: segments.length,
       startMs,
       endMs,
-      text
+      text,
     });
   }
 
@@ -207,9 +207,13 @@ function normalizeXmlSegments(xml: string): SegmentDTO[] {
   let match = textPattern.exec(xml);
   while (match) {
     const attributes = parseXmlAttributes(match[2] ?? "");
-    const startFromStart = attributes.start ? parseTimeValueToMs(attributes.start, "seconds") : null;
+    const startFromStart = attributes.start
+      ? parseTimeValueToMs(attributes.start, "seconds")
+      : null;
     const startFromT = attributes.t ? parseTimeValueToMs(attributes.t, "milliseconds") : null;
-    const startFromBegin = attributes.begin ? parseTimeValueToMs(attributes.begin, "seconds") : null;
+    const startFromBegin = attributes.begin
+      ? parseTimeValueToMs(attributes.begin, "seconds")
+      : null;
     const startMs = startFromStart ?? startFromT ?? startFromBegin;
 
     if (startMs === null) {
@@ -236,7 +240,7 @@ function normalizeXmlSegments(xml: string): SegmentDTO[] {
       index: segments.length,
       startMs,
       endMs: startMs + clampDuration(durationMs ?? DEFAULT_DURATION_MS),
-      text
+      text,
     });
 
     match = textPattern.exec(xml);
@@ -251,7 +255,7 @@ function looksLikeVtt(payload: string): boolean {
   }
 
   return /\d{1,2}:\d{2}(?::\d{2})?(?:[.,]\d{1,3})?\s+-->\s+\d{1,2}:\d{2}(?::\d{2})?(?:[.,]\d{1,3})?/.test(
-    payload
+    payload,
   );
 }
 
@@ -307,7 +311,9 @@ function normalizeVttSegments(vttText: string): SegmentDTO[] {
       continue;
     }
 
-    const text = normalizeText(decodeNestedXmlEntities(cueLines.join(" ").replace(/<[^>]+>/g, " ")));
+    const text = normalizeText(
+      decodeNestedXmlEntities(cueLines.join(" ").replace(/<[^>]+>/g, " ")),
+    );
     if (!text) {
       continue;
     }
@@ -316,7 +322,7 @@ function normalizeVttSegments(vttText: string): SegmentDTO[] {
       index: segments.length,
       startMs,
       endMs: startMs + clampDuration(endMs - startMs),
-      text
+      text,
     });
   }
 
@@ -357,7 +363,7 @@ function flush(buffer: SegmentDTO[], index: number): SegmentDTO {
     index,
     startMs: buffer[0].startMs,
     endMs: buffer[buffer.length - 1].endMs,
-    text: buffer.map((s) => s.text).join(" ")
+    text: buffer.map((s) => s.text).join(" "),
   };
 }
 
@@ -405,7 +411,10 @@ export function mergeSegments(segments: SegmentDTO[]): SegmentDTO[] {
   return merged;
 }
 
-export function parseTranscriptPayload(rawPayload: string): { parsed: boolean; segments: SegmentDTO[] } {
+export function parseTranscriptPayload(rawPayload: string): {
+  parsed: boolean;
+  segments: SegmentDTO[];
+} {
   const trimmed = rawPayload.trim();
   if (!trimmed) {
     return { parsed: false, segments: [] };

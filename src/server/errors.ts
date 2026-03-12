@@ -7,7 +7,7 @@ export class AppError extends Error {
     message: string,
     statusCode: number,
     errorCode = "UNKNOWN_ERROR",
-    details: Record<string, unknown> = {}
+    details: Record<string, unknown> = {},
   ) {
     super(message);
     this.name = "AppError";
@@ -42,7 +42,7 @@ export class NoCaptionTracksError extends AppError {
   constructor(videoId: string, strategiesAttempted: string[]) {
     super("No caption tracks available for this video", 404, "NO_CAPTION_TRACKS", {
       videoId,
-      strategiesAttempted
+      strategiesAttempted,
     });
     this.name = "NoCaptionTracksError";
   }
@@ -63,12 +63,7 @@ export class CaptionParsingFailedError extends AppError {
 }
 
 export class YouTubeUpstreamError extends AppError {
-  constructor(
-    videoId: string,
-    step: string,
-    httpStatus?: number,
-    networkCause?: string
-  ) {
+  constructor(videoId: string, step: string, httpStatus?: number, networkCause?: string) {
     const parts = [`Unable to reach YouTube (${step})`];
     if (httpStatus) parts.push(`HTTP ${httpStatus}`);
     if (networkCause) parts.push(networkCause);
@@ -76,7 +71,7 @@ export class YouTubeUpstreamError extends AppError {
       videoId,
       step,
       ...(httpStatus !== undefined && { httpStatus }),
-      ...(networkCause !== undefined && { networkCause })
+      ...(networkCause !== undefined && { networkCause }),
     });
     this.name = "YouTubeUpstreamError";
   }

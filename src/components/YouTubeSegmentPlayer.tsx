@@ -77,7 +77,7 @@ export type YouTubeSegmentPlayerHandle = {
     endMs: number,
     speed: PlaybackSpeed,
     onTimeUpdate: (currentMs: number) => void,
-    onEnd: () => void
+    onEnd: () => void,
   ) => void;
   pause: () => void;
   getCurrentTimeMs: () => number;
@@ -90,176 +90,183 @@ type YouTubeSegmentPlayerProps = {
   onPlayStateChange?: (playing: boolean) => void;
 };
 
-export const YouTubeSegmentPlayer = forwardRef<YouTubeSegmentPlayerHandle, YouTubeSegmentPlayerProps>(
-  function YouTubeSegmentPlayer({ videoId, onPlayerError, onPlayStateChange }, ref) {
-    const elementId = useId().replace(/[:]/g, "");
-    const playerRef = useRef<YT.Player | null>(null);
-    const endTimerRef = useRef<number | null>(null);
-    const pollIntervalRef = useRef<number | null>(null);
-    const [isReady, setIsReady] = useState(false);
+export const YouTubeSegmentPlayer = forwardRef<
+  YouTubeSegmentPlayerHandle,
+  YouTubeSegmentPlayerProps
+>(function YouTubeSegmentPlayer({ videoId, onPlayerError, onPlayStateChange }, ref) {
+  const elementId = useId().replace(/[:]/g, "");
+  const playerRef = useRef<YT.Player | null>(null);
+  const endTimerRef = useRef<number | null>(null);
+  const pollIntervalRef = useRef<number | null>(null);
+  const [isReady, setIsReady] = useState(false);
 
-    const clearTimers = () => {
-      if (endTimerRef.current) {
-        window.clearTimeout(endTimerRef.current);
-        endTimerRef.current = null;
-      }
-      if (pollIntervalRef.current) {
-        window.clearInterval(pollIntervalRef.current);
-        pollIntervalRef.current = null;
-      }
-    };
+  const clearTimers = () => {
+    if (endTimerRef.current) {
+      window.clearTimeout(endTimerRef.current);
+      endTimerRef.current = null;
+    }
+    if (pollIntervalRef.current) {
+      window.clearInterval(pollIntervalRef.current);
+      pollIntervalRef.current = null;
+    }
+  };
 
-    useEffect(() => {
-      let mounted = true;
+  useEffect(() => {
+    let mounted = true;
 
-      loadYouTubeApi()
-        .then(() => {
-          if (!mounted) {
-            return;
-          }
+    loadYouTubeApi()
+      .then(() => {
+        if (!mounted) {
+          return;
+        }
 
-          playerRef.current = new window.YT!.Player(elementId, {
-            width: "100%",
-            height: "320",
-            videoId,
-            playerVars: {
-              rel: 0,
-              playsinline: 1
+        playerRef.current = new window.YT!.Player(elementId, {
+          width: "100%",
+          height: "320",
+          videoId,
+          playerVars: {
+            rel: 0,
+            playsinline: 1,
+          },
+          events: {
+            onReady: () => {
+              setIsReady(true);
             },
-            events: {
-              onReady: () => {
-                setIsReady(true);
-              },
-              onError: () => {
-                onPlayerError?.("YouTube player error. Please refresh and try again.");
-              },
-              onStateChange: (event: YT.PlayerEvent) => {
-                const state = event.data;
-                if (state === window.YT.PlayerState.PLAYING) {
-                  onPlayStateChange?.(true);
-                } else if (
-                  state === window.YT.PlayerState.PAUSED ||
-                  state === window.YT.PlayerState.ENDED
-                ) {
-                  onPlayStateChange?.(false);
-                }
-                // BUFFERING, UNSTARTED, CUED → ignore (no emit)
+            onError: () => {
+              onPlayerError?.("YouTube player error. Please refresh and try again.");
+            },
+            onStateChange: (event: YT.PlayerEvent) => {
+              const state = event.data;
+              if (state === window.YT.PlayerState.PLAYING) {
+                onPlayStateChange?.(true);
+              } else if (
+                state === window.YT.PlayerState.PAUSED ||
+                state === window.YT.PlayerState.ENDED
+              ) {
+                onPlayStateChange?.(false);
               }
-            }
-          });
-        })
-        .catch(() => {
-          onPlayerError?.("Failed to load YouTube API.");
+              // BUFFERING, UNSTARTED, CUED → ignore (no emit)
+            },
+          },
         });
+      })
+      .catch(() => {
+        onPlayerError?.("Failed to load YouTube API.");
+      });
 
-      return () => {
-        mounted = false;
-        clearTimers();
-        playerRef.current?.destroy();
-        playerRef.current = null;
-      };
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
-
-    useEffect(() => {
-      if (!isReady || !playerRef.current) {
-        return;
-      }
-
-      playerRef.current.cueVideoById(videoId, 0);
+    return () => {
+      mounted = false;
       clearTimers();
-    }, [isReady, videoId]);
-
-    const seekAndPlay = (startMs: number, endMs: number, speed: PlaybackSpeed) => {
-      clearTimers();
-      const startSeconds = Math.max(0, startMs / 1_000);
-      const durationSeconds = Math.max(0.2, (endMs - startMs) / 1_000);
-
-      playerRef.current!.setPlaybackRate(speed);
-      playerRef.current!.seekTo(startSeconds, true);
-      playerRef.current!.playVideo();
-
-      endTimerRef.current = window.setTimeout(() => {
-        playerRef.current?.pauseVideo();
-      }, (durationSeconds * 1_000) / speed);
+      playerRef.current?.destroy();
+      playerRef.current = null;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-    useImperativeHandle(
-      ref,
-      () => ({
-        playSegment: (startMs, endMs, speed) => {
-          if (!isReady || !playerRef.current) return;
-          seekAndPlay(startMs, endMs, speed);
-        },
-        toggleSegment: (startMs, endMs, speed) => {
-          if (!isReady || !playerRef.current) return;
+  useEffect(() => {
+    if (!isReady || !playerRef.current) {
+      return;
+    }
 
-          if (playerRef.current.getPlayerState() === window.YT.PlayerState.PLAYING) {
-            clearTimers();
-            playerRef.current.pauseVideo();
-            return;
-          }
+    playerRef.current.cueVideoById(videoId, 0);
+    clearTimers();
+  }, [isReady, videoId]);
 
-          seekAndPlay(startMs, endMs, speed);
-        },
-        playContinuous: (startMs, endMs, speed, onEnd) => {
-          if (!isReady || !playerRef.current) return;
+  const seekAndPlay = (startMs: number, endMs: number, speed: PlaybackSpeed) => {
+    clearTimers();
+    const startSeconds = Math.max(0, startMs / 1_000);
+    const durationSeconds = Math.max(0.2, (endMs - startMs) / 1_000);
+
+    playerRef.current!.setPlaybackRate(speed);
+    playerRef.current!.seekTo(startSeconds, true);
+    playerRef.current!.playVideo();
+
+    endTimerRef.current = window.setTimeout(
+      () => {
+        playerRef.current?.pauseVideo();
+      },
+      (durationSeconds * 1_000) / speed,
+    );
+  };
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      playSegment: (startMs, endMs, speed) => {
+        if (!isReady || !playerRef.current) return;
+        seekAndPlay(startMs, endMs, speed);
+      },
+      toggleSegment: (startMs, endMs, speed) => {
+        if (!isReady || !playerRef.current) return;
+
+        if (playerRef.current.getPlayerState() === window.YT.PlayerState.PLAYING) {
           clearTimers();
-          const startSeconds = Math.max(0, startMs / 1_000);
-          const durationSeconds = Math.max(0.2, (endMs - startMs) / 1_000);
+          playerRef.current.pauseVideo();
+          return;
+        }
 
-          playerRef.current.setPlaybackRate(speed);
-          playerRef.current.seekTo(startSeconds, true);
-          playerRef.current.playVideo();
+        seekAndPlay(startMs, endMs, speed);
+      },
+      playContinuous: (startMs, endMs, speed, onEnd) => {
+        if (!isReady || !playerRef.current) return;
+        clearTimers();
+        const startSeconds = Math.max(0, startMs / 1_000);
+        const durationSeconds = Math.max(0.2, (endMs - startMs) / 1_000);
 
-          endTimerRef.current = window.setTimeout(() => {
+        playerRef.current.setPlaybackRate(speed);
+        playerRef.current.seekTo(startSeconds, true);
+        playerRef.current.playVideo();
+
+        endTimerRef.current = window.setTimeout(
+          () => {
             playerRef.current?.pauseVideo();
             onEnd();
-          }, (durationSeconds * 1_000) / speed);
-        },
-        playFreeRange: (startMs, endMs, speed, onTimeUpdate, onEnd) => {
-          if (!isReady || !playerRef.current) return;
-          clearTimers();
-          const startSeconds = Math.max(0, startMs / 1_000);
-          const endSeconds = endMs / 1_000;
+          },
+          (durationSeconds * 1_000) / speed,
+        );
+      },
+      playFreeRange: (startMs, endMs, speed, onTimeUpdate, onEnd) => {
+        if (!isReady || !playerRef.current) return;
+        clearTimers();
+        const startSeconds = Math.max(0, startMs / 1_000);
+        const endSeconds = endMs / 1_000;
 
-          playerRef.current.setPlaybackRate(speed);
-          playerRef.current.seekTo(startSeconds, true);
-          playerRef.current.playVideo();
+        playerRef.current.setPlaybackRate(speed);
+        playerRef.current.seekTo(startSeconds, true);
+        playerRef.current.playVideo();
 
-          pollIntervalRef.current = window.setInterval(() => {
-            if (!playerRef.current) return;
-            const player = playerRef.current as YT.Player & { getCurrentTime?: () => number };
-            const currentMs = (player.getCurrentTime?.() ?? 0) * 1_000;
-            onTimeUpdate(currentMs);
-
-            if (currentMs / 1_000 >= endSeconds) {
-              clearTimers();
-              playerRef.current?.pauseVideo();
-              onEnd();
-            }
-          }, 250);
-        },
-        pause: () => {
-          clearTimers();
-          playerRef.current?.pauseVideo();
-        },
-        getCurrentTimeMs: () => {
-          if (!playerRef.current) return 0;
+        pollIntervalRef.current = window.setInterval(() => {
+          if (!playerRef.current) return;
           const player = playerRef.current as YT.Player & { getCurrentTime?: () => number };
-          return (player.getCurrentTime?.() ?? 0) * 1_000;
-        },
-        setPlaybackSpeed: (speed) => {
-          playerRef.current?.setPlaybackRate(speed);
-        }
-      }),
-      [isReady]
-    );
+          const currentMs = (player.getCurrentTime?.() ?? 0) * 1_000;
+          onTimeUpdate(currentMs);
 
-    return (
-      <div className="youtube-shell-wrap" aria-label="YouTube video player">
-        <div id={elementId} className="youtube-shell" />
-      </div>
-    );
-  }
-);
+          if (currentMs / 1_000 >= endSeconds) {
+            clearTimers();
+            playerRef.current?.pauseVideo();
+            onEnd();
+          }
+        }, 250);
+      },
+      pause: () => {
+        clearTimers();
+        playerRef.current?.pauseVideo();
+      },
+      getCurrentTimeMs: () => {
+        if (!playerRef.current) return 0;
+        const player = playerRef.current as YT.Player & { getCurrentTime?: () => number };
+        return (player.getCurrentTime?.() ?? 0) * 1_000;
+      },
+      setPlaybackSpeed: (speed) => {
+        playerRef.current?.setPlaybackRate(speed);
+      },
+    }),
+    [isReady],
+  );
+
+  return (
+    <div className="youtube-shell-wrap" aria-label="YouTube video player">
+      <div id={elementId} className="youtube-shell" />
+    </div>
+  );
+});

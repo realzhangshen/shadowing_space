@@ -62,8 +62,7 @@ export function AppHeader(): JSX.Element {
 
       <nav className="topnav" aria-label="Main navigation">
         {links.map((item) => {
-          const active =
-            item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+          const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
 
           return (
             <Link
@@ -83,7 +82,16 @@ export function AppHeader(): JSX.Element {
             aria-expanded={open}
             aria-haspopup="listbox"
           >
-            <svg className="locale-globe" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <svg
+              className="locale-globe"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
               <circle cx="12" cy="12" r="10" />
               <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
             </svg>
@@ -100,9 +108,7 @@ export function AppHeader(): JSX.Element {
                     aria-selected={l === currentLocale}
                     onClick={() => onLocaleSelect(l)}
                   >
-                    <span className="locale-check">
-                      {l === currentLocale ? "✓" : ""}
-                    </span>
+                    <span className="locale-check">{l === currentLocale ? "✓" : ""}</span>
                     {localeLabels[l].full}
                   </button>
                 </li>

@@ -40,16 +40,16 @@ Open [http://localhost:3000](http://localhost:3000).
 
 All variables are optional for local development. See [`.env.example`](.env.example) for the full list.
 
-| Variable | Default | Description |
-|---|---|---|
-| `NEXT_PUBLIC_SITE_URL` | `https://shadowing.space` | Site URL for SEO / Open Graph metadata |
-| `YOUTUBE_PROXY_URLS` | _(none)_ | Comma-separated proxy URLs for YouTube fetches |
-| `YOUTUBE_FETCH_TIMEOUT_MS` | `15000` | Timeout for YouTube requests (ms) |
-| `TRANSCRIPT_RATE_LIMIT_MAX_REQUESTS` | `30` | Max transcript requests per rate limit window |
-| `TRANSCRIPT_RATE_LIMIT_WINDOW_MS` | `60000` | Rate limit window (ms) |
-| `TRACK_TOKEN_SECRET` | `shadowing-dev-secret` | **Required in production.** Signs transcript track tokens |
-| `TRACK_TOKEN_TTL_SECONDS` | `86400` | Track token time-to-live (seconds) |
-| `LOG_LEVEL` | `info` | Server log level: `debug` / `info` / `warn` / `error` |
+| Variable                             | Default                   | Description                                               |
+| ------------------------------------ | ------------------------- | --------------------------------------------------------- |
+| `NEXT_PUBLIC_SITE_URL`               | `https://shadowing.space` | Site URL for SEO / Open Graph metadata                    |
+| `YOUTUBE_PROXY_URLS`                 | _(none)_                  | Comma-separated proxy URLs for YouTube fetches            |
+| `YOUTUBE_FETCH_TIMEOUT_MS`           | `15000`                   | Timeout for YouTube requests (ms)                         |
+| `TRANSCRIPT_RATE_LIMIT_MAX_REQUESTS` | `30`                      | Max transcript requests per rate limit window             |
+| `TRANSCRIPT_RATE_LIMIT_WINDOW_MS`    | `60000`                   | Rate limit window (ms)                                    |
+| `TRACK_TOKEN_SECRET`                 | `shadowing-dev-secret`    | **Required in production.** Signs transcript track tokens |
+| `TRACK_TOKEN_TTL_SECONDS`            | `86400`                   | Track token time-to-live (seconds)                        |
+| `LOG_LEVEL`                          | `info`                    | Server log level: `debug` / `info` / `warn` / `error`     |
 
 ## Self-Hosting
 
@@ -85,11 +85,11 @@ npm run build        # Production build
 
 ## API Endpoints
 
-| Method | Endpoint | Description |
-|---|---|---|
-| `POST` | `/api/youtube/transcript/fetch` | Fetch available caption tracks for a YouTube video |
-| `POST` | `/api/youtube/transcript/segments` | Fetch transcript segments for a specific track |
-| `GET` | `/api/proxy-health` | Check YouTube proxy connectivity |
+| Method | Endpoint                           | Description                                        |
+| ------ | ---------------------------------- | -------------------------------------------------- |
+| `POST` | `/api/youtube/transcript/fetch`    | Fetch available caption tracks for a YouTube video |
+| `POST` | `/api/youtube/transcript/segments` | Fetch transcript segments for a specific track     |
+| `GET`  | `/api/proxy-health`                | Check YouTube proxy connectivity                   |
 
 ### Debugging
 

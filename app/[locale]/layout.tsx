@@ -24,9 +24,7 @@ const localeToOg: Record<Locale, string> = {
   ru: "ru_RU",
 };
 
-export async function generateMetadata({
-  params,
-}: LocaleLayoutProps): Promise<Metadata> {
+export async function generateMetadata({ params }: LocaleLayoutProps): Promise<Metadata> {
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: "Metadata" });
 
@@ -123,7 +121,9 @@ export default async function LocaleLayout({
           {tLayout("skipToContent")}
         </a>
         <AppHeader />
-        <main id="main-content" tabIndex={-1} className="page-wrap">{children}</main>
+        <main id="main-content" tabIndex={-1} className="page-wrap">
+          {children}
+        </main>
       </div>
       <Analytics />
       <SpeedInsights />

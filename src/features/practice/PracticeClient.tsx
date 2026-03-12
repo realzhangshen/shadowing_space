@@ -6,7 +6,10 @@ import { Link } from "@/i18n/navigation";
 import { PlaybackControlBar } from "@/components/PlaybackControlBar";
 import { SegmentNavigator } from "@/components/SegmentNavigator";
 import { WaveformCanvas } from "@/components/WaveformCanvas";
-import { YouTubeSegmentPlayer, type YouTubeSegmentPlayerHandle } from "@/components/YouTubeSegmentPlayer";
+import {
+  YouTubeSegmentPlayer,
+  type YouTubeSegmentPlayerHandle,
+} from "@/components/YouTubeSegmentPlayer";
 import { useShortcuts } from "@/hooks/useShortcuts";
 import { useRecorder } from "@/hooks/useRecorder";
 import { useRecordingPlayback } from "@/hooks/useRecordingPlayback";
@@ -21,7 +24,7 @@ import {
   getRecordedSegmentIndices,
   mapSegments,
   saveSegmentsForTrack,
-  updateProgress
+  updateProgress,
 } from "@/features/storage/repository";
 import { usePracticeStore } from "@/store/practiceStore";
 import type { SegmentRecord, TrackRecord, VideoRecord } from "@/types/models";
@@ -84,7 +87,7 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
     freeHighlightIndex,
     freeSessionActive,
     setFreeRange,
-    resetForSession
+    resetForSession,
   } = usePracticeStore();
 
   const { peaks: waveformPeaks } = useWaveform(waveformBlob, 200);
@@ -126,7 +129,7 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
     onComplete: actions.onRecordingComplete,
     onError: (message) => {
       setMicrophoneError(message || t("micAccessError"));
-    }
+    },
   });
 
   // Keep recorderRef in sync so usePracticeActions callbacks can access it
@@ -158,7 +161,7 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
       if (usableSegments.length === 0) {
         const resolved = await fetchTranscriptSegments({
           videoId,
-          trackToken: initial.track.token
+          trackToken: initial.track.token,
         });
 
         usableSegments = mapSegments(trackId, resolved.segments);
@@ -175,7 +178,7 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
         video: initial.video,
         track: initial.track,
         tracks: initial.tracks,
-        segments: usableSegments
+        segments: usableSegments,
       });
       await loadRecordingState(trackId, safeIndex);
 
@@ -236,11 +239,8 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
     clearPeaks: clearLivePeaks,
     isLive: isLiveWaveform,
     status: liveWaveformStatus,
-    error: liveWaveformError
-  } = useLiveWaveform(
-    recorder.stream,
-    recorder.isRecording
-  );
+    error: liveWaveformError,
+  } = useLiveWaveform(recorder.stream, recorder.isRecording);
 
   useEffect(() => {
     clearLivePeaks();
@@ -251,7 +251,9 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
     ? 1
     : recordingPlayback.isPlaying
       ? recordingPlayback.progress
-      : latestRecordingReady ? 1 : 0;
+      : latestRecordingReady
+        ? 1
+        : 0;
   const waveformBarColor = isLiveWaveform ? "var(--primary)" : undefined;
   const waveformSeekable = !isLiveWaveform && latestRecordingReady && waveformBlob;
 
@@ -289,7 +291,7 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
     audioFinishedRef,
     onSilenceDetected: () => {
       void recorder.stop();
-    }
+    },
   });
 
   // --- Playback-end effect ---
@@ -348,7 +350,11 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
         />
 
         <div className="current-sentence-wrap">
-          <p className={transcriptHidden ? "current-sentence current-sentence-blurred" : "current-sentence"}>
+          <p
+            className={
+              transcriptHidden ? "current-sentence current-sentence-blurred" : "current-sentence"
+            }
+          >
             {repeatFlow === "free" && freeSessionActive
               ? (segments[freeHighlightIndex]?.text ?? t("noSegment"))
               : (currentSegment?.text ?? t("noSegment"))}
@@ -356,11 +362,12 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
           {repeatFlow === "free" ? (
             <div className="progress-row">
               <span className="progress-pct">
-                {freeRange && !(freeRange.startIndex === 0 && freeRange.endIndex === segments.length - 1)
+                {freeRange &&
+                !(freeRange.startIndex === 0 && freeRange.endIndex === segments.length - 1)
                   ? t("rangeInfo", {
                       start: freeRange.startIndex + 1,
                       end: freeRange.endIndex + 1,
-                      count: freeRange.endIndex - freeRange.startIndex + 1
+                      count: freeRange.endIndex - freeRange.startIndex + 1,
                     })
                   : t("allSelected")}
               </span>
@@ -378,7 +385,7 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
           )}
         </div>
 
-        {(displayPeaks || isLiveWaveform) ? (
+        {displayPeaks || isLiveWaveform ? (
           <div className="waveform-wrap">
             <WaveformCanvas
               peaks={displayPeaks}

@@ -21,7 +21,7 @@ export async function fetchWatchPage(
   videoId: string,
   timeoutMs: number,
   logger?: RequestLogger,
-  proxyUrl?: string
+  proxyUrl?: string,
 ): Promise<string> {
   const watchUrl = `https://www.youtube.com/watch?v=${videoId}&hl=en`;
 
@@ -30,10 +30,10 @@ export async function fetchWatchPage(
     response = await fetchWithProxy(
       watchUrl,
       {
-        headers: SHARED_HEADERS
+        headers: SHARED_HEADERS,
       },
       timeoutMs,
-      proxyUrl
+      proxyUrl,
     );
   } catch (error) {
     const networkCause = describeFetchError(error, "network error");
@@ -47,13 +47,13 @@ export async function fetchWatchPage(
   logger?.debug("youtube.watch_page.response", {
     videoId,
     status: response.status,
-    contentType: response.headers.get("content-type")
+    contentType: response.headers.get("content-type"),
   });
 
   const html = await response.text();
   logger?.debug("youtube.watch_page.size", {
     videoId,
-    bodySize: html.length
+    bodySize: html.length,
   });
 
   return html;
@@ -64,17 +64,17 @@ export async function fetchCaptionPayload(
   timeoutMs: number,
   logger?: RequestLogger,
   logContext: Record<string, unknown> = {},
-  proxyUrl?: string
+  proxyUrl?: string,
 ): Promise<string> {
   let response: Response;
   try {
     response = await fetchWithProxy(
       url,
       {
-        headers: SHARED_HEADERS
+        headers: SHARED_HEADERS,
       },
       timeoutMs,
-      proxyUrl
+      proxyUrl,
     );
   } catch (error) {
     throw new AppError(describeFetchError(error, "Failed to fetch caption payload"), 502);
@@ -87,13 +87,13 @@ export async function fetchCaptionPayload(
   logger?.debug("youtube.caption_payload.response", {
     ...logContext,
     status: response.status,
-    contentType: response.headers.get("content-type")
+    contentType: response.headers.get("content-type"),
   });
 
   const payload = await response.text();
   logger?.debug("youtube.caption_payload.size", {
     ...logContext,
-    bodySize: payload.length
+    bodySize: payload.length,
   });
 
   return payload;
@@ -103,7 +103,7 @@ export async function fetchInnertubePlayer(
   videoId: string,
   timeoutMs: number,
   logger?: RequestLogger,
-  proxyUrl?: string
+  proxyUrl?: string,
 ): Promise<unknown> {
   const url = "https://www.youtube.com/youtubei/v1/player";
 
@@ -115,20 +115,20 @@ export async function fetchInnertubePlayer(
         method: "POST",
         headers: {
           ...SHARED_HEADERS,
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           context: {
             client: {
               clientName: "ANDROID",
-              clientVersion: "20.10.38"
-            }
+              clientVersion: "20.10.38",
+            },
           },
-          videoId
-        })
+          videoId,
+        }),
       },
       timeoutMs,
-      proxyUrl
+      proxyUrl,
     );
   } catch (error) {
     const networkCause = describeFetchError(error, "network error");
@@ -142,7 +142,7 @@ export async function fetchInnertubePlayer(
   logger?.debug("youtube.innertube_player.response", {
     videoId,
     status: response.status,
-    contentType: response.headers.get("content-type")
+    contentType: response.headers.get("content-type"),
   });
 
   const json: unknown = await response.json();
@@ -154,7 +154,7 @@ export async function fetchInnertubePlayerWithKey(
   apiKey: string,
   timeoutMs: number,
   logger?: RequestLogger,
-  proxyUrl?: string
+  proxyUrl?: string,
 ): Promise<unknown> {
   const url = `https://www.youtube.com/youtubei/v1/player?key=${encodeURIComponent(apiKey)}`;
 
@@ -166,20 +166,20 @@ export async function fetchInnertubePlayerWithKey(
         method: "POST",
         headers: {
           ...SHARED_HEADERS,
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           context: {
             client: {
               clientName: "ANDROID",
-              clientVersion: "20.10.38"
-            }
+              clientVersion: "20.10.38",
+            },
           },
-          videoId
-        })
+          videoId,
+        }),
       },
       timeoutMs,
-      proxyUrl
+      proxyUrl,
     );
   } catch (error) {
     const networkCause = describeFetchError(error, "network error");
@@ -193,7 +193,7 @@ export async function fetchInnertubePlayerWithKey(
   logger?.debug("youtube.innertube_player_with_key.response", {
     videoId,
     status: response.status,
-    contentType: response.headers.get("content-type")
+    contentType: response.headers.get("content-type"),
   });
 
   const json: unknown = await response.json();

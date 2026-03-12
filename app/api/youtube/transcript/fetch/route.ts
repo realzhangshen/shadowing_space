@@ -10,7 +10,7 @@ import { fetchTranscriptMetadata } from "@/server/youtube/service";
 const requestSchema = z.object({
   url: z.string().trim().min(1),
   preferredLanguage: z.string().trim().min(2).max(16).optional().default("en"),
-  useProxy: z.boolean().optional().default(true)
+  useProxy: z.boolean().optional().default(true),
 });
 
 // Trusts Vercel's x-forwarded-for (safe on Vercel, spoofable if self-hosted behind untrusted proxies).
@@ -26,7 +26,7 @@ export async function POST(request: Request): Promise<Response> {
   const requestId = randomUUID();
   const logger = createRequestLogger({
     requestId,
-    route: "/api/youtube/transcript/fetch"
+    route: "/api/youtube/transcript/fetch",
   });
   const ip = clientIpFromRequest(request);
   logger.debug("request.received", { ip });
@@ -34,13 +34,13 @@ export async function POST(request: Request): Promise<Response> {
   const limit = checkRateLimit(
     `${ip}:fetch`,
     env.transcriptRateLimitMaxRequests,
-    env.transcriptRateLimitWindowMs
+    env.transcriptRateLimitWindowMs,
   );
 
   const headers = {
     ...rateLimitHeaders(limit),
     "Cache-Control": "no-store",
-    "x-request-id": requestId
+    "x-request-id": requestId,
   };
 
   if (!limit.allowed) {
@@ -48,15 +48,15 @@ export async function POST(request: Request): Promise<Response> {
       ip,
       limit: limit.limit,
       remaining: limit.remaining,
-      resetAt: limit.resetAt
+      resetAt: limit.resetAt,
     });
 
     return NextResponse.json(
       { message: "Too many requests, please retry later", requestId },
       {
         status: 429,
-        headers
-      }
+        headers,
+      },
     );
   }
 
@@ -71,18 +71,18 @@ export async function POST(request: Request): Promise<Response> {
       trackTokenSecret: env.trackTokenSecret,
       trackTokenTtlSeconds: env.trackTokenTtlSeconds,
       logger,
-      proxyUrl: payload.useProxy ? env.pickYoutubeProxyUrl() : undefined
+      proxyUrl: payload.useProxy ? env.pickYoutubeProxyUrl() : undefined,
     });
 
     logger.info("request.succeeded", {
       videoId: data.videoId,
       trackCount: data.tracks.length,
-      defaultTrackFound: Boolean(data.defaultTrackToken)
+      defaultTrackFound: Boolean(data.defaultTrackToken),
     });
 
     return NextResponse.json(data, {
       status: 200,
-      headers
+      headers,
     });
   } catch (error) {
     let statusCode: number;
@@ -111,15 +111,20 @@ export async function POST(request: Request): Promise<Response> {
       statusCode,
       message,
       errorCode,
-      error
+      error,
     });
 
     return NextResponse.json(
-      { message, requestId, ...(errorCode && { errorCode }), ...(details && Object.keys(details).length > 0 && { details }) },
+      {
+        message,
+        requestId,
+        ...(errorCode && { errorCode }),
+        ...(details && Object.keys(details).length > 0 && { details }),
+      },
       {
         status: statusCode,
-        headers
-      }
+        headers,
+      },
     );
   }
 }

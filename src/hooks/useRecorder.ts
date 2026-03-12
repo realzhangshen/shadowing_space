@@ -75,7 +75,9 @@ export function useRecorder(params: UseRecorderParams): {
       setMicStatus("active");
 
       const mimeType = preferredMimeTypes.find((type) => MediaRecorder.isTypeSupported(type));
-      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+      const recorder = mimeType
+        ? new MediaRecorder(stream, { mimeType })
+        : new MediaRecorder(stream);
 
       streamRef.current = stream;
       setStream(stream);
@@ -95,7 +97,7 @@ export function useRecorder(params: UseRecorderParams): {
           await onCompleteRef.current({
             blob,
             durationMs: Date.now() - startedAtRef.current,
-            mimeType: blob.type || "audio/webm"
+            mimeType: blob.type || "audio/webm",
           });
         } catch (err) {
           onErrorRef.current?.(err instanceof Error ? err.message : "");
@@ -138,6 +140,6 @@ export function useRecorder(params: UseRecorderParams): {
     micStatus,
     stream,
     start,
-    stop
+    stop,
   };
 }

@@ -31,7 +31,7 @@ function createSvgIcon(size, maskable = false) {
   const barsSvg = bars
     .map(
       (b) =>
-        `<rect x="${waveOffsetX + b.x * waveScale}" y="${waveOffsetY + b.y * waveScale}" width="${b.w * waveScale}" height="${b.h * waveScale}" rx="${1 * waveScale}" fill="white"/>`
+        `<rect x="${waveOffsetX + b.x * waveScale}" y="${waveOffsetY + b.y * waveScale}" width="${b.w * waveScale}" height="${b.h * waveScale}" rx="${1 * waveScale}" fill="white"/>`,
     )
     .join("\n    ");
 

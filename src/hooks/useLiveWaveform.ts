@@ -23,7 +23,7 @@ function toErrorMessage(error: unknown): string {
 
 export function useLiveWaveform(
   stream: MediaStream | null,
-  isRecording: boolean
+  isRecording: boolean,
 ): LiveWaveformResult {
   const [peaks, setPeaks] = useState<Float32Array | null>(null);
   const [status, setStatus] = useState<LiveWaveformStatus>("idle");
@@ -43,7 +43,9 @@ export function useLiveWaveform(
 
   const subscribe = useCallback((cb: () => void): (() => void) => {
     subscribersRef.current.add(cb);
-    return () => { subscribersRef.current.delete(cb); };
+    return () => {
+      subscribersRef.current.delete(cb);
+    };
   }, []);
 
   const clearPeaks = useCallback(() => {
@@ -75,7 +77,7 @@ export function useLiveWaveform(
         console.warn(`[useLiveWaveform] ${reason}`, cause);
       }
     },
-    [teardown]
+    [teardown],
   );
 
   // Freeze peaks when recording stops (separate from setup/teardown to avoid

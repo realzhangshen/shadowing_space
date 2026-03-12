@@ -4,13 +4,13 @@
   --bg-surface: #ffffff;
   --bg-elevated: #eeeee8;
   --bg-hover: rgba(38, 37, 30, 0.06);
-  --bg-active: rgba(38, 37, 30, 0.10);
+  --bg-active: rgba(38, 37, 30, 0.1);
   --bg-elevated-hover: #e5e5de;
   --card: #ffffff;
   --card-border: rgba(38, 37, 30, 0.12);
   --text: #26251e;
   --text-secondary: rgba(38, 37, 30, 0.55);
-  --muted: rgba(38, 37, 30, 0.40);
+  --muted: rgba(38, 37, 30, 0.4);
   --line: rgba(38, 37, 30, 0.13);
   --line-strong: rgba(38, 37, 30, 0.22);
   --primary: #26251e;
@@ -31,7 +31,15 @@
 
 body {
   margin: 0;
-  font-family: var(--font-inter), var(--font-sc), var(--font-tc), var(--font-jp), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family:
+    var(--font-inter),
+    var(--font-sc),
+    var(--font-tc),
+    var(--font-jp),
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
   background: var(--bg);
   color: var(--text);
   min-height: 100vh;
@@ -118,8 +126,13 @@ a:hover {
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
 }
 
 /* Navigation */
@@ -136,7 +149,15 @@ a:hover {
 
 .topbar h1 {
   margin: 0.1rem 0 0;
-  font-family: var(--font-inter), var(--font-sc), var(--font-tc), var(--font-jp), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family:
+    var(--font-inter),
+    var(--font-sc),
+    var(--font-tc),
+    var(--font-jp),
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
   font-size: clamp(1.3rem, 2.5vw, 1.75rem);
   font-weight: 600;
   letter-spacing: -0.01em;
@@ -165,7 +186,9 @@ a:hover {
   font-weight: 500;
   background: transparent;
   color: var(--text-secondary);
-  transition: background 0.15s ease, color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
 }
 
 .nav-link:hover {
@@ -317,7 +340,9 @@ select {
   font: inherit;
   background: var(--bg-surface);
   color: var(--text);
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 input:focus,
@@ -355,7 +380,10 @@ textarea {
   font-weight: 600;
   cursor: pointer;
   text-decoration: none;
-  transition: background 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    background 0.15s ease,
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .btn:hover {
@@ -426,7 +454,9 @@ textarea {
   padding: 0.7rem 0.8rem;
   background: var(--bg-surface);
   align-items: center;
-  transition: border-color 0.15s ease, background 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
 }
 
 .track-item:hover {
@@ -592,8 +622,14 @@ textarea {
 }
 
 @keyframes waveform-fade-in {
-  from { opacity: 0; transform: scaleY(0.5); }
-  to { opacity: 1; transform: scaleY(1); }
+  from {
+    opacity: 0;
+    transform: scaleY(0.5);
+  }
+  to {
+    opacity: 1;
+    transform: scaleY(1);
+  }
 }
 
 .segment-title {
@@ -625,7 +661,9 @@ textarea {
   align-items: center;
   font-size: inherit;
   color: var(--text);
-  transition: background 0.15s ease, border-color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .segment-item:hover {
@@ -695,10 +733,14 @@ textarea {
 }
 
 @keyframes range-hint-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
 }
-
 
 .icon-btn {
   background: none;
@@ -709,7 +751,9 @@ textarea {
   font-size: 0.85rem;
   line-height: 1;
   color: var(--text-secondary);
-  transition: background 0.15s ease, border-color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .icon-btn:hover {
@@ -746,10 +790,14 @@ textarea {
   animation: pulse-record 1s infinite;
 }
 
-
 @keyframes pulse-record {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
 }
 
 /* Mic status indicator */
@@ -812,7 +860,9 @@ textarea {
   font-weight: 500;
   cursor: pointer;
   color: var(--text-secondary);
-  transition: background 0.15s ease, color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
 }
 
 .method-option:not(:last-child),
@@ -874,8 +924,13 @@ textarea {
 }
 
 @keyframes fade-out {
-  0%, 70% { opacity: 1; }
-  100% { opacity: 0; }
+  0%,
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
 }
 
 /* Dashboard */
@@ -907,7 +962,10 @@ textarea {
   box-shadow: var(--shadow);
   display: flex;
   flex-direction: column;
-  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .video-card:hover {
@@ -1111,8 +1169,14 @@ textarea {
 /* Animations */
 
 @keyframes fadeSlideUp {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Eyebrow link */
@@ -1180,7 +1244,9 @@ textarea {
 
 .feature-card {
   padding: 1.25rem;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .feature-card:hover {
@@ -1223,7 +1289,9 @@ textarea {
   border-radius: 12px;
   background: var(--bg-surface);
   box-shadow: var(--shadow);
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .feature-card-home:hover {
@@ -1397,7 +1465,9 @@ textarea {
 
 .guide-mode-card {
   padding: 1.25rem;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .guide-mode-card:hover {

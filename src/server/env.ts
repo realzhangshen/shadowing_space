@@ -25,10 +25,16 @@ const youtubeProxyUrls = parseProxyUrls(process.env.YOUTUBE_PROXY_URLS);
 export const env = {
   youtubeFetchTimeoutMs: readPositiveInteger(
     process.env.YOUTUBE_FETCH_TIMEOUT_MS ?? process.env.HTTP_FETCH_TIMEOUT_MS,
-    15_000
+    15_000,
   ),
-  transcriptRateLimitMaxRequests: readPositiveInteger(process.env.TRANSCRIPT_RATE_LIMIT_MAX_REQUESTS, 30),
-  transcriptRateLimitWindowMs: readPositiveInteger(process.env.TRANSCRIPT_RATE_LIMIT_WINDOW_MS, 60_000),
+  transcriptRateLimitMaxRequests: readPositiveInteger(
+    process.env.TRANSCRIPT_RATE_LIMIT_MAX_REQUESTS,
+    30,
+  ),
+  transcriptRateLimitWindowMs: readPositiveInteger(
+    process.env.TRANSCRIPT_RATE_LIMIT_WINDOW_MS,
+    60_000,
+  ),
   get trackTokenSecret(): string {
     const secret = readString(process.env.TRACK_TOKEN_SECRET, DEFAULT_TOKEN_SECRET);
     if (secret === DEFAULT_TOKEN_SECRET && process.env.NODE_ENV === "production") {
@@ -40,5 +46,5 @@ export const env = {
   pickYoutubeProxyUrl(): string | undefined {
     if (youtubeProxyUrls.length === 0) return undefined;
     return youtubeProxyUrls[Math.floor(Math.random() * youtubeProxyUrls.length)];
-  }
+  },
 };

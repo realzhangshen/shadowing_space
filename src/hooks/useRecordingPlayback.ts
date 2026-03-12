@@ -73,7 +73,7 @@ export function useRecordingPlayback(): RecordingPlayback {
       });
       startRafLoop();
     },
-    [cleanup, startRafLoop]
+    [cleanup, startRafLoop],
   );
 
   const stop = useCallback(() => {
@@ -100,7 +100,7 @@ export function useRecordingPlayback(): RecordingPlayback {
         startRafLoop();
       }
     },
-    [startRafLoop]
+    [startRafLoop],
   );
 
   // Cleanup on unmount

@@ -3,14 +3,19 @@
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link, useRouter } from "@/i18n/navigation";
-import { clearAllData, deleteRecordingsForVideo, deleteVideo, listHistory } from "@/features/storage/repository";
+import {
+  clearAllData,
+  deleteRecordingsForVideo,
+  deleteVideo,
+  listHistory,
+} from "@/features/storage/repository";
 import type { HistoryItem } from "@/types/models";
 
 function formatTime(timestamp: number): string {
   return new Date(timestamp).toLocaleDateString(undefined, {
     month: "short",
     day: "numeric",
-    year: "numeric"
+    year: "numeric",
   });
 }
 
@@ -162,9 +167,14 @@ export function HistoryClient(): JSX.Element {
 
                 <p className="muted video-card-stats">
                   {progress
-                    ? t("sentenceProgress", { current: progress.currentIndex + 1, total: item.segmentCount })
+                    ? t("sentenceProgress", {
+                        current: progress.currentIndex + 1,
+                        total: item.segmentCount,
+                      })
                     : t("sentenceCount", { count: item.segmentCount })}
-                  {item.recordingCount > 0 ? ` · ${t("recordedStats", { count: item.recordingCount, size: formatBytes(item.recordingSizeBytes) })}` : ""}
+                  {item.recordingCount > 0
+                    ? ` · ${t("recordedStats", { count: item.recordingCount, size: formatBytes(item.recordingSizeBytes) })}`
+                    : ""}
                 </p>
               </div>
 
@@ -178,7 +188,7 @@ export function HistoryClient(): JSX.Element {
                       return;
                     }
                     router.push(
-                      `/practice/${item.video.id}/${encodeURIComponent(item.activeTrack.id)}`
+                      `/practice/${item.video.id}/${encodeURIComponent(item.activeTrack.id)}`,
                     );
                   }}
                 >

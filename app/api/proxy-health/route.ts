@@ -25,7 +25,7 @@ async function probeProxy(): Promise<ProxyHealthResponse> {
       httpStatus: null,
       checkedAt,
       cached: false,
-      error: "No proxy configured"
+      error: "No proxy configured",
     };
   }
 
@@ -35,12 +35,20 @@ async function probeProxy(): Promise<ProxyHealthResponse> {
       PROBE_URL,
       { method: "GET", headers: SHARED_HEADERS },
       PROBE_TIMEOUT_MS,
-      proxyUrl
+      proxyUrl,
     );
     const latencyMs = Math.round(performance.now() - start);
 
     if (res.ok) {
-      return { status: "ok", proxyConfigured: true, latencyMs, httpStatus: res.status, checkedAt, cached: false, error: null };
+      return {
+        status: "ok",
+        proxyConfigured: true,
+        latencyMs,
+        httpStatus: res.status,
+        checkedAt,
+        cached: false,
+        error: null,
+      };
     }
 
     return {
@@ -50,7 +58,7 @@ async function probeProxy(): Promise<ProxyHealthResponse> {
       httpStatus: res.status,
       checkedAt,
       cached: false,
-      error: `Upstream returned HTTP ${res.status}`
+      error: `Upstream returned HTTP ${res.status}`,
     };
   } catch (error) {
     return {
@@ -60,7 +68,7 @@ async function probeProxy(): Promise<ProxyHealthResponse> {
       httpStatus: null,
       checkedAt,
       cached: false,
-      error: describeFetchError(error, "Proxy request failed")
+      error: describeFetchError(error, "Proxy request failed"),
     };
   }
 }
@@ -79,14 +87,14 @@ export async function GET(request: Request): Promise<Response> {
   const headers = {
     ...rateLimitHeaders(limit),
     "Cache-Control": "no-store",
-    "x-request-id": requestId
+    "x-request-id": requestId,
   };
 
   if (!limit.allowed) {
     logger.warn("request.rate_limited", { ip });
     return NextResponse.json(
       { message: "Too many requests, please retry later", requestId },
-      { status: 429, headers }
+      { status: 429, headers },
     );
   }
 

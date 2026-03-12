@@ -130,11 +130,11 @@ function decodeQuotedLiteral(raw: string): string {
   if (raw.length < 2) return raw;
   const quote = raw[0];
   const body = raw.slice(1, -1);
-  if (quote === "\"") {
+  if (quote === '"') {
     return body.replace(/\\(["\\bfnrt])/g, (_match, token: string) => {
       switch (token) {
-        case "\"":
-          return "\"";
+        case '"':
+          return '"';
         case "\\":
           return "\\";
         case "b":
@@ -182,7 +182,10 @@ function parseKeyValue(line: string, lineNumber: number): { key: string; value: 
   const key = line.slice(0, separator).trim();
   let value = line.slice(separator + 1).trim();
 
-  if ((value.startsWith("\"") && value.endsWith("\"")) || (value.startsWith("'") && value.endsWith("'"))) {
+  if (
+    (value.startsWith('"') && value.endsWith('"')) ||
+    (value.startsWith("'") && value.endsWith("'"))
+  ) {
     value = decodeQuotedLiteral(value);
   }
 
@@ -324,14 +327,10 @@ function runTestFile(fileRel: string): {
   stdout: string;
   stderr: string;
 } {
-  const run = spawnSync(
-    "node",
-    ["--import", "tsx", "--test", "--test-reporter=tap", fileRel],
-    {
-      cwd: ROOT,
-      encoding: "utf8",
-    }
-  );
+  const run = spawnSync("node", ["--import", "tsx", "--test", "--test-reporter=tap", fileRel], {
+    cwd: ROOT,
+    encoding: "utf8",
+  });
 
   if (run.error) {
     return {
@@ -379,7 +378,12 @@ function runTestFile(fileRel: string): {
   };
 }
 
-function summarize(cases: RuntimeCase[]): { total: number; pass: number; fail: number; skip: number } {
+function summarize(cases: RuntimeCase[]): {
+  total: number;
+  pass: number;
+  fail: number;
+  skip: number;
+} {
   let pass = 0;
   let fail = 0;
   let skip = 0;
@@ -421,7 +425,7 @@ function createMarkdown(report: ReportJson): string {
   lines.push("| total | pass | fail | skip |");
   lines.push("| ---: | ---: | ---: | ---: |");
   lines.push(
-    `| ${report.summary.total} | ${report.summary.pass} | ${report.summary.fail} | ${report.summary.skip} |`
+    `| ${report.summary.total} | ${report.summary.pass} | ${report.summary.fail} | ${report.summary.skip} |`,
   );
   lines.push("");
   lines.push("## Diff");
@@ -456,7 +460,9 @@ function createMarkdown(report: ReportJson): string {
   lines.push(`- Review Overdue: ${report.governance.reviewOverdue.length}`);
   lines.push(`- Catalog Orphans: ${report.governance.catalogOrphans.length}`);
   lines.push(`- Duplicate Catalog Entries: ${report.governance.duplicateCatalogEntries.length}`);
-  lines.push(`- Diagnostic Policy Violations: ${report.governance.diagnosticPolicyViolations.length}`);
+  lines.push(
+    `- Diagnostic Policy Violations: ${report.governance.diagnosticPolicyViolations.length}`,
+  );
   lines.push("");
 
   if (report.governance.uncataloged.length > 0) {
@@ -512,7 +518,7 @@ function createMarkdown(report: ReportJson): string {
   lines.push("| --- | --- | --- | --- | --- |");
   for (const testCase of report.cases) {
     lines.push(
-      `| ${testCase.status} | ${testCase.file} | ${testCase.name} | ${testCase.validity} | ${testCase.reviewBy ?? "-"} |`
+      `| ${testCase.status} | ${testCase.file} | ${testCase.name} | ${testCase.validity} | ${testCase.reviewBy ?? "-"} |`,
     );
   }
   lines.push("");
@@ -593,7 +599,7 @@ function main(): void {
 
     const fileSummary = summarize(result.cases);
     console.log(
-      `[test] ${fileRel} total=${fileSummary.total} pass=${fileSummary.pass} fail=${fileSummary.fail} skip=${fileSummary.skip}`
+      `[test] ${fileRel} total=${fileSummary.total} pass=${fileSummary.pass} fail=${fileSummary.fail} skip=${fileSummary.skip}`,
     );
 
     if (result.parseError) {
@@ -696,10 +702,12 @@ function main(): void {
     }
   }
 
-  const outdatedCandidates = catalogEntries.filter((entry) => entry.validity === "outdated-candidate");
+  const outdatedCandidates = catalogEntries.filter(
+    (entry) => entry.validity === "outdated-candidate",
+  );
   const reviewOverdue = catalogEntries.filter((entry) => entry.reviewBy < today);
   const diagnosticPolicyViolations = catalogEntries.filter(
-    (entry) => entry.category === "diagnostic" && entry.validity !== "needs-review"
+    (entry) => entry.category === "diagnostic" && entry.validity !== "needs-review",
   );
 
   const report: ReportJson = {
@@ -737,7 +745,7 @@ function main(): void {
   console.log(`[report] wrote ${toPosixPath(path.relative(ROOT, LATEST_MD_PATH))}`);
   console.log(`[report] wrote ${toPosixPath(path.relative(ROOT, historyPath))}`);
   console.log(
-    `[summary] total=${summary.total} pass=${summary.pass} fail=${summary.fail} skip=${summary.skip}`
+    `[summary] total=${summary.total} pass=${summary.pass} fail=${summary.fail} skip=${summary.skip}`,
   );
   console.log(`[governance] uncataloged=${uncataloged.length} overdue=${reviewOverdue.length}`);
 
@@ -755,12 +763,14 @@ try {
   const message = error instanceof Error ? error.message : String(error);
   const stack = error instanceof Error ? error.stack : undefined;
 
-  console.error(JSON.stringify({
-    errorCode,
-    message,
-    stack,
-    timestamp: new Date().toISOString()
-  }));
+  console.error(
+    JSON.stringify({
+      errorCode,
+      message,
+      stack,
+      timestamp: new Date().toISOString(),
+    }),
+  );
 
   process.exitCode = 1;
 }

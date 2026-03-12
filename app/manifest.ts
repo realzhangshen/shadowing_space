@@ -4,8 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Shadowing Space",
     short_name: "Shadowing",
-    description:
-      "YouTube-based shadowing practice tool. Listen, record, compare.",
+    description: "YouTube-based shadowing practice tool. Listen, record, compare.",
     start_url: "/",
     display: "standalone",
     background_color: "#f7f7f4",

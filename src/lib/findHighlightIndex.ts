@@ -4,7 +4,7 @@ export function findHighlightIndex(
   segments: SegmentRecord[],
   currentMs: number,
   rangeStart: number,
-  rangeEnd: number
+  rangeEnd: number,
 ): number {
   let best = rangeStart;
   for (let i = rangeStart; i <= rangeEnd; i++) {

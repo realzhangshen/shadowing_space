@@ -40,7 +40,7 @@ export const PlaybackControlBar = memo(function PlaybackControlBar({
   nextDisabled,
   freeSessionActive,
   onStartFree,
-  onStopFree
+  onStopFree,
 }: PlaybackControlBarProps): JSX.Element {
   const t = useTranslations("PlaybackControlBar");
   const isAuto = repeatFlow === "auto";
@@ -52,7 +52,7 @@ export const PlaybackControlBar = memo(function PlaybackControlBar({
   const flows: { value: RepeatFlow; label: string }[] = [
     { value: "manual", label: t("manual") },
     { value: "auto", label: t("auto") },
-    { value: "free", label: t("free") }
+    { value: "free", label: t("free") },
   ];
 
   function getPlayLabel(): string {
@@ -69,7 +69,11 @@ export const PlaybackControlBar = memo(function PlaybackControlBar({
     if (micStatus === "error") {
       return <span className="mic-status error">{t("noMic")}</span>;
     }
-    return <span className="mic-status active" aria-label="Microphone active">🎤</span>;
+    return (
+      <span className="mic-status active" aria-label="Microphone active">
+        🎤
+      </span>
+    );
   }
 
   return (
@@ -78,7 +82,11 @@ export const PlaybackControlBar = memo(function PlaybackControlBar({
         <div className="control-bar">
           <button
             type="button"
-            className={freeSessionActive ? "btn primary recording free-start-btn" : "btn primary free-start-btn"}
+            className={
+              freeSessionActive
+                ? "btn primary recording free-start-btn"
+                : "btn primary free-start-btn"
+            }
             onClick={freeSessionActive ? onStopFree : onStartFree}
           >
             {freeSessionActive ? t("stopFree") : t("startFree")}
@@ -98,7 +106,12 @@ export const PlaybackControlBar = memo(function PlaybackControlBar({
       ) : (
         <>
           <div className="control-bar">
-            <button type="button" className="btn secondary" onClick={onPrev} disabled={prevDisabled}>
+            <button
+              type="button"
+              className="btn secondary"
+              onClick={onPrev}
+              disabled={prevDisabled}
+            >
               {t("prev")}
             </button>
 
@@ -111,7 +124,12 @@ export const PlaybackControlBar = memo(function PlaybackControlBar({
               {getPlayLabel()}
             </button>
 
-            <button type="button" className="btn secondary" onClick={onNext} disabled={nextDisabled}>
+            <button
+              type="button"
+              className="btn secondary"
+              onClick={onNext}
+              disabled={nextDisabled}
+            >
               {t("next")}
             </button>
           </div>
@@ -162,9 +180,7 @@ export const PlaybackControlBar = memo(function PlaybackControlBar({
           ))}
         </div>
 
-        {showHeadphoneHint ? (
-          <span className="headphone-hint">{t("useHeadphones")}</span>
-        ) : null}
+        {showHeadphoneHint ? <span className="headphone-hint">{t("useHeadphones")}</span> : null}
       </div>
     </div>
   );

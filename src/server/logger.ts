@@ -7,7 +7,7 @@ const LOG_LEVEL_RANK: Record<LogLevel, number> = {
   debug: 10,
   info: 20,
   warn: 30,
-  error: 40
+  error: 40,
 };
 
 function readLogLevel(): LogLevel {
@@ -27,14 +27,14 @@ function serializeError(error: unknown): Record<string, unknown> {
     return {
       name: error.name,
       message: error.message,
-      statusCode: error.statusCode
+      statusCode: error.statusCode,
     };
   }
 
   if (error instanceof Error) {
     return {
       name: error.name,
-      message: error.message
+      message: error.message,
     };
   }
 
@@ -86,7 +86,7 @@ function emit(level: LogLevel, event: string, metadata: LogMetadata): void {
     event,
     ...(typeof normalizedMetadata === "object" && normalizedMetadata
       ? (normalizedMetadata as Record<string, unknown>)
-      : {})
+      : {}),
   };
 
   const line = JSON.stringify(payload);
@@ -130,6 +130,6 @@ export function createRequestLogger(params: { requestId: string; route: string }
     },
     error(event, metadata = {}) {
       emit("error", event, { ...base, ...metadata });
-    }
+    },
   };
 }

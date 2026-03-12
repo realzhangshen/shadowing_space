@@ -6,7 +6,7 @@ const ALLOWED_CAPTION_HOSTS = new Set([
   "www.youtube.com",
   "m.youtube.com",
   "youtube-nocookie.com",
-  "www.youtube-nocookie.com"
+  "www.youtube-nocookie.com",
 ]);
 
 export type TrackTokenPayload = {
@@ -75,13 +75,17 @@ function normalizeCaptionUrl(baseUrl: string): string {
   return trimmed;
 }
 
-export function createTrackToken(payload: UnsignedPayload, secret: string, ttlSeconds: number): string {
+export function createTrackToken(
+  payload: UnsignedPayload,
+  secret: string,
+  ttlSeconds: number,
+): string {
   const now = Date.now();
   const normalized: TrackTokenPayload = {
     ...payload,
     baseUrl: normalizeCaptionUrl(payload.baseUrl),
     issuedAt: now,
-    expiresAt: now + ttlSeconds * 1000
+    expiresAt: now + ttlSeconds * 1000,
   };
 
   const encoded = encodePayload(normalized);
@@ -89,7 +93,11 @@ export function createTrackToken(payload: UnsignedPayload, secret: string, ttlSe
   return `${encoded}.${signature}`;
 }
 
-export function parseTrackToken(token: string, secret: string, nowMs = Date.now()): TrackTokenPayload {
+export function parseTrackToken(
+  token: string,
+  secret: string,
+  nowMs = Date.now(),
+): TrackTokenPayload {
   const [encoded, signature] = token.split(".");
   if (!encoded || !signature) {
     throw new TrackTokenInvalidError("malformed_token");

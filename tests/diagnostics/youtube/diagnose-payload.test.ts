@@ -87,5 +87,8 @@ test("diagnose caption payloads for specific video", { skip: !shouldRun }, async
     console.log(`Fetch error: ${error instanceof Error ? error.message : String(error)}`);
   }
 
-  assert.ok(true, "Diagnostic complete — check console output and /tmp/caption-payload-*.txt files");
+  assert.ok(
+    true,
+    "Diagnostic complete — check console output and /tmp/caption-payload-*.txt files",
+  );
 });

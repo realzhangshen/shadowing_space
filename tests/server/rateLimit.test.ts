@@ -13,4 +13,3 @@ test("checkRateLimit limits requests over threshold", () => {
   assert.equal(second.allowed, true);
   assert.equal(third.allowed, false);
 });
-

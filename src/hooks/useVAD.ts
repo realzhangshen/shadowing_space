@@ -17,7 +17,7 @@ export function useVAD({
   onSilenceDetected,
   audioFinishedRef,
   silenceDurationMs = 1800,
-  threshold = 0.01
+  threshold = 0.01,
 }: UseVADParams): { isSilent: boolean; hasSpoken: boolean } {
   const [isSilent, setIsSilent] = useState(false);
   const [hasSpoken, setHasSpoken] = useState(false);
@@ -82,11 +82,7 @@ export function useVAD({
         // 1. User has spoken at least once
         // 2. Original audio has finished playing
         // 3. Sustained silence for silenceDurationMs
-        if (
-          spokenInLoop &&
-          audioFinishedRef.current &&
-          now - silenceSince >= silenceDurationMs
-        ) {
+        if (spokenInLoop && audioFinishedRef.current && now - silenceSince >= silenceDurationMs) {
           fired = true;
           onSilenceRef.current();
           return;

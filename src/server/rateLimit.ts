@@ -14,7 +14,11 @@ export type RateLimitResult = {
   resetAt: number;
 };
 
-export function checkRateLimit(key: string, maxRequests: number, windowMs: number): RateLimitResult {
+export function checkRateLimit(
+  key: string,
+  maxRequests: number,
+  windowMs: number,
+): RateLimitResult {
   const now = Date.now();
   const bucket = buckets.get(key);
 
@@ -26,7 +30,7 @@ export function checkRateLimit(key: string, maxRequests: number, windowMs: numbe
       allowed: true,
       limit: maxRequests,
       remaining: Math.max(0, maxRequests - 1),
-      resetAt
+      resetAt,
     };
   }
 
@@ -36,7 +40,7 @@ export function checkRateLimit(key: string, maxRequests: number, windowMs: numbe
       allowed: false,
       limit: maxRequests,
       remaining: 0,
-      resetAt: bucket.resetAt
+      resetAt: bucket.resetAt,
     };
   }
 
@@ -47,7 +51,7 @@ export function checkRateLimit(key: string, maxRequests: number, windowMs: numbe
     allowed: true,
     limit: maxRequests,
     remaining: Math.max(0, maxRequests - bucket.count),
-    resetAt: bucket.resetAt
+    resetAt: bucket.resetAt,
   };
 }
 
@@ -67,12 +71,12 @@ export function rateLimitHeaders(result: RateLimitResult): Record<string, string
   return {
     "X-RateLimit-Limit": String(result.limit),
     "X-RateLimit-Remaining": String(result.remaining),
-    "X-RateLimit-Reset": String(Math.floor(result.resetAt / 1000))
+    "X-RateLimit-Reset": String(Math.floor(result.resetAt / 1000)),
   };
 }
 
 export const __testOnly = {
   clearBuckets(): void {
     buckets.clear();
-  }
+  },
 };
