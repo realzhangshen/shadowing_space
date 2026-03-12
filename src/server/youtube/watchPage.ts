@@ -1,6 +1,6 @@
 import { AppError, YouTubeUpstreamError } from "@/server/errors";
 import type { RequestLogger } from "@/server/logger";
-import { describeFetchError, fetchWithProxy, fetchWithTimeout, SHARED_HEADERS } from "@/server/http";
+import { describeFetchError, fetchWithProxy, SHARED_HEADERS } from "@/server/http";
 
 export function extractInnertubeApiKey(html: string): string | null {
   const match = html.match(/"INNERTUBE_API_KEY":\s*"([^"]+)"/);

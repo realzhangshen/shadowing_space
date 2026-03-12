@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { PlaybackControlBar } from "@/components/PlaybackControlBar";
@@ -13,15 +13,13 @@ import { useRecordingPlayback } from "@/hooks/useRecordingPlayback";
 import { useVAD } from "@/hooks/useVAD";
 import { useLiveWaveform } from "@/hooks/useLiveWaveform";
 import { useWaveform } from "@/hooks/useWaveform";
+import { usePracticeActions } from "@/hooks/usePracticeActions";
 import { fetchTranscriptSegments } from "@/lib/apiClient";
-import { findHighlightIndex } from "@/lib/findHighlightIndex";
 import {
   getLatestRecording,
   getPracticeSession,
   getRecordedSegmentIndices,
   mapSegments,
-  saveFreeRecording,
-  saveLatestRecording,
   saveSegmentsForTrack,
   updateProgress
 } from "@/features/storage/repository";
@@ -63,10 +61,11 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
   const manualStopRef = useRef(false);
   const autoAdvanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const segmentsRef = useRef<SegmentRecord[]>([]);
+  const freeRecordingBlobRef = useRef<Blob | null>(null);
+  const recorderRef = useRef<ReturnType<typeof useRecorder> | null>(null);
 
   const {
     currentIndex,
-    playbackMode,
     playbackSpeed,
     isRecording,
     isPlaying,
@@ -75,8 +74,6 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
     playerError,
     transcriptHidden,
     toggleTranscriptHidden,
-    setCurrentIndex,
-    setPlaybackMode,
     setPlaybackSpeed,
     setIsRecording,
     setIsPlaying,
@@ -87,8 +84,6 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
     freeHighlightIndex,
     freeSessionActive,
     setFreeRange,
-    setFreeHighlightIndex,
-    setFreeSessionActive,
     resetForSession
   } = usePracticeStore();
 
@@ -101,6 +96,47 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
   const recordedCount = recordingReadySet.size;
   const totalCount = segments.length;
   const progressPct = totalCount > 0 ? Math.round((recordedCount / totalCount) * 100) : 0;
+
+  // --- Actions hook ---
+
+  const actions = usePracticeActions({
+    trackId,
+    segments,
+    segmentsRef,
+    playerRef,
+    recorderRef,
+    recordingPlayback,
+    recordingTargetRef,
+    audioFinishedRef,
+    manualStopRef,
+    autoAdvanceTimerRef,
+    freeRecordingBlobRef,
+    waveformBlob,
+    hasSession: Boolean(session),
+    setLatestRecordingReady,
+    setFreeRecordingReady,
+    setRecordingReadySet,
+    setWaveformBlob,
+    autoAdvanceDelayMs: AUTO_ADVANCE_DELAY_MS,
+  });
+
+  // --- Recorder ---
+
+  const recorder = useRecorder({
+    onComplete: actions.onRecordingComplete,
+    onError: (message) => {
+      setMicrophoneError(message || t("micAccessError"));
+    }
+  });
+
+  // Keep recorderRef in sync so usePracticeActions callbacks can access it
+  recorderRef.current = recorder;
+
+  useEffect(() => {
+    setIsRecording(recorder.isRecording);
+  }, [recorder.isRecording, setIsRecording]);
+
+  // --- Session loading ---
 
   const loadRecordingState = useCallback(async (nextTrackId: string, nextIndex: number) => {
     const recording = await getLatestRecording(nextTrackId, nextIndex);
@@ -191,132 +227,6 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
     }
   }, [repeatFlow, freeRange, segments.length, setFreeRange]);
 
-  // --- Recorder ---
-
-  const recorder = useRecorder({
-    onComplete: async ({ blob, durationMs, mimeType }) => {
-      const state = usePracticeStore.getState();
-
-      // Free mode: save as a single continuous recording
-      if (state.repeatFlow === "free") {
-        freeRecordingBlobRef.current = blob;
-        setWaveformBlob(blob);
-        setFreeRecordingReady(true);
-
-        const range = state.freeRange;
-        if (range) {
-          await saveFreeRecording({
-            trackId,
-            startSegmentIndex: range.startIndex,
-            endSegmentIndex: range.endIndex,
-            blob,
-            mimeType,
-            durationMs,
-            playbackSpeed: state.playbackSpeed
-          });
-        }
-
-        if (manualStopRef.current) {
-          manualStopRef.current = false;
-        }
-        setPlaybackMode("idle");
-        return;
-      }
-
-      const targetIndex = recordingTargetRef.current;
-      const targetSegment = segments[targetIndex];
-      if (!targetSegment) {
-        return;
-      }
-
-      await saveLatestRecording({
-        trackId,
-        segmentIndex: targetSegment.index,
-        blob,
-        durationMs,
-        mimeType
-      });
-
-      setLatestRecordingReady(true);
-      setWaveformBlob(blob);
-      setRecordingReadySet((prev) => new Set(prev).add(targetSegment.index));
-
-      if (manualStopRef.current) {
-        manualStopRef.current = false;
-        setPlaybackMode("idle");
-        return;
-      }
-
-      if (state.repeatFlow === "auto") {
-        setPlaybackMode("idle");
-      } else {
-        setPlaybackMode("attempt");
-      }
-
-      if (state.repeatFlow === "auto") {
-        autoAdvanceTimerRef.current = setTimeout(() => {
-          autoAdvanceTimerRef.current = null;
-          const s = usePracticeStore.getState();
-          const currentSegments = segmentsRef.current;
-          const nextIdx = Math.min(currentSegments.length - 1, s.currentIndex + 1);
-          if (nextIdx === s.currentIndex) return;
-
-          setCurrentIndex(nextIdx);
-          const nextSeg = currentSegments[nextIdx];
-          if (!nextSeg) return;
-
-          recordingPlayback.stop();
-          audioFinishedRef.current = false;
-          playerRef.current?.playSegment(nextSeg.startMs, nextSeg.endMs, s.playbackSpeed);
-          setPlaybackMode("source");
-
-          recordingTargetRef.current = nextIdx;
-          void recorder.start();
-        }, AUTO_ADVANCE_DELAY_MS);
-      }
-    },
-    onError: (message) => {
-      setMicrophoneError(message || t("micAccessError"));
-    }
-  });
-
-  useEffect(() => {
-    setIsRecording(recorder.isRecording);
-  }, [recorder.isRecording, setIsRecording]);
-
-  const navigateToSegment = useCallback(
-    async (index: number) => {
-      if (autoAdvanceTimerRef.current) {
-        clearTimeout(autoAdvanceTimerRef.current);
-        autoAdvanceTimerRef.current = null;
-      }
-      if (recorder.isRecording) {
-        manualStopRef.current = true;
-        await recorder.stop();
-      }
-      setCurrentIndex(index);
-      const seg = segments[index];
-      if (!seg) return;
-      recordingPlayback.stop();
-      audioFinishedRef.current = false;
-      playerRef.current?.playSegment(seg.startMs, seg.endMs, playbackSpeed);
-      setPlaybackMode("source");
-    },
-    [recorder, recordingPlayback.stop, playbackSpeed, segments, setCurrentIndex, setPlaybackMode]
-  );
-
-  const goPrev = useCallback(() => {
-    const newIndex = Math.max(0, currentIndex - 1);
-    if (newIndex === currentIndex) return;
-    void navigateToSegment(newIndex);
-  }, [currentIndex, navigateToSegment]);
-
-  const goNext = useCallback(() => {
-    const newIndex = Math.min(segments.length - 1, currentIndex + 1);
-    if (newIndex === currentIndex) return;
-    void navigateToSegment(newIndex);
-  }, [currentIndex, navigateToSegment, segments.length]);
-
   // --- Live waveform ---
 
   const {
@@ -394,234 +304,11 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
     }
   }, [isPlaying]);
 
-  // --- Mode-specific functions ---
+  // --- Shortcuts ---
 
-  const playOriginal = useCallback(async () => {
-    if (!currentSegment) {
-      return;
-    }
+  useShortcuts(actions.shortcutHandlers);
 
-    if (recorder.isRecording) {
-      manualStopRef.current = true;
-      await recorder.stop();
-    }
-
-    recordingPlayback.stop();
-    playerRef.current?.playSegment(currentSegment.startMs, currentSegment.endMs, playbackSpeed);
-    setPlaybackMode("source");
-  }, [recorder, recordingPlayback.stop, currentSegment, playbackSpeed, setPlaybackMode]);
-
-  const toggleRecording = useCallback(async () => {
-    setMicrophoneError(undefined);
-
-    if (recorder.isRecording) {
-      if (usePracticeStore.getState().repeatFlow === "manual") {
-        playerRef.current?.pause();
-      }
-      await recorder.stop();
-    } else {
-      playerRef.current?.pause();
-      recordingPlayback.stop();
-      recordingTargetRef.current = currentIndex;
-      await recorder.start();
-    }
-  }, [currentIndex, recorder, recordingPlayback, setMicrophoneError]);
-
-  const startShadowing = useCallback(async () => {
-    if (!currentSegment) return;
-    setMicrophoneError(undefined);
-    recordingPlayback.stop();
-    audioFinishedRef.current = false;
-
-    playerRef.current?.playSegment(currentSegment.startMs, currentSegment.endMs, playbackSpeed);
-    setPlaybackMode("source");
-
-    recordingTargetRef.current = currentIndex;
-    await recorder.start();
-  }, [recordingPlayback.stop, currentIndex, currentSegment, playbackSpeed, recorder, setMicrophoneError, setPlaybackMode]);
-
-  const toggleOriginal = useCallback(async () => {
-    if (!currentSegment) {
-      return;
-    }
-
-    if (isPlaying) {
-      playerRef.current?.pause();
-      if (recorder.isRecording) {
-        manualStopRef.current = true;
-        void recorder.stop();
-      }
-      return;
-    }
-
-    if (recorder.isRecording) {
-      manualStopRef.current = true;
-      await recorder.stop();
-    }
-
-    const state = usePracticeStore.getState();
-
-    if (state.repeatFlow === "auto") {
-      void startShadowing();
-      return;
-    }
-
-    recordingPlayback.stop();
-    audioFinishedRef.current = false;
-    playerRef.current?.toggleSegment(currentSegment.startMs, currentSegment.endMs, playbackSpeed);
-    setPlaybackMode("source");
-  }, [recordingPlayback.stop, currentSegment, isPlaying, playbackSpeed, recorder, setPlaybackMode, startShadowing]);
-
-  const handleWaveformSeek = useCallback(
-    (fraction: number) => {
-      if (!waveformBlob) return;
-      playerRef.current?.pause();
-
-      if (recordingPlayback.isPlaying) {
-        recordingPlayback.seek(fraction);
-      } else {
-        recordingPlayback.play(waveformBlob);
-        requestAnimationFrame(() => recordingPlayback.seek(fraction));
-      }
-      setPlaybackMode("attempt");
-    },
-    [recordingPlayback, setPlaybackMode, waveformBlob]
-  );
-
-  const playRecording = useCallback(async () => {
-    if (recorder.isRecording) {
-      manualStopRef.current = true;
-      await recorder.stop();
-    }
-
-    // Free mode: play the in-memory free recording blob directly
-    if (repeatFlow === "free" && freeRecordingBlobRef.current) {
-      playerRef.current?.pause();
-      recordingPlayback.play(freeRecordingBlobRef.current);
-      setPlaybackMode("attempt");
-      return;
-    }
-
-    if (!currentSegment) {
-      return;
-    }
-
-    const recording = await getLatestRecording(trackId, currentSegment.index);
-    if (!recording) {
-      setLatestRecordingReady(false);
-      return;
-    }
-
-    playerRef.current?.pause();
-    recordingPlayback.play(recording.blob);
-    setPlaybackMode("attempt");
-    setLatestRecordingReady(true);
-  }, [recorder, recordingPlayback, currentSegment, repeatFlow, setPlaybackMode, trackId]);
-
-  const selectSegment = useCallback(
-    (index: number) => void navigateToSegment(index),
-    [navigateToSegment]
-  );
-
-  const toggleRepeatFlow = useCallback(() => {
-    if (freeSessionActive) return;
-    if (recorder.isRecording) {
-      manualStopRef.current = true;
-      void recorder.stop();
-    }
-    const state = usePracticeStore.getState();
-    const order: Array<"manual" | "auto" | "free"> = ["manual", "auto", "free"];
-    const idx = order.indexOf(state.repeatFlow);
-    state.setRepeatFlow(order[(idx + 1) % order.length]);
-  }, [freeSessionActive, recorder]);
-
-  const freeRecordingBlobRef = useRef<Blob | null>(null);
-
-  const startFreeShadowing = useCallback(async () => {
-    if (!session) return;
-    setMicrophoneError(undefined);
-    recordingPlayback.stop();
-
-    const range = usePracticeStore.getState().freeRange ?? {
-      startIndex: 0,
-      endIndex: segments.length - 1
-    };
-    if (!usePracticeStore.getState().freeRange) {
-      setFreeRange(range);
-    }
-
-    const startSeg = segments[range.startIndex];
-    const endSeg = segments[range.endIndex];
-    if (!startSeg || !endSeg) return;
-
-    const startMs = startSeg.startMs;
-    const endMs = endSeg.endMs;
-    const speed = usePracticeStore.getState().playbackSpeed;
-
-    setFreeHighlightIndex(range.startIndex);
-    freeRecordingBlobRef.current = null;
-    setFreeRecordingReady(false);
-
-    const started = await recorder.start();
-    if (!started) return;
-
-    setFreeSessionActive(true);
-
-    playerRef.current?.playFreeRange(
-      startMs,
-      endMs,
-      speed,
-      (currentMs) => {
-        const state = usePracticeStore.getState();
-        const r = state.freeRange;
-        if (!r) return;
-        const idx = findHighlightIndex(segmentsRef.current, currentMs, r.startIndex, r.endIndex);
-        setFreeHighlightIndex(idx);
-      },
-      () => {
-        void stopFreeShadowing();
-      }
-    );
-  }, [session, segments, recorder, recordingPlayback, setMicrophoneError, setFreeRange, setFreeHighlightIndex, setFreeSessionActive]);
-
-  const stopFreeShadowing = useCallback(async () => {
-    playerRef.current?.pause();
-
-    if (recorder.isRecording) {
-      manualStopRef.current = true;
-      await recorder.stop();
-    }
-
-    setFreeSessionActive(false);
-  }, [recorder, setFreeSessionActive]);
-
-  const toggleFreeSession = useCallback(() => {
-    if (repeatFlow !== "free") return;
-    if (freeSessionActive) {
-      void stopFreeShadowing();
-    } else {
-      void startFreeShadowing();
-    }
-  }, [repeatFlow, freeSessionActive, startFreeShadowing, stopFreeShadowing]);
-
-  const shortcutHandlers = useMemo(
-    () => ({
-      onPlayOrPauseSource: () => { void toggleOriginal(); },
-      onToggleRecording: () => { void toggleRecording(); },
-      onPlaySource: () => { void playOriginal(); },
-      onPlayAttempt: () => {
-        void playRecording();
-      },
-      onPrevSegment: goPrev,
-      onNextSegment: goNext,
-      onToggleTranscript: usePracticeStore.getState().toggleTranscriptHidden,
-      onToggleRepeatFlow: toggleRepeatFlow,
-      onToggleFreeSession: toggleFreeSession
-    }),
-    [goNext, goPrev, playOriginal, playRecording, toggleOriginal, toggleRecording, toggleRepeatFlow, toggleFreeSession]
-  );
-
-  useShortcuts(shortcutHandlers);
+  // --- Render ---
 
   if (isLoading) {
     return <p className="muted">{t("loading")}</p>;
@@ -697,7 +384,7 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
               peaks={displayPeaks}
               progress={waveformProgress}
               barColor={waveformBarColor}
-              onSeek={waveformSeekable ? handleWaveformSeek : undefined}
+              onSeek={waveformSeekable ? actions.handleWaveformSeek : undefined}
               livePeaksRef={isLiveWaveform ? livePeaksRef : undefined}
               subscribeLivePeaks={isLiveWaveform ? subscribeLivePeaks : undefined}
               mode={isLiveWaveform ? "scrolling" : "static"}
@@ -712,17 +399,17 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
           hasRecording={repeatFlow === "free" ? freeRecordingReady : latestRecordingReady}
           micStatus={recorder.micStatus}
           repeatFlow={repeatFlow}
-          onToggleOriginal={() => void toggleOriginal()}
-          onToggleRecording={() => void toggleRecording()}
-          onPlayRecording={() => void playRecording()}
+          onToggleOriginal={() => void actions.toggleOriginal()}
+          onToggleRecording={() => void actions.toggleRecording()}
+          onPlayRecording={() => void actions.playRecording()}
           onSetRepeatFlow={setRepeatFlow}
-          onPrev={goPrev}
-          onNext={goNext}
+          onPrev={actions.goPrev}
+          onNext={actions.goNext}
           prevDisabled={currentIndex <= 0}
           nextDisabled={currentIndex >= segments.length - 1}
           freeSessionActive={freeSessionActive}
-          onStartFree={() => void startFreeShadowing()}
-          onStopFree={() => void stopFreeShadowing()}
+          onStartFree={() => void actions.startFreeShadowing()}
+          onStopFree={() => void actions.stopFreeShadowing()}
         />
 
         <div className="actions-row speed-row">
@@ -758,7 +445,7 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
         <SegmentNavigator
           segments={segments}
           currentIndex={currentIndex}
-          onSelectSegment={selectSegment}
+          onSelectSegment={actions.selectSegment}
           recordingReadySet={recordingReadySet}
           transcriptHidden={transcriptHidden}
           onToggleTranscriptHidden={toggleTranscriptHidden}
