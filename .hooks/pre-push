@@ -1,6 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+echo "Checking package-lock.json is in sync with package.json..."
+if npm ls --all 2>&1 | grep -q 'invalid\|ELSPROBLEMS'; then
+  echo "ERROR: package-lock.json is out of sync with package.json."
+  echo "Run 'npm install' to fix, then commit the updated lock file."
+  exit 1
+fi
+
 echo "Running local CI checks before push..."
 npm run ci:local
 echo "All checks passed!"
