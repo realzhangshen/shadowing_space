@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "Running local CI checks before push..."
+npm run ci:local
+echo "All checks passed!"
