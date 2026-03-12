@@ -8,6 +8,8 @@ coverage
 *.sqlite
 tsconfig.tsbuildinfo
 .claude
+CLAUDE.md
+agent.md
 .env
 .env.local
 .env.*.local
