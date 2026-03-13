@@ -14,6 +14,8 @@ A free, open-source YouTube-based **shadowing practice** tool. Listen to native 
 - Speed presets: 0.75x / 1.0x / 1.25x / 1.5x
 - Local history and session resume (IndexedDB via Dexie)
 - Structured JSON server logs with request tracing
+- PWA — installable on mobile and desktop
+- Multi-language UI (English, 简体中文, 繁體中文, 日本語, Русский)
 
 ## Tech Stack
 

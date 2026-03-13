@@ -3,6 +3,15 @@
   "private": true,
   "version": "1.0.0",
   "license": "MIT",
+  "author": "Zhang Shen",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/realzhangshen/shadowing_space.git"
+  },
+  "bugs": {
+    "url": "https://github.com/realzhangshen/shadowing_space/issues"
+  },
+  "homepage": "https://shadowing.space",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
