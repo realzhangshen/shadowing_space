@@ -1,12 +1,15 @@
 node_modules
 .next
+.turbo
+.vercel
+.idea
 out
 *.log
 .DS_Store
 coverage
 .vscode
 *.sqlite
-tsconfig.tsbuildinfo
+*.tsbuildinfo
 .claude
 .env
 .env.local
