@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
 import {
@@ -146,14 +146,14 @@ export function ImportClient(): JSX.Element {
 
   const canImport = Boolean(fetchResult && selectedTrackToken) && !isImporting;
 
-  function friendlyMessage(errorCode: string | undefined): string | undefined {
+  const friendlyMessage = useCallback((errorCode: string | undefined): string | undefined => {
     if (!errorCode) return undefined;
     const key = ERROR_CODE_KEYS[errorCode];
     if (!key) return undefined;
     return t(key as Parameters<typeof t>[0]);
-  }
+  }, [t]);
 
-  function normalizeApiError(apiError: unknown): ErrorDisplay {
+  const normalizeApiError = useCallback((apiError: unknown): ErrorDisplay => {
     if (apiError instanceof ApiError) {
       const friendly = friendlyMessage(apiError.errorCode);
       return {
@@ -167,7 +167,7 @@ export function ImportClient(): JSX.Element {
     return {
       message: apiError instanceof Error ? apiError.message : t("errorFallback"),
     };
-  }
+  }, [friendlyMessage, t]);
 
   const onTestProxy = async () => {
     setProxyChecking(true);
@@ -335,7 +335,7 @@ export function ImportClient(): JSX.Element {
     return () => {
       window.removeEventListener("message", onExtensionImportMessage);
     };
-  }, [router]);
+  }, [normalizeApiError, router]);
 
   return (
     <section className="card">

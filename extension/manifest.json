@@ -1,0 +1,37 @@
+{
+  "manifest_version": 3,
+  "name": "Shadowing Space Importer",
+  "version": "0.1.0",
+  "description": "Import YouTube captions into Shadowing Space using the viewer's own browser network.",
+  "permissions": ["tabs", "scripting"],
+  "host_permissions": [
+    "https://www.youtube.com/*",
+    "https://shadowing.space/*",
+    "http://localhost:3000/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "Import into Shadowing Space"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://www.youtube.com/watch*"],
+      "js": ["youtube-bridge.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://www.youtube.com/watch*"],
+      "js": ["youtube-main.js"],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": ["https://shadowing.space/*", "http://localhost:3000/*"],
+      "js": ["shadowing-space-bridge.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
