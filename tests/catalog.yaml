@@ -55,6 +55,30 @@ tests:
     reason: Stops counting when the practice page has been idle too long.
     lastReviewedOn: 2026-04-15
     reviewBy: 2026-10-15
+  - file: tests/features/practice/playbackSpeed.test.ts
+    name: normalizePlaybackSpeed preserves fine-grained custom speeds
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks the finer playback speed normalization so inputs like 0.7x and 0.9x stay available.
+    lastReviewedOn: 2026-04-15
+    reviewBy: 2026-10-15
+  - file: tests/features/practice/playbackSpeed.test.ts
+    name: normalizePlaybackSpeed clamps speeds to supported bounds
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Prevents invalid custom speed input from pushing the practice player outside safe limits.
+    lastReviewedOn: 2026-04-15
+    reviewBy: 2026-10-15
+  - file: tests/features/practice/playbackSpeed.test.ts
+    name: parsePlaybackSpeedInput falls back safely and formatted values stay compact
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Keeps custom speed text input predictable while displaying compact labels like 0.9x.
+    lastReviewedOn: 2026-04-15
+    reviewBy: 2026-10-15
   - file: tests/features/history/practiceSummary.test.ts
     name: summarizePracticeSessions groups records by day and video in descending order
     category: unit

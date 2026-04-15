@@ -370,6 +370,49 @@ textarea {
   margin-top: 0.2rem;
 }
 
+.speed-input-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.speed-input-label {
+  font-size: 0.9rem;
+}
+
+.speed-input-shell {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.2rem 0.2rem 0.2rem 0.65rem;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: var(--bg-surface);
+}
+
+.speed-input-shell:focus-within {
+  border-color: var(--text);
+  box-shadow: 0 0 0 3px var(--primary-muted);
+}
+
+.speed-input-shell input {
+  width: 4.75rem;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.speed-input-shell input:focus {
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.speed-hint {
+  margin: 0.35rem 0 0;
+}
+
 .vocabulary-panel {
   border: 1px solid var(--line);
   border-radius: 12px;

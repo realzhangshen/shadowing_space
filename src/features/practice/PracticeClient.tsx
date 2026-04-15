@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { PlaybackControlBar } from "@/components/PlaybackControlBar";
@@ -30,6 +30,13 @@ import {
   saveVocabularyWord,
   updateProgress,
 } from "@/features/storage/repository";
+import {
+  MAX_PLAYBACK_SPEED,
+  MIN_PLAYBACK_SPEED,
+  PLAYBACK_SPEED_STEP,
+  formatPlaybackSpeed,
+  parsePlaybackSpeedInput,
+} from "@/features/practice/playbackSpeed";
 import { cleanVocabularyText } from "@/features/vocabulary/words";
 import { SPEEDS, usePracticeStore } from "@/store/practiceStore";
 import type { SegmentRecord, TrackRecord, VideoRecord, VocabularyRecord } from "@/types/models";
@@ -75,6 +82,8 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
   const [wordFeedback, setWordFeedback] = useState<string | undefined>();
   const [selectedWordSourceIndex, setSelectedWordSourceIndex] = useState<number | null>(null);
   const [vocabularyItems, setVocabularyItems] = useState<VocabularyRecord[]>([]);
+  const [playbackSpeedInput, setPlaybackSpeedInput] = useState(formatPlaybackSpeed(1));
+  const [playerReadyTick, setPlayerReadyTick] = useState(0);
 
   const practiceLayoutRef = useRef<HTMLDivElement | null>(null);
   const playerRef = useRef<YouTubeSegmentPlayerHandle | null>(null);
@@ -96,7 +105,7 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
     playerError,
     transcriptHidden,
     toggleTranscriptHidden,
-    setPlaybackSpeed,
+    setPlaybackSpeed: setPlaybackSpeedInStore,
     setIsRecording,
     setIsPlaying,
     setRepeatFlow,
@@ -254,7 +263,14 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
   }, [activeTrackId, currentIndex, loadRecordingState, segments.length, session]);
 
   useEffect(() => {
-    playerRef.current?.setPlaybackSpeed(playbackSpeed);
+    const appliedSpeed = playerRef.current?.setPlaybackSpeed(playbackSpeed);
+    if (appliedSpeed !== undefined && appliedSpeed !== playbackSpeed) {
+      setPlaybackSpeedInStore(appliedSpeed);
+    }
+  }, [playbackSpeed, playerReadyTick, setPlaybackSpeedInStore]);
+
+  useEffect(() => {
+    setPlaybackSpeedInput(formatPlaybackSpeed(playbackSpeed));
   }, [playbackSpeed]);
 
   // Auto-select all segments when switching to free mode
@@ -435,6 +451,43 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
     [loadVocabularyState, session, t],
   );
 
+  const syncPlaybackSpeed = useCallback(
+    (nextSpeed: number) => {
+      if (usePracticeStore.getState().playbackSpeed === nextSpeed) {
+        return;
+      }
+      setPlaybackSpeedInStore(nextSpeed);
+    },
+    [setPlaybackSpeedInStore],
+  );
+
+  const commitPlaybackSpeedInput = useCallback(
+    (rawValue: string) => {
+      const nextSpeed = parsePlaybackSpeedInput(rawValue, usePracticeStore.getState().playbackSpeed);
+      setPlaybackSpeedInStore(nextSpeed);
+      setPlaybackSpeedInput(formatPlaybackSpeed(nextSpeed));
+    },
+    [setPlaybackSpeedInStore],
+  );
+
+  const handlePlaybackSpeedInputKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLInputElement>) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        commitPlaybackSpeedInput(event.currentTarget.value);
+        event.currentTarget.blur();
+        return;
+      }
+
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setPlaybackSpeedInput(formatPlaybackSpeed(playbackSpeed));
+        event.currentTarget.blur();
+      }
+    },
+    [commitPlaybackSpeedInput, playbackSpeed],
+  );
+
   useShortcuts(actions.shortcutHandlers);
 
   if (isLoading) {
@@ -472,6 +525,8 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
           ref={playerRef}
           onPlayerError={setPlayerError}
           onPlayStateChange={setIsPlaying}
+          onReady={() => setPlayerReadyTick((value) => value + 1)}
+          onPlaybackSpeedChange={syncPlaybackSpeed}
         />
 
         <div className="current-sentence-wrap">
@@ -552,12 +607,37 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
               type="button"
               className={playbackSpeed === speed ? "btn secondary active-speed" : "btn secondary"}
               aria-current={playbackSpeed === speed ? true : undefined}
-              onClick={() => setPlaybackSpeed(speed)}
+              onClick={() => setPlaybackSpeedInStore(speed)}
             >
-              {speed}x
+              {formatPlaybackSpeed(speed)}x
             </button>
           ))}
+          <label className="speed-input-wrap">
+            <span className="muted speed-input-label">{t("customSpeed")}</span>
+            <div className="speed-input-shell">
+              <input
+                type="number"
+                inputMode="decimal"
+                min={MIN_PLAYBACK_SPEED}
+                max={MAX_PLAYBACK_SPEED}
+                step={PLAYBACK_SPEED_STEP}
+                value={playbackSpeedInput}
+                onChange={(event) => setPlaybackSpeedInput(event.target.value)}
+                onBlur={(event) => commitPlaybackSpeedInput(event.target.value)}
+                onKeyDown={handlePlaybackSpeedInputKeyDown}
+                aria-label={t("speedInputLabel")}
+              />
+              <span aria-hidden="true">x</span>
+            </div>
+          </label>
         </div>
+        <p className="muted speed-hint">
+          {t("speedHint", {
+            min: formatPlaybackSpeed(MIN_PLAYBACK_SPEED),
+            max: formatPlaybackSpeed(MAX_PLAYBACK_SPEED),
+            step: formatPlaybackSpeed(PLAYBACK_SPEED_STEP),
+          })}
+        </p>
 
         <section className="vocabulary-panel">
           <div className="vocabulary-panel-header">

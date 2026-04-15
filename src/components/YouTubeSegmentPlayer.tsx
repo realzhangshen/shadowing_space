@@ -1,12 +1,14 @@
 "use client";
 
-import { forwardRef, useEffect, useId, useImperativeHandle, useRef, useState } from "react";
+import { forwardRef, useCallback, useEffect, useId, useImperativeHandle, useRef, useState } from "react";
+import { DEFAULT_PLAYBACK_SPEED, normalizePlaybackSpeed } from "@/features/practice/playbackSpeed";
 import type { PlaybackSpeed } from "@/store/practiceStore";
 
 const SCRIPT_ID = "youtube-iframe-api-script";
 const API_POLL_INTERVAL_MS = 50;
 const API_LOAD_TIMEOUT_MS = 10_000;
 let apiReadyPromise: Promise<void> | null = null;
+type PlaybackRatePlayer = YT.Player & { getPlaybackRate?: () => number };
 
 function loadYouTubeApi(): Promise<void> {
   if (window.YT?.Player) {
@@ -81,19 +83,25 @@ export type YouTubeSegmentPlayerHandle = {
   ) => void;
   pause: () => void;
   getCurrentTimeMs: () => number;
-  setPlaybackSpeed: (speed: PlaybackSpeed) => void;
+  getPlaybackSpeed: () => PlaybackSpeed;
+  setPlaybackSpeed: (speed: PlaybackSpeed) => PlaybackSpeed | undefined;
 };
 
 type YouTubeSegmentPlayerProps = {
   videoId: string;
   onPlayerError?: (message: string) => void;
   onPlayStateChange?: (playing: boolean) => void;
+  onReady?: () => void;
+  onPlaybackSpeedChange?: (speed: PlaybackSpeed) => void;
 };
 
 export const YouTubeSegmentPlayer = forwardRef<
   YouTubeSegmentPlayerHandle,
   YouTubeSegmentPlayerProps
->(function YouTubeSegmentPlayer({ videoId, onPlayerError, onPlayStateChange }, ref) {
+>(function YouTubeSegmentPlayer(
+  { videoId, onPlayerError, onPlayStateChange, onReady, onPlaybackSpeedChange },
+  ref,
+) {
   const elementId = useId().replace(/[:]/g, "");
   const playerRef = useRef<YT.Player | null>(null);
   const endTimerRef = useRef<number | null>(null);
@@ -110,6 +118,22 @@ export const YouTubeSegmentPlayer = forwardRef<
       pollIntervalRef.current = null;
     }
   };
+
+  const applyPlaybackSpeed = useCallback(
+    (speed: PlaybackSpeed): PlaybackSpeed => {
+      const requestedSpeed = normalizePlaybackSpeed(speed);
+      const player = playerRef.current as PlaybackRatePlayer | null;
+      if (!player) {
+        return requestedSpeed;
+      }
+
+      player.setPlaybackRate(requestedSpeed);
+      const appliedSpeed = normalizePlaybackSpeed(player.getPlaybackRate?.() ?? requestedSpeed);
+      onPlaybackSpeedChange?.(appliedSpeed);
+      return appliedSpeed;
+    },
+    [onPlaybackSpeedChange],
+  );
 
   useEffect(() => {
     let mounted = true;
@@ -131,6 +155,7 @@ export const YouTubeSegmentPlayer = forwardRef<
           events: {
             onReady: () => {
               setIsReady(true);
+              onReady?.();
             },
             onError: () => {
               onPlayerError?.("YouTube player error. Please refresh and try again.");
@@ -171,22 +196,25 @@ export const YouTubeSegmentPlayer = forwardRef<
     clearTimers();
   }, [isReady, videoId]);
 
-  const seekAndPlay = (startMs: number, endMs: number, speed: PlaybackSpeed) => {
-    clearTimers();
-    const startSeconds = Math.max(0, startMs / 1_000);
-    const durationSeconds = Math.max(0.2, (endMs - startMs) / 1_000);
+  const seekAndPlay = useCallback(
+    (startMs: number, endMs: number, speed: PlaybackSpeed) => {
+      clearTimers();
+      const startSeconds = Math.max(0, startMs / 1_000);
+      const durationSeconds = Math.max(0.2, (endMs - startMs) / 1_000);
 
-    playerRef.current!.setPlaybackRate(speed);
-    playerRef.current!.seekTo(startSeconds, true);
-    playerRef.current!.playVideo();
+      const appliedSpeed = applyPlaybackSpeed(speed);
+      playerRef.current!.seekTo(startSeconds, true);
+      playerRef.current!.playVideo();
 
-    endTimerRef.current = window.setTimeout(
-      () => {
-        playerRef.current?.pauseVideo();
-      },
-      (durationSeconds * 1_000) / speed,
-    );
-  };
+      endTimerRef.current = window.setTimeout(
+        () => {
+          playerRef.current?.pauseVideo();
+        },
+        (durationSeconds * 1_000) / appliedSpeed,
+      );
+    },
+    [applyPlaybackSpeed],
+  );
 
   useImperativeHandle(
     ref,
@@ -212,7 +240,7 @@ export const YouTubeSegmentPlayer = forwardRef<
         const startSeconds = Math.max(0, startMs / 1_000);
         const durationSeconds = Math.max(0.2, (endMs - startMs) / 1_000);
 
-        playerRef.current.setPlaybackRate(speed);
+        const appliedSpeed = applyPlaybackSpeed(speed);
         playerRef.current.seekTo(startSeconds, true);
         playerRef.current.playVideo();
 
@@ -221,7 +249,7 @@ export const YouTubeSegmentPlayer = forwardRef<
             playerRef.current?.pauseVideo();
             onEnd();
           },
-          (durationSeconds * 1_000) / speed,
+          (durationSeconds * 1_000) / appliedSpeed,
         );
       },
       playFreeRange: (startMs, endMs, speed, onTimeUpdate, onEnd) => {
@@ -230,7 +258,7 @@ export const YouTubeSegmentPlayer = forwardRef<
         const startSeconds = Math.max(0, startMs / 1_000);
         const endSeconds = endMs / 1_000;
 
-        playerRef.current.setPlaybackRate(speed);
+        applyPlaybackSpeed(speed);
         playerRef.current.seekTo(startSeconds, true);
         playerRef.current.playVideo();
 
@@ -256,11 +284,21 @@ export const YouTubeSegmentPlayer = forwardRef<
         const player = playerRef.current as YT.Player & { getCurrentTime?: () => number };
         return (player.getCurrentTime?.() ?? 0) * 1_000;
       },
+      getPlaybackSpeed: () => {
+        if (!playerRef.current) {
+          return DEFAULT_PLAYBACK_SPEED;
+        }
+        const player = playerRef.current as PlaybackRatePlayer;
+        return normalizePlaybackSpeed(player.getPlaybackRate?.() ?? DEFAULT_PLAYBACK_SPEED);
+      },
       setPlaybackSpeed: (speed) => {
-        playerRef.current?.setPlaybackRate(speed);
+        if (!playerRef.current) {
+          return undefined;
+        }
+        return applyPlaybackSpeed(speed);
       },
     }),
-    [isReady],
+    [applyPlaybackSpeed, isReady, seekAndPlay],
   );
 
   return (

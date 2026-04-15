@@ -1,8 +1,13 @@
 import { create } from "zustand";
+import {
+  DEFAULT_PLAYBACK_SPEED,
+  DEFAULT_PLAYBACK_SPEEDS,
+  normalizePlaybackSpeed,
+} from "@/features/practice/playbackSpeed";
 
 type PlaybackMode = "idle" | "source" | "attempt";
-export type PlaybackSpeed = 0.5 | 0.75 | 1 | 1.25 | 1.5;
-export const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5] as const satisfies readonly PlaybackSpeed[];
+export type PlaybackSpeed = number;
+export const SPEEDS = [...DEFAULT_PLAYBACK_SPEEDS] satisfies readonly PlaybackSpeed[];
 export type RepeatFlow = "manual" | "auto" | "free";
 export type FreeRange = { startIndex: number; endIndex: number };
 
@@ -37,7 +42,7 @@ type PracticeState = {
 export const usePracticeStore = create<PracticeState>((set) => ({
   currentIndex: 0,
   playbackMode: "idle",
-  playbackSpeed: 1,
+  playbackSpeed: DEFAULT_PLAYBACK_SPEED,
   isRecording: false,
   isPlaying: false,
   transcriptHidden: false,
@@ -47,7 +52,7 @@ export const usePracticeStore = create<PracticeState>((set) => ({
   freeSessionActive: false,
   setCurrentIndex: (currentIndex) => set({ currentIndex }),
   setPlaybackMode: (playbackMode) => set({ playbackMode }),
-  setPlaybackSpeed: (playbackSpeed) => set({ playbackSpeed }),
+  setPlaybackSpeed: (playbackSpeed) => set({ playbackSpeed: normalizePlaybackSpeed(playbackSpeed) }),
   setIsRecording: (isRecording) => set({ isRecording }),
   setIsPlaying: (isPlaying) => set({ isPlaying }),
   toggleTranscriptHidden: () => set((s) => ({ transcriptHidden: !s.transcriptHidden })),
@@ -61,7 +66,7 @@ export const usePracticeStore = create<PracticeState>((set) => ({
     set({
       currentIndex: startIndex,
       playbackMode: "idle",
-      playbackSpeed: 1,
+      playbackSpeed: DEFAULT_PLAYBACK_SPEED,
       isRecording: false,
       isPlaying: false,
       repeatFlow: "manual",

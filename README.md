@@ -11,7 +11,7 @@ A free, open-source YouTube-based **shadowing practice** tool. Listen to native 
 - Import any YouTube video URL and fetch available caption tracks
 - Sentence-by-sentence shadowing with manual controls (play/pause, prev/next)
 - Browser-based recording with A/B replay (Original vs My Recording)
-- Speed presets: 0.75x / 1.0x / 1.25x / 1.5x
+- Speed controls: presets plus custom numeric input that syncs to the nearest player-supported speed
 - Local history and session resume (IndexedDB via Dexie)
 - Structured JSON server logs with request tracing
 - PWA — installable on mobile and desktop
