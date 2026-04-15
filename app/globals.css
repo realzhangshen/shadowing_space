@@ -1049,6 +1049,108 @@ textarea {
   margin-top: 1.5rem;
 }
 
+.practice-dashboard-section {
+  margin-top: 1.5rem;
+}
+
+.practice-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.practice-summary-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.practice-summary-label {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.practice-summary-value {
+  margin: 0;
+  font-size: clamp(1.15rem, 2vw, 1.5rem);
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.practice-summary-value-sm {
+  font-size: 1rem;
+}
+
+.practice-log-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.practice-day-card {
+  padding: 1rem;
+}
+
+.practice-day-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+  margin-bottom: 0.9rem;
+}
+
+.practice-day-title {
+  margin: 0 0 0.25rem;
+  font-size: 1rem;
+}
+
+.practice-day-meta {
+  font-size: 0.82rem;
+}
+
+.practice-day-total {
+  margin: 0;
+  font-weight: 600;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.practice-day-videos {
+  display: flex;
+  flex-direction: column;
+}
+
+.practice-day-video {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--line);
+}
+
+.practice-day-video:first-child {
+  padding-top: 0;
+  border-top: none;
+}
+
+.practice-day-video-title {
+  margin: 0 0 0.2rem;
+  font-weight: 500;
+}
+
+.practice-day-video-meta {
+  font-size: 0.82rem;
+}
+
+.practice-day-video-duration {
+  margin: 0;
+  font-weight: 600;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
 .vocabulary-dashboard-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));

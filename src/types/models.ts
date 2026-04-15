@@ -53,6 +53,19 @@ export type FreeRecordingRecord = {
   createdAt: number;
 };
 
+export type PracticeSessionKind = "segment" | "free";
+
+export type PracticeSessionRecord = {
+  id: string;
+  trackId: string;
+  videoId: string;
+  videoTitle: string;
+  durationMs: number;
+  createdAt: number;
+  dayKey: string;
+  kind: PracticeSessionKind;
+};
+
 export type VocabularyRecord = {
   id: string;
   word: string;
