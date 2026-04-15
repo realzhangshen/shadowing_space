@@ -175,6 +175,30 @@ tests:
     reason: Prevents duplicate notebook entries caused by case-only differences.
     lastReviewedOn: 2026-04-15
     reviewBy: 2026-10-15
+  - file: tests/features/import/extensionImport.test.ts
+    name: createImportBundleFromExtensionPayload maps a valid payload into deterministic local records
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks the browser-extension handoff format so imported videos and segments stay stable.
+    lastReviewedOn: 2026-04-15
+    reviewBy: 2026-10-15
+  - file: tests/features/import/extensionImport.test.ts
+    name: createImportBundleFromExtensionPayload rejects malformed or empty extension payloads
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Prevents broken extension payloads from creating corrupt local practice sessions.
+    lastReviewedOn: 2026-04-15
+    reviewBy: 2026-10-15
+  - file: tests/features/import/extensionImport.test.ts
+    name: parseExtensionImportMessage returns payload only for the extension handoff message
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Ensures the import page ignores unrelated window messages while accepting extension handoff events.
+    lastReviewedOn: 2026-04-15
+    reviewBy: 2026-10-15
   - file: tests/app/api/transcriptErrorMapping.test.ts
     name: maps AppError to its statusCode and includes errorCode
     category: unit

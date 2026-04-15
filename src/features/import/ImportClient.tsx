@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
 import {
@@ -9,6 +9,10 @@ import {
   fetchTranscriptSegments,
   fetchTranscriptTracks,
 } from "@/lib/apiClient";
+import {
+  createImportBundleFromExtensionPayload,
+  parseExtensionImportMessage,
+} from "@/features/import/extensionImport";
 import {
   buildTrackId,
   mapSegments,
@@ -138,6 +142,7 @@ export function ImportClient(): JSX.Element {
   const [useProxy, setUseProxy] = useState(true);
   const [proxyStatus, setProxyStatus] = useState<ProxyHealthResponse | null>(null);
   const [proxyChecking, setProxyChecking] = useState(false);
+  const extensionImportInFlightRef = useRef(false);
 
   const canImport = Boolean(fetchResult && selectedTrackToken) && !isImporting;
 
@@ -295,6 +300,42 @@ export function ImportClient(): JSX.Element {
       setIsImporting(false);
     }
   };
+
+  useEffect(() => {
+    const onExtensionImportMessage = (event: MessageEvent<unknown>) => {
+      if (event.source !== window || extensionImportInFlightRef.current) {
+        return;
+      }
+
+      const payload = parseExtensionImportMessage(event.data);
+      if (!payload) {
+        return;
+      }
+
+      extensionImportInFlightRef.current = true;
+      setIsImporting(true);
+      setError(undefined);
+
+      void (async () => {
+        try {
+          const bundle = createImportBundleFromExtensionPayload(payload);
+          const { effectiveTargetTrackId } = await saveImportBundle(bundle);
+          const practiceUrl = `/practice/${bundle.video.id}/${encodeURIComponent(effectiveTargetTrackId)}`;
+          router.push(practiceUrl);
+        } catch (importError) {
+          setError(normalizeApiError(importError));
+        } finally {
+          extensionImportInFlightRef.current = false;
+          setIsImporting(false);
+        }
+      })();
+    };
+
+    window.addEventListener("message", onExtensionImportMessage);
+    return () => {
+      window.removeEventListener("message", onExtensionImportMessage);
+    };
+  }, [router]);
 
   return (
     <section className="card">
