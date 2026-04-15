@@ -7,7 +7,7 @@ type Bucket = {
 // Does not share state across Vercel instances or after cold starts.
 const buckets = new Map<string, Bucket>();
 
-export type RateLimitResult = {
+type RateLimitResult = {
   allowed: boolean;
   limit: number;
   remaining: number;

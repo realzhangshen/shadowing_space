@@ -2,6 +2,15 @@ import { AppError, YouTubeUpstreamError } from "@/server/errors";
 import type { RequestLogger } from "@/server/logger";
 import { describeFetchError, fetchWithProxy, SHARED_HEADERS } from "@/server/http";
 
+const INNERTUBE_BODY = {
+  context: {
+    client: {
+      clientName: "ANDROID",
+      clientVersion: "20.10.38",
+    },
+  },
+};
+
 export function extractInnertubeApiKey(html: string): string | null {
   const match = html.match(/"INNERTUBE_API_KEY":\s*"([^"]+)"/);
   return match?.[1] ?? null;
@@ -104,8 +113,11 @@ export async function fetchInnertubePlayer(
   timeoutMs: number,
   logger?: RequestLogger,
   proxyUrl?: string,
+  apiKey?: string,
 ): Promise<unknown> {
-  const url = "https://www.youtube.com/youtubei/v1/player";
+  const base = "https://www.youtube.com/youtubei/v1/player";
+  const url = apiKey ? `${base}?key=${encodeURIComponent(apiKey)}` : base;
+  const step = apiKey ? "innertube_with_key" : "innertube_direct";
 
   let response: Response;
   try {
@@ -117,81 +129,23 @@ export async function fetchInnertubePlayer(
           ...SHARED_HEADERS,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          context: {
-            client: {
-              clientName: "ANDROID",
-              clientVersion: "20.10.38",
-            },
-          },
-          videoId,
-        }),
+        body: JSON.stringify({ ...INNERTUBE_BODY, videoId }),
       },
       timeoutMs,
       proxyUrl,
     );
   } catch (error) {
     const networkCause = describeFetchError(error, "network error");
-    throw new YouTubeUpstreamError(videoId, "innertube_direct", undefined, networkCause);
+    throw new YouTubeUpstreamError(videoId, step, undefined, networkCause);
   }
 
   if (!response.ok) {
-    throw new YouTubeUpstreamError(videoId, "innertube_direct", response.status);
+    throw new YouTubeUpstreamError(videoId, step, response.status);
   }
 
   logger?.debug("youtube.innertube_player.response", {
     videoId,
-    status: response.status,
-    contentType: response.headers.get("content-type"),
-  });
-
-  const json: unknown = await response.json();
-  return json;
-}
-
-export async function fetchInnertubePlayerWithKey(
-  videoId: string,
-  apiKey: string,
-  timeoutMs: number,
-  logger?: RequestLogger,
-  proxyUrl?: string,
-): Promise<unknown> {
-  const url = `https://www.youtube.com/youtubei/v1/player?key=${encodeURIComponent(apiKey)}`;
-
-  let response: Response;
-  try {
-    response = await fetchWithProxy(
-      url,
-      {
-        method: "POST",
-        headers: {
-          ...SHARED_HEADERS,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          context: {
-            client: {
-              clientName: "ANDROID",
-              clientVersion: "20.10.38",
-            },
-          },
-          videoId,
-        }),
-      },
-      timeoutMs,
-      proxyUrl,
-    );
-  } catch (error) {
-    const networkCause = describeFetchError(error, "network error");
-    throw new YouTubeUpstreamError(videoId, "innertube_with_key", undefined, networkCause);
-  }
-
-  if (!response.ok) {
-    throw new YouTubeUpstreamError(videoId, "innertube_with_key", response.status);
-  }
-
-  logger?.debug("youtube.innertube_player_with_key.response", {
-    videoId,
+    apiKeyUsed: Boolean(apiKey),
     status: response.status,
     contentType: response.headers.get("content-type"),
   });

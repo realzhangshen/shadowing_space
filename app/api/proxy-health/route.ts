@@ -1,7 +1,12 @@
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { env } from "@/server/env";
-import { describeFetchError, fetchWithProxy, SHARED_HEADERS } from "@/server/http";
+import {
+  clientIpFromRequest,
+  describeFetchError,
+  fetchWithProxy,
+  SHARED_HEADERS,
+} from "@/server/http";
 import { createRequestLogger } from "@/server/logger";
 import { checkRateLimit, rateLimitHeaders } from "@/server/rateLimit";
 import type { ProxyHealthResponse } from "@/types/api";
@@ -71,11 +76,6 @@ async function probeProxy(): Promise<ProxyHealthResponse> {
       error: describeFetchError(error, "Proxy request failed"),
     };
   }
-}
-
-function clientIpFromRequest(request: Request): string {
-  const forwarded = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
-  return forwarded || "unknown";
 }
 
 export async function GET(request: Request): Promise<Response> {

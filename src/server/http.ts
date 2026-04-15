@@ -3,6 +3,15 @@ export const SHARED_HEADERS = {
   "Accept-Language": "en-US,en;q=0.9",
 };
 
+// Trusts Vercel's x-forwarded-for (safe on Vercel, spoofable if self-hosted behind untrusted proxies).
+export function clientIpFromRequest(request: Request): string {
+  const forwarded = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
+  if (forwarded) {
+    return forwarded;
+  }
+  return "unknown";
+}
+
 function isAbortError(error: unknown): boolean {
   return (
     typeof error === "object" && error !== null && "name" in error && error.name === "AbortError"
@@ -47,7 +56,7 @@ export function describeFetchError(error: unknown, fallback: string): string {
   return fallback;
 }
 
-export async function fetchWithTimeout(
+async function fetchWithTimeout(
   input: string,
   init: RequestInit,
   timeoutMs: number,

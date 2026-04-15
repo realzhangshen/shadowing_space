@@ -54,7 +54,6 @@ export function useVAD({
 
       analyser.getFloatTimeDomainData(dataArray);
 
-      // Compute RMS
       let sum = 0;
       for (let i = 0; i < dataArray.length; i++) {
         sum += dataArray[i] * dataArray[i];
@@ -64,7 +63,6 @@ export function useVAD({
       const now = Date.now();
 
       if (rms >= threshold) {
-        // User is speaking
         silenceSince = null;
         setIsSilent(false);
         if (!spokenInLoop) {
@@ -72,7 +70,6 @@ export function useVAD({
           setHasSpoken(true);
         }
       } else {
-        // Silence
         if (silenceSince === null) {
           silenceSince = now;
         }

@@ -170,7 +170,7 @@ export function ImportClient(): JSX.Element {
     try {
       const result = await fetchProxyHealth();
       setProxyStatus(result);
-    } catch {
+    } catch (requestError) {
       setProxyStatus({
         status: "down",
         proxyConfigured: false,
@@ -178,7 +178,7 @@ export function ImportClient(): JSX.Element {
         httpStatus: null,
         checkedAt: new Date().toISOString(),
         cached: false,
-        error: "Request failed",
+        error: requestError instanceof Error ? requestError.message : "Request failed",
       });
     } finally {
       setProxyChecking(false);

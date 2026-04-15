@@ -1,8 +1,10 @@
 import { create } from "zustand";
 
-export type PlaybackMode = "idle" | "source" | "attempt";
+type PlaybackMode = "idle" | "source" | "attempt";
 export type PlaybackSpeed = 0.5 | 0.75 | 1 | 1.25 | 1.5;
+export const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5] as const satisfies readonly PlaybackSpeed[];
 export type RepeatFlow = "manual" | "auto" | "free";
+export type FreeRange = { startIndex: number; endIndex: number };
 
 type PracticeState = {
   currentIndex: number;
@@ -14,7 +16,7 @@ type PracticeState = {
   repeatFlow: RepeatFlow;
   microphoneError?: string;
   playerError?: string;
-  freeRange: { startIndex: number; endIndex: number } | null;
+  freeRange: FreeRange | null;
   freeHighlightIndex: number;
   freeSessionActive: boolean;
   setCurrentIndex: (index: number) => void;
@@ -26,7 +28,7 @@ type PracticeState = {
   setRepeatFlow: (flow: RepeatFlow) => void;
   setMicrophoneError: (message?: string) => void;
   setPlayerError: (message?: string) => void;
-  setFreeRange: (range: { startIndex: number; endIndex: number } | null) => void;
+  setFreeRange: (range: FreeRange | null) => void;
   setFreeHighlightIndex: (index: number) => void;
   setFreeSessionActive: (active: boolean) => void;
   resetForSession: (startIndex: number) => void;

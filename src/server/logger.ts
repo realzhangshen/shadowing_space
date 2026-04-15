@@ -1,6 +1,6 @@
 import { AppError } from "@/server/errors";
 
-export type LogLevel = "debug" | "info" | "warn" | "error";
+type LogLevel = "debug" | "info" | "warn" | "error";
 export type LogMetadata = Record<string, unknown>;
 
 const LOG_LEVEL_RANK: Record<LogLevel, number> = {

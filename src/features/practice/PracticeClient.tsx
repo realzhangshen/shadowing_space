@@ -26,7 +26,7 @@ import {
   saveSegmentsForTrack,
   updateProgress,
 } from "@/features/storage/repository";
-import { usePracticeStore } from "@/store/practiceStore";
+import { SPEEDS, usePracticeStore } from "@/store/practiceStore";
 import type { SegmentRecord, TrackRecord, VideoRecord } from "@/types/models";
 
 type PracticeClientProps = {
@@ -41,7 +41,6 @@ type SessionState = {
   segments: SegmentRecord[];
 };
 
-const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5] as const;
 const RESUME_MESSAGE_TIMEOUT_MS = 3_000;
 const AUTO_ADVANCE_DELAY_MS = 400;
 const WAVEFORM_DEGRADE_HINT_DELAY_MS = 800;
@@ -100,8 +99,6 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
   const totalCount = segments.length;
   const progressPct = totalCount > 0 ? Math.round((recordedCount / totalCount) * 100) : 0;
 
-  // --- Actions hook ---
-
   const actions = usePracticeActions({
     trackId,
     segments,
@@ -123,8 +120,6 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
     autoAdvanceDelayMs: AUTO_ADVANCE_DELAY_MS,
   });
 
-  // --- Recorder ---
-
   const recorder = useRecorder({
     onComplete: actions.onRecordingComplete,
     onError: (message) => {
@@ -138,8 +133,6 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
   useEffect(() => {
     setIsRecording(recorder.isRecording);
   }, [recorder.isRecording, setIsRecording]);
-
-  // --- Session loading ---
 
   const loadRecordingState = useCallback(async (nextTrackId: string, nextIndex: number) => {
     const recording = await getLatestRecording(nextTrackId, nextIndex);
@@ -230,8 +223,6 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
     }
   }, [repeatFlow, freeRange, segments.length, setFreeRange]);
 
-  // --- Live waveform ---
-
   const {
     peaks: livePeaks,
     peaksRef: livePeaksRef,
@@ -281,8 +272,6 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
     console.debug("[PracticeClient] Live waveform unavailable:", liveWaveformError);
   }, [liveWaveformError]);
 
-  // --- VAD ---
-
   const vadEnabled = recorder.isRecording && repeatFlow === "auto" && !freeSessionActive;
 
   useVAD({
@@ -294,8 +283,6 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
     },
   });
 
-  // --- Playback-end effect ---
-
   const prevIsPlayingRef = useRef(false);
   useEffect(() => {
     const wasPlaying = prevIsPlayingRef.current;
@@ -306,11 +293,7 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
     }
   }, [isPlaying]);
 
-  // --- Shortcuts ---
-
   useShortcuts(actions.shortcutHandlers);
-
-  // --- Render ---
 
   if (isLoading) {
     return <p className="muted">{t("loading")}</p>;

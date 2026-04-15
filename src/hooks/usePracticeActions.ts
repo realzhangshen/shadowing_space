@@ -3,7 +3,7 @@
 import { useCallback, useMemo, useRef } from "react";
 import type { MutableRefObject } from "react";
 import type { YouTubeSegmentPlayerHandle } from "@/components/YouTubeSegmentPlayer";
-import type { useRecorder } from "@/hooks/useRecorder";
+import type { RecorderCompletePayload, useRecorder } from "@/hooks/useRecorder";
 import type { useRecordingPlayback } from "@/hooks/useRecordingPlayback";
 import { findHighlightIndex } from "@/lib/findHighlightIndex";
 import {
@@ -11,7 +11,7 @@ import {
   saveFreeRecording,
   saveLatestRecording,
 } from "@/features/storage/repository";
-import { usePracticeStore } from "@/store/practiceStore";
+import { usePracticeStore, type RepeatFlow } from "@/store/practiceStore";
 import type { SegmentRecord } from "@/types/models";
 
 type Recorder = ReturnType<typeof useRecorder>;
@@ -77,18 +77,8 @@ export function usePracticeActions(deps: PracticeActionsDeps) {
   const depsRef = useRef(deps);
   depsRef.current = deps;
 
-  // --- Recorder onComplete handler ---
-
   const onRecordingComplete = useCallback(
-    async ({
-      blob,
-      durationMs,
-      mimeType,
-    }: {
-      blob: Blob;
-      durationMs: number;
-      mimeType: string;
-    }) => {
+    async ({ blob, durationMs, mimeType }: RecorderCompletePayload) => {
       const state = usePracticeStore.getState();
       const { segments: segs } = depsRef.current;
       const recorder = recorderRef.current;
@@ -189,8 +179,6 @@ export function usePracticeActions(deps: PracticeActionsDeps) {
     ],
   );
 
-  // --- Navigation ---
-
   const navigateToSegment = useCallback(
     async (index: number) => {
       const recorder = recorderRef.current;
@@ -235,8 +223,6 @@ export function usePracticeActions(deps: PracticeActionsDeps) {
     if (newIndex === currentIndex) return;
     void navigateToSegment(newIndex);
   }, [currentIndex, navigateToSegment, segments.length]);
-
-  // --- Playback actions ---
 
   const playOriginal = useCallback(async () => {
     const recorder = recorderRef.current;
@@ -418,8 +404,6 @@ export function usePracticeActions(deps: PracticeActionsDeps) {
     [navigateToSegment],
   );
 
-  // --- Mode toggling ---
-
   const toggleRepeatFlow = useCallback(() => {
     const recorder = recorderRef.current;
     if (freeSessionActive) return;
@@ -428,12 +412,10 @@ export function usePracticeActions(deps: PracticeActionsDeps) {
       void recorder.stop();
     }
     const state = usePracticeStore.getState();
-    const order: Array<"manual" | "auto" | "free"> = ["manual", "auto", "free"];
+    const order: readonly RepeatFlow[] = ["manual", "auto", "free"];
     const idx = order.indexOf(state.repeatFlow);
     state.setRepeatFlow(order[(idx + 1) % order.length]);
   }, [freeSessionActive, recorderRef, manualStopRef]);
-
-  // --- Free mode ---
 
   const stopFreeShadowing = useCallback(async () => {
     const recorder = recorderRef.current;
@@ -517,8 +499,6 @@ export function usePracticeActions(deps: PracticeActionsDeps) {
       void startFreeShadowing();
     }
   }, [repeatFlow, freeSessionActive, startFreeShadowing, stopFreeShadowing]);
-
-  // --- Shortcut handlers ---
 
   const shortcutHandlers = useMemo(
     () => ({

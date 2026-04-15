@@ -17,7 +17,6 @@ import {
   extractPlayerResponseFromHtml,
   fetchCaptionPayload,
   fetchInnertubePlayer,
-  fetchInnertubePlayerWithKey,
   fetchWatchPage,
 } from "@/server/youtube/watchPage";
 
@@ -67,7 +66,6 @@ function buildCandidateUrls(baseUrl: string, logger?: RequestLogger): string[] {
   try {
     parsed = new URL(baseUrl);
   } catch {
-    // Invalid URL format - return as-is and let fetch fail with better error context
     logger?.warn("youtube.build_candidate_urls.invalid_url", { baseUrl });
     return [baseUrl];
   }
@@ -96,7 +94,13 @@ function buildCandidateUrls(baseUrl: string, logger?: RequestLogger): string[] {
   return candidateUrls;
 }
 
-function summarizeCaptionUrl(url: string): Record<string, unknown> {
+function summarizeCaptionUrl(url: string): {
+  host: string;
+  path: string;
+  fmt: string | null;
+  lang: string | null;
+  kind: string | null;
+} {
   const parsed = new URL(url);
   return {
     host: parsed.hostname,
@@ -177,20 +181,17 @@ export async function fetchTranscriptMetadata(params: {
     if (!html) {
       try {
         html = await fetchWatchPage(videoId, timeoutMs, logger, proxyUrl);
-      } catch {
-        // html stays empty, apiKey extraction will be skipped
+      } catch (error) {
+        logger?.warn("youtube.fetch_metadata.watch_page_failed_for_apikey", {
+          videoId,
+          message: error instanceof Error ? error.message : "unknown",
+        });
       }
     }
     const apiKey = html ? extractInnertubeApiKey(html) : null;
     if (apiKey) {
       try {
-        playerData = await fetchInnertubePlayerWithKey(
-          videoId,
-          apiKey,
-          timeoutMs,
-          logger,
-          proxyUrl,
-        );
+        playerData = await fetchInnertubePlayer(videoId, timeoutMs, logger, proxyUrl, apiKey);
         strategiesAttempted.push("innertube_with_key");
         if (hasCaptionTracks(playerData)) {
           logger?.info("youtube.fetch_metadata.strategy", {
@@ -322,7 +323,6 @@ export async function resolveTranscriptSegments(params: {
         });
         continue;
       }
-      // Wrap unexpected errors with context
       logger?.error("youtube.resolve_segments.unexpected_error", {
         attempt,
         ...candidateMeta,

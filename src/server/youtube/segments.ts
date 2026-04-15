@@ -367,17 +367,7 @@ function flush(buffer: SegmentDTO[], index: number): SegmentDTO {
   };
 }
 
-/**
- * Merges transcript segments to optimize readability while preserving sentence boundaries.
- *
- * Strategy:
- * - Segments are merged until a 15-second maximum duration is reached
- * - Sentences are split at sentence-ending punctuation (.?!。？！)
- * - Segment indices are reassigned after merging
- *
- * @param segments - The parsed transcript segments to merge
- * @returns Merged segments with updated indices
- */
+// Merges until MAX_MERGED_DURATION_MS or sentence-terminator, preserving original timing bounds.
 export function mergeSegments(segments: SegmentDTO[]): SegmentDTO[] {
   if (segments.length === 0) return [];
 

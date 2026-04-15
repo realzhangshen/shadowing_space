@@ -61,7 +61,6 @@ function drawStatic(
     ctx.fillRect(x, y, LINE_WIDTH, barHeight);
   }
 
-  // Draw playhead line when progress is between 0 and 1 (exclusive)
   if (normalizedProgress > 0 && normalizedProgress < 1) {
     const playheadX = normalizedProgress * cssWidth;
     ctx.save();
@@ -96,7 +95,6 @@ function drawScrolling(
   const halfHeight = height / 2;
   const minBarHeight = 2;
 
-  // Show only the most recent peaks that fit on screen
   const startIdx = Math.max(0, peaks.length - visibleCount);
 
   ctx.fillStyle = barColor;

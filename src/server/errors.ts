@@ -1,3 +1,6 @@
+import { NextResponse } from "next/server";
+import { ZodError } from "zod";
+
 export class AppError extends Error {
   statusCode: number;
   errorCode: string;
@@ -21,20 +24,6 @@ export class InvalidVideoUrlError extends AppError {
   constructor(url: string) {
     super("Only single YouTube video URLs are supported", 422, "INVALID_VIDEO_URL", { url });
     this.name = "InvalidVideoUrlError";
-  }
-}
-
-export class VideoUnavailableError extends AppError {
-  constructor(videoId: string, cause?: string) {
-    super("This video is unavailable", 404, "VIDEO_UNAVAILABLE", { videoId, cause });
-    this.name = "VideoUnavailableError";
-  }
-}
-
-export class TranscriptsDisabledError extends AppError {
-  constructor(videoId: string) {
-    super("Transcripts are disabled for this video", 404, "TRANSCRIPTS_DISABLED", { videoId });
-    this.name = "TranscriptsDisabledError";
   }
 }
 
@@ -77,13 +66,6 @@ export class YouTubeUpstreamError extends AppError {
   }
 }
 
-export class TooManyRequestsError extends AppError {
-  constructor() {
-    super("Too many requests, please retry later", 429, "TOO_MANY_REQUESTS");
-    this.name = "TooManyRequestsError";
-  }
-}
-
 export class TrackTokenInvalidError extends AppError {
   constructor(reason: string) {
     super("Track token is invalid", 400, "TRACK_TOKEN_INVALID", { reason });
@@ -98,14 +80,43 @@ export class TrackTokenExpiredError extends AppError {
   }
 }
 
-export function toMessage(error: unknown, fallback: string): string {
+export function toErrorResponse(
+  error: unknown,
+  requestId: string,
+  headers: Record<string, string>,
+): NextResponse {
+  let statusCode: number;
+  let message: string;
+  let errorCode: string | undefined;
+  let details: Record<string, unknown> | undefined;
+
   if (error instanceof AppError) {
-    return error.message;
+    statusCode = error.statusCode;
+    message = error.message;
+    errorCode = error.errorCode;
+    details = error.details;
+  } else if (error instanceof ZodError) {
+    statusCode = 400;
+    message = "Invalid request body";
+    details = { fields: error.flatten().fieldErrors };
+  } else if (error instanceof SyntaxError) {
+    statusCode = 400;
+    message = "Malformed JSON in request body";
+  } else {
+    statusCode = 500;
+    message = "Internal server error";
   }
 
-  if (error instanceof Error && error.message) {
-    return error.message;
-  }
-
-  return fallback;
+  return NextResponse.json(
+    {
+      message,
+      requestId,
+      ...(errorCode && { errorCode }),
+      ...(details && Object.keys(details).length > 0 && { details }),
+    },
+    {
+      status: statusCode,
+      headers,
+    },
+  );
 }

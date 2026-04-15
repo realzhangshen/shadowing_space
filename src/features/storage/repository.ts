@@ -1,6 +1,6 @@
 import Dexie from "dexie";
 import { db } from "@/features/storage/db";
-import type { TrackSummary } from "@/types/api";
+import type { SegmentDTO, TrackSummary } from "@/types/api";
 import type {
   FreeRecordingRecord,
   HistoryItem,
@@ -15,7 +15,7 @@ export function buildTrackId(videoId: string, token: string): string {
   return `${videoId}:${token}`;
 }
 
-export function buildSegmentId(trackId: string, index: number): string {
+function buildSegmentId(trackId: string, index: number): string {
   return `${trackId}:${index}`;
 }
 
@@ -62,10 +62,7 @@ export function mapTracks(
   }));
 }
 
-export function mapSegments(
-  trackId: string,
-  segments: Array<{ index: number; startMs: number; endMs: number; text: string }>,
-): SegmentRecord[] {
+export function mapSegments(trackId: string, segments: SegmentDTO[]): SegmentRecord[] {
   return segments.map((segment) => ({
     id: buildSegmentId(trackId, segment.index),
     trackId,
@@ -428,18 +425,6 @@ export async function saveFreeRecording(params: {
   };
   await db.freeRecordings.put(record);
   return record;
-}
-
-export async function getFreeRecordings(trackId: string): Promise<FreeRecordingRecord[]> {
-  return db.freeRecordings
-    .where("[trackId+createdAt]")
-    .between([trackId, Dexie.minKey], [trackId, Dexie.maxKey])
-    .reverse()
-    .toArray();
-}
-
-export async function deleteFreeRecording(id: string): Promise<void> {
-  await db.freeRecordings.delete(id);
 }
 
 export async function clearAllData(): Promise<void> {

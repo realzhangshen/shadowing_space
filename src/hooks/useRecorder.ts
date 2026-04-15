@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 export type MicStatus = "idle" | "acquiring" | "active" | "error";
 
-type RecorderCompletePayload = {
+export type RecorderCompletePayload = {
   blob: Blob;
   durationMs: number;
   mimeType: string;

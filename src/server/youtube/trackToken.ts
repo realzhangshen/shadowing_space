@@ -9,7 +9,7 @@ const ALLOWED_CAPTION_HOSTS = new Set([
   "www.youtube-nocookie.com",
 ]);
 
-export type TrackTokenPayload = {
+type TrackTokenPayload = {
   videoId: string;
   baseUrl: string;
   languageCode: string;

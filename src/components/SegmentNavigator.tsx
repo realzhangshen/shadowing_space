@@ -2,9 +2,8 @@
 
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
+import type { FreeRange } from "@/store/practiceStore";
 import type { SegmentRecord } from "@/types/models";
-
-type FreeRange = { startIndex: number; endIndex: number };
 
 type SegmentNavigatorProps = {
   segments: SegmentRecord[];

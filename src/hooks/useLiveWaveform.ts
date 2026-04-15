@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-export type LiveWaveformStatus = "idle" | "live" | "degraded";
+type LiveWaveformStatus = "idle" | "live" | "degraded";
 
 type LiveWaveformResult = {
   peaks: Float32Array | null;
@@ -103,7 +103,6 @@ export function useLiveWaveform(
       return;
     }
 
-    // Reset for new recording
     peaksBufferRef.current = [];
     livePeaksRef.current = null;
     setPeaks(null);
@@ -182,7 +181,6 @@ export function useLiveWaveform(
           return;
         }
 
-        // Compute peak amplitude (0..1) from time-domain data
         let peak = 0;
         for (let i = 0; i < timeDomainData.length; i++) {
           const amplitude = Math.abs(timeDomainData[i] - 128) / 128;

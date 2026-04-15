@@ -145,7 +145,6 @@ export const YouTubeSegmentPlayer = forwardRef<
               ) {
                 onPlayStateChange?.(false);
               }
-              // BUFFERING, UNSTARTED, CUED → ignore (no emit)
             },
           },
         });

@@ -7,6 +7,94 @@ tests:
     reason: Guards in-memory rate limit threshold behavior.
     lastReviewedOn: 2026-03-01
     reviewBy: 2026-03-31
+  - file: tests/server/http.test.ts
+    name: returns first hop of x-forwarded-for when multiple ips
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Confirms multi-hop forwarded header selects first client IP.
+    lastReviewedOn: 2026-04-15
+    reviewBy: 2026-10-15
+  - file: tests/server/http.test.ts
+    name: returns single x-forwarded-for ip
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Confirms single-hop forwarded header returns unchanged IP.
+    lastReviewedOn: 2026-04-15
+    reviewBy: 2026-10-15
+  - file: tests/server/http.test.ts
+    name: trims whitespace from x-forwarded-for
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Ensures surrounding whitespace is stripped from forwarded IP.
+    lastReviewedOn: 2026-04-15
+    reviewBy: 2026-10-15
+  - file: tests/server/http.test.ts
+    name: returns unknown when no forwarded header
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Verifies fallback when request lacks forwarded header.
+    lastReviewedOn: 2026-04-15
+    reviewBy: 2026-10-15
+  - file: tests/server/http.test.ts
+    name: returns unknown for empty x-forwarded-for
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Verifies fallback when forwarded header is empty string.
+    lastReviewedOn: 2026-04-15
+    reviewBy: 2026-10-15
+  - file: tests/app/api/transcriptErrorMapping.test.ts
+    name: maps AppError to its statusCode and includes errorCode
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Confirms AppError propagates status, errorCode, and details to response.
+    lastReviewedOn: 2026-04-15
+    reviewBy: 2026-10-15
+  - file: tests/app/api/transcriptErrorMapping.test.ts
+    name: maps ZodError to 400 with fields details
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Confirms Zod validation errors surface as 400 with field details.
+    lastReviewedOn: 2026-04-15
+    reviewBy: 2026-10-15
+  - file: tests/app/api/transcriptErrorMapping.test.ts
+    name: maps SyntaxError to 400
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Ensures malformed JSON bodies map to 400 with explanatory message.
+    lastReviewedOn: 2026-04-15
+    reviewBy: 2026-10-15
+  - file: tests/app/api/transcriptErrorMapping.test.ts
+    name: maps unknown error to 500 with generic message
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Confirms unknown errors are masked as generic 500 responses.
+    lastReviewedOn: 2026-04-15
+    reviewBy: 2026-10-15
+  - file: tests/app/api/transcriptErrorMapping.test.ts
+    name: includes request id and rate limit headers in response
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Verifies error response preserves rate limit and request id headers.
+    lastReviewedOn: 2026-04-15
+    reviewBy: 2026-10-15
+  - file: tests/app/api/transcriptErrorMapping.test.ts
+    name: sets Cache-Control no-store and x-request-id headers
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Verifies Cache-Control and x-request-id are present on error responses.
+    lastReviewedOn: 2026-04-15
+    reviewBy: 2026-10-15
   - file: tests/server/youtube/url.test.ts
     name: parseStrictYouTubeVideoId parses watch URL
     category: unit

@@ -91,7 +91,6 @@ export function useRecordingPlayback(): RecordingPlayback {
       audio.currentTime = clamped * audio.duration;
       setProgress(clamped);
 
-      // If paused, start playing from seek position
       if (audio.paused) {
         setIsPlaying(true);
         audio.play().catch(() => {
@@ -103,7 +102,6 @@ export function useRecordingPlayback(): RecordingPlayback {
     [startRafLoop],
   );
 
-  // Cleanup on unmount
   useEffect(() => cleanup, [cleanup]);
 
   return { isPlaying, progress, play, stop, seek };
