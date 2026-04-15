@@ -370,6 +370,91 @@ textarea {
   margin-top: 0.2rem;
 }
 
+.vocabulary-panel {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0.85rem 0.95rem;
+  background: var(--bg-surface);
+}
+
+.vocabulary-panel-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+
+.vocabulary-subtitle {
+  max-width: 42rem;
+}
+
+.vocabulary-input-row {
+  display: flex;
+  gap: 0.6rem;
+  margin-top: 0.75rem;
+  align-items: center;
+}
+
+.vocabulary-input-row input {
+  flex: 1;
+  min-width: 0;
+}
+
+.vocabulary-feedback {
+  margin: 0.7rem 0 0;
+  color: var(--success);
+  font-size: 0.88rem;
+  font-weight: 500;
+}
+
+.vocabulary-list {
+  margin-top: 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.vocabulary-item,
+.vocabulary-card {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--bg-surface);
+}
+
+.vocabulary-item {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 0.7rem 0.8rem;
+}
+
+.vocabulary-item-main,
+.vocabulary-card-body {
+  min-width: 0;
+}
+
+.vocabulary-word {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.vocabulary-meta,
+.vocabulary-card-meta {
+  font-size: 0.8rem;
+  margin-top: 0.2rem;
+}
+
+.vocabulary-context {
+  margin: 0.35rem 0 0;
+  color: var(--text-secondary);
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
 /* Buttons */
 
 .btn {
@@ -508,6 +593,12 @@ textarea {
 
   .app-bg {
     padding: 0.8rem;
+  }
+
+  .vocabulary-input-row,
+  .vocabulary-item {
+    flex-direction: column;
+    align-items: stretch;
   }
 
   .hero {
@@ -954,6 +1045,16 @@ textarea {
   gap: 1rem;
 }
 
+.vocabulary-dashboard-section {
+  margin-top: 1.5rem;
+}
+
+.vocabulary-dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
 .video-card {
   background: var(--card);
   border: 1px solid var(--card-border);
@@ -1045,6 +1146,21 @@ textarea {
   border-top: 1px solid var(--line);
   margin-top: auto;
   padding: 0.6rem 1rem 0.8rem;
+}
+
+.vocabulary-card {
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+
+.vocabulary-card-body {
+  padding: 0.8rem 1rem 0.5rem;
+}
+
+.vocabulary-card-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 1rem 0.85rem;
 }
 
 .empty-state {

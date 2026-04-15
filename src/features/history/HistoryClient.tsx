@@ -1,15 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link, useRouter } from "@/i18n/navigation";
 import {
   clearAllData,
   deleteRecordingsForVideo,
   deleteVideo,
+  deleteVocabularyWord,
   listHistory,
+  listVocabularyWords,
 } from "@/features/storage/repository";
-import type { HistoryItem } from "@/types/models";
+import type { HistoryItem, VocabularyRecord } from "@/types/models";
 
 function formatTime(timestamp: number): string {
   return new Date(timestamp).toLocaleDateString(undefined, {
@@ -29,17 +31,22 @@ export function HistoryClient(): JSX.Element {
   const t = useTranslations("HistoryClient");
   const router = useRouter();
   const [items, setItems] = useState<HistoryItem[]>([]);
+  const [vocabularyItems, setVocabularyItems] = useState<VocabularyRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | undefined>();
   const [storageUsage, setStorageUsage] = useState<string | undefined>();
 
-  const refresh = async () => {
+  const refresh = useCallback(async () => {
     setError(undefined);
     setIsLoading(true);
 
     try {
-      const next = await listHistory();
-      setItems(next);
+      const [nextHistory, nextVocabulary] = await Promise.all([
+        listHistory(),
+        listVocabularyWords(),
+      ]);
+      setItems(nextHistory);
+      setVocabularyItems(nextVocabulary);
 
       if (navigator.storage?.estimate) {
         const estimate = await navigator.storage.estimate();
@@ -52,11 +59,11 @@ export function HistoryClient(): JSX.Element {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [t]);
 
   useEffect(() => {
     void refresh();
-  }, []);
+  }, [refresh]);
 
   const handleDelete = async (videoId: string, title: string) => {
     if (!window.confirm(t("confirmDelete", { title }))) {
@@ -94,6 +101,15 @@ export function HistoryClient(): JSX.Element {
       await refresh();
     } catch (clearError) {
       setError(clearError instanceof Error ? clearError.message : t("errorClearAll"));
+    }
+  };
+
+  const handleDeleteWord = async (id: string) => {
+    try {
+      await deleteVocabularyWord(id);
+      await refresh();
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : t("errorDeleteWord"));
     }
   };
 
@@ -215,6 +231,52 @@ export function HistoryClient(): JSX.Element {
           );
         })}
       </div>
+
+      {!isLoading && items.length > 0 ? (
+        <section className="vocabulary-dashboard-section">
+          <div className="dashboard-header">
+            <div>
+              <h3>{t("notebookTitle")}</h3>
+              <p className="muted">{t("notebookSubtitle", { count: vocabularyItems.length })}</p>
+            </div>
+          </div>
+
+          {vocabularyItems.length === 0 ? (
+            <div className="card">
+              <p className="muted">{t("notebookEmpty")}</p>
+            </div>
+          ) : (
+            <div className="vocabulary-dashboard-grid">
+              {vocabularyItems.map((item) => (
+                <article key={item.id} className="vocabulary-card">
+                  <div className="vocabulary-card-body">
+                    <p className="vocabulary-word">{item.word}</p>
+                    <p className="muted vocabulary-card-meta">
+                      {item.videoTitle}
+                      {item.segmentIndex !== undefined
+                        ? ` · ${t("wordSource", { number: item.segmentIndex + 1 })}`
+                        : ""}
+                      {` · ${formatTime(item.updatedAt)}`}
+                    </p>
+                    {item.segmentText ? (
+                      <p className="vocabulary-context">{item.segmentText}</p>
+                    ) : null}
+                  </div>
+                  <div className="vocabulary-card-actions">
+                    <button
+                      type="button"
+                      className="text-btn"
+                      onClick={() => void handleDeleteWord(item.id)}
+                    >
+                      {t("deleteWord")}
+                    </button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+      ) : null}
 
       {items.length > 0 ? (
         <p className="reset-link">

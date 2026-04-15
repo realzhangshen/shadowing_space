@@ -1,5 +1,6 @@
 import Dexie from "dexie";
 import { db } from "@/features/storage/db";
+import { cleanVocabularyText, normalizeVocabularyKey } from "@/features/vocabulary/words";
 import type { SegmentDTO, TrackSummary } from "@/types/api";
 import type {
   FreeRecordingRecord,
@@ -8,6 +9,7 @@ import type {
   RecordingRecord,
   SegmentRecord,
   TrackRecord,
+  VocabularyRecord,
   VideoRecord,
 } from "@/types/models";
 
@@ -21,6 +23,10 @@ function buildSegmentId(trackId: string, index: number): string {
 
 function buildRecordingId(trackId: string, segmentIndex: number): string {
   return `${trackId}:${segmentIndex}`;
+}
+
+function buildVocabularyId(trackId: string, normalizedWord: string): string {
+  return `${trackId}:vocab:${normalizedWord}`;
 }
 
 function buildIdCandidates(value: string): string[] {
@@ -88,7 +94,15 @@ export async function saveImportBundle(params: {
 
   await db.transaction(
     "rw",
-    [db.videos, db.tracks, db.segments, db.progress, db.recordings, db.freeRecordings],
+    [
+      db.videos,
+      db.tracks,
+      db.segments,
+      db.progress,
+      db.recordings,
+      db.freeRecordings,
+      db.vocabulary,
+    ],
     async () => {
       await db.videos.put(video);
 
@@ -117,6 +131,7 @@ export async function saveImportBundle(params: {
           await db.segments.where("trackId").equals(oldTrack.id).delete();
           await db.recordings.where("trackId").equals(oldTrack.id).delete();
           await db.freeRecordings.where("trackId").equals(oldTrack.id).delete();
+          await db.vocabulary.where("trackId").equals(oldTrack.id).delete();
           await db.progress.delete(oldTrack.id);
         }
       }
@@ -216,13 +231,22 @@ export async function getPracticeSession(
 export async function deleteVideo(videoId: string): Promise<void> {
   await db.transaction(
     "rw",
-    [db.videos, db.tracks, db.segments, db.progress, db.recordings, db.freeRecordings],
+    [
+      db.videos,
+      db.tracks,
+      db.segments,
+      db.progress,
+      db.recordings,
+      db.freeRecordings,
+      db.vocabulary,
+    ],
     async () => {
       const tracks = await db.tracks.where("videoId").equals(videoId).toArray();
       for (const track of tracks) {
         await db.segments.where("trackId").equals(track.id).delete();
         await db.recordings.where("trackId").equals(track.id).delete();
         await db.freeRecordings.where("trackId").equals(track.id).delete();
+        await db.vocabulary.where("trackId").equals(track.id).delete();
         await db.progress.delete(track.id);
       }
       await db.tracks.where("videoId").equals(videoId).delete();
@@ -427,12 +451,80 @@ export async function saveFreeRecording(params: {
   return record;
 }
 
+export async function listVocabularyWords(params?: {
+  trackId?: string;
+  videoId?: string;
+}): Promise<VocabularyRecord[]> {
+  const { trackId, videoId } = params ?? {};
+
+  if (trackId) {
+    const entries = await db.vocabulary.where("trackId").equals(trackId).toArray();
+    return entries.sort((a, b) => b.updatedAt - a.updatedAt);
+  }
+
+  if (videoId) {
+    const entries = await db.vocabulary.where("videoId").equals(videoId).toArray();
+    return entries.sort((a, b) => b.updatedAt - a.updatedAt);
+  }
+
+  return db.vocabulary.orderBy("updatedAt").reverse().toArray();
+}
+
+export async function saveVocabularyWord(params: {
+  text: string;
+  videoId: string;
+  videoTitle: string;
+  trackId: string;
+  segmentIndex?: number;
+  segmentText?: string;
+}): Promise<{ record: VocabularyRecord; created: boolean }> {
+  const word = cleanVocabularyText(params.text);
+  const normalizedWord = normalizeVocabularyKey(params.text);
+
+  if (!word || !normalizedWord) {
+    throw new Error("Vocabulary word cannot be empty.");
+  }
+
+  const now = Date.now();
+  const id = buildVocabularyId(params.trackId, normalizedWord);
+  const existing = await db.vocabulary.get(id);
+
+  const record: VocabularyRecord = {
+    id,
+    word,
+    normalizedWord,
+    videoId: params.videoId,
+    videoTitle: params.videoTitle,
+    trackId: params.trackId,
+    segmentIndex: params.segmentIndex ?? existing?.segmentIndex,
+    segmentText: params.segmentText ?? existing?.segmentText,
+    createdAt: existing?.createdAt ?? now,
+    updatedAt: now,
+  };
+
+  await db.vocabulary.put(record);
+  return { record, created: !existing };
+}
+
+export async function deleteVocabularyWord(id: string): Promise<void> {
+  await db.vocabulary.delete(id);
+}
+
 export async function clearAllData(): Promise<void> {
   await db.transaction(
     "rw",
-    [db.videos, db.tracks, db.segments, db.progress, db.recordings, db.freeRecordings],
+    [
+      db.videos,
+      db.tracks,
+      db.segments,
+      db.progress,
+      db.recordings,
+      db.freeRecordings,
+      db.vocabulary,
+    ],
     async () => {
       await Promise.all([
+        db.vocabulary.clear(),
         db.freeRecordings.clear(),
         db.recordings.clear(),
         db.progress.clear(),

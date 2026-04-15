@@ -47,6 +47,30 @@ tests:
     reason: Verifies fallback when forwarded header is empty string.
     lastReviewedOn: 2026-04-15
     reviewBy: 2026-10-15
+  - file: tests/features/vocabulary/words.test.ts
+    name: cleanVocabularyText trims surrounding punctuation and spaces
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Ensures saved words are cleaned up when selected from transcript text.
+    lastReviewedOn: 2026-04-15
+    reviewBy: 2026-10-15
+  - file: tests/features/vocabulary/words.test.ts
+    name: cleanVocabularyText preserves inner punctuation and collapses whitespace
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Preserves meaningful inner punctuation while normalizing pasted input.
+    lastReviewedOn: 2026-04-15
+    reviewBy: 2026-10-15
+  - file: tests/features/vocabulary/words.test.ts
+    name: normalizeVocabularyKey lowercases and normalizes cleaned text
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Prevents duplicate notebook entries caused by case-only differences.
+    lastReviewedOn: 2026-04-15
+    reviewBy: 2026-10-15
   - file: tests/app/api/transcriptErrorMapping.test.ts
     name: maps AppError to its statusCode and includes errorCode
     category: unit

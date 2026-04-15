@@ -19,15 +19,19 @@ import { useWaveform } from "@/hooks/useWaveform";
 import { usePracticeActions } from "@/hooks/usePracticeActions";
 import { fetchTranscriptSegments } from "@/lib/apiClient";
 import {
+  deleteVocabularyWord,
   getLatestRecording,
   getPracticeSession,
   getRecordedSegmentIndices,
+  listVocabularyWords,
   mapSegments,
   saveSegmentsForTrack,
+  saveVocabularyWord,
   updateProgress,
 } from "@/features/storage/repository";
+import { cleanVocabularyText } from "@/features/vocabulary/words";
 import { SPEEDS, usePracticeStore } from "@/store/practiceStore";
-import type { SegmentRecord, TrackRecord, VideoRecord } from "@/types/models";
+import type { SegmentRecord, TrackRecord, VideoRecord, VocabularyRecord } from "@/types/models";
 
 type PracticeClientProps = {
   videoId: string;
@@ -41,9 +45,19 @@ type SessionState = {
   segments: SegmentRecord[];
 };
 
+const EMPTY_SEGMENTS: SegmentRecord[] = [];
 const RESUME_MESSAGE_TIMEOUT_MS = 3_000;
 const AUTO_ADVANCE_DELAY_MS = 400;
 const WAVEFORM_DEGRADE_HINT_DELAY_MS = 800;
+const VOCAB_SOURCE_SELECTOR = "[data-vocabulary-source]";
+
+function nodeToElement(node: Node | null): HTMLElement | null {
+  if (!node) {
+    return null;
+  }
+
+  return node instanceof HTMLElement ? node : node.parentElement;
+}
 
 export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.Element {
   const t = useTranslations("PracticeClient");
@@ -56,7 +70,12 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
   const [resumeMessage, setResumeMessage] = useState<string | undefined>();
   const [waveformBlob, setWaveformBlob] = useState<Blob | null>(null);
   const [showWaveformUnavailableHint, setShowWaveformUnavailableHint] = useState(false);
+  const [wordDraft, setWordDraft] = useState("");
+  const [wordFeedback, setWordFeedback] = useState<string | undefined>();
+  const [selectedWordSourceIndex, setSelectedWordSourceIndex] = useState<number | null>(null);
+  const [vocabularyItems, setVocabularyItems] = useState<VocabularyRecord[]>([]);
 
+  const practiceLayoutRef = useRef<HTMLDivElement | null>(null);
   const playerRef = useRef<YouTubeSegmentPlayerHandle | null>(null);
   const recordingTargetRef = useRef<number>(0);
   const audioFinishedRef = useRef(false);
@@ -91,16 +110,21 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
 
   const { peaks: waveformPeaks } = useWaveform(waveformBlob, 200);
   const recordingPlayback = useRecordingPlayback();
+  const stopRecordingPlayback = recordingPlayback.stop;
 
-  const segments = session?.segments ?? [];
+  const segments = session?.segments ?? EMPTY_SEGMENTS;
   segmentsRef.current = segments;
-  const currentSegment = segments[currentIndex];
+  const activeTrackId = session?.track.id ?? trackId;
+  const displayedSegmentIndex =
+    repeatFlow === "free" && freeSessionActive ? freeHighlightIndex : currentIndex;
+  const displayedSegment = segments[displayedSegmentIndex];
   const recordedCount = recordingReadySet.size;
   const totalCount = segments.length;
   const progressPct = totalCount > 0 ? Math.round((recordedCount / totalCount) * 100) : 0;
+  const cleanedWordDraft = cleanVocabularyText(wordDraft);
 
   const actions = usePracticeActions({
-    trackId,
+    trackId: activeTrackId,
     segments,
     segmentsRef,
     playerRef,
@@ -140,6 +164,11 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
     setWaveformBlob(recording?.blob ?? null);
   }, []);
 
+  const loadVocabularyState = useCallback(async (nextTrackId: string) => {
+    const entries = await listVocabularyWords({ trackId: nextTrackId });
+    setVocabularyItems(entries);
+  }, []);
+
   const loadSession = useCallback(async () => {
     setIsLoading(true);
     setError(undefined);
@@ -150,6 +179,7 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
         throw new Error(t("errorNoSession"));
       }
 
+      const resolvedTrackId = initial.track.id;
       let usableSegments = initial.segments;
       if (usableSegments.length === 0) {
         const resolved = await fetchTranscriptSegments({
@@ -157,8 +187,8 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
           trackToken: initial.track.token,
         });
 
-        usableSegments = mapSegments(trackId, resolved.segments);
-        await saveSegmentsForTrack(trackId, usableSegments);
+        usableSegments = mapSegments(resolvedTrackId, resolved.segments);
+        await saveSegmentsForTrack(resolvedTrackId, usableSegments);
       }
 
       if (usableSegments.length === 0) {
@@ -173,9 +203,12 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
         tracks: initial.tracks,
         segments: usableSegments,
       });
-      await loadRecordingState(trackId, safeIndex);
+      setWordDraft("");
+      setSelectedWordSourceIndex(null);
+      await loadRecordingState(resolvedTrackId, safeIndex);
+      await loadVocabularyState(resolvedTrackId);
 
-      const indices = await getRecordedSegmentIndices(trackId);
+      const indices = await getRecordedSegmentIndices(resolvedTrackId);
       setRecordingReadySet(indices);
 
       if (safeIndex > 0) {
@@ -188,19 +221,19 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
     } finally {
       setIsLoading(false);
     }
-  }, [loadRecordingState, resetForSession, trackId, videoId, t]);
+  }, [loadRecordingState, loadVocabularyState, resetForSession, trackId, videoId, t]);
 
   useEffect(() => {
     void loadSession();
 
     return () => {
-      recordingPlayback.stop();
+      stopRecordingPlayback();
       if (autoAdvanceTimerRef.current) {
         clearTimeout(autoAdvanceTimerRef.current);
         autoAdvanceTimerRef.current = null;
       }
     };
-  }, [recordingPlayback.stop, loadSession]);
+  }, [loadSession, stopRecordingPlayback]);
 
   useEffect(() => {
     if (!session || !segments.length) {
@@ -208,9 +241,9 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
     }
 
     const safeIndex = Math.min(currentIndex, segments.length - 1);
-    void updateProgress(trackId, safeIndex);
-    void loadRecordingState(trackId, safeIndex);
-  }, [currentIndex, loadRecordingState, segments.length, session, trackId]);
+    void updateProgress(activeTrackId, safeIndex);
+    void loadRecordingState(activeTrackId, safeIndex);
+  }, [activeTrackId, currentIndex, loadRecordingState, segments.length, session]);
 
   useEffect(() => {
     playerRef.current?.setPlaybackSpeed(playbackSpeed);
@@ -272,6 +305,39 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
     console.debug("[PracticeClient] Live waveform unavailable:", liveWaveformError);
   }, [liveWaveformError]);
 
+  useEffect(() => {
+    const handleSelectionChange = () => {
+      const selection = window.getSelection();
+      const root = practiceLayoutRef.current;
+
+      if (!selection || selection.isCollapsed || !root) {
+        return;
+      }
+
+      const anchorElement = nodeToElement(selection.anchorNode);
+      const sourceElement = anchorElement?.closest<HTMLElement>(VOCAB_SOURCE_SELECTOR);
+      if (!sourceElement || !root.contains(sourceElement)) {
+        return;
+      }
+
+      const nextWord = cleanVocabularyText(selection.toString());
+      if (!nextWord) {
+        return;
+      }
+
+      const segmentIndexRaw = sourceElement.getAttribute("data-segment-index");
+      const parsedSegmentIndex =
+        segmentIndexRaw === null ? Number.NaN : Number.parseInt(segmentIndexRaw, 10);
+      const segmentIndex = Number.isNaN(parsedSegmentIndex) ? null : parsedSegmentIndex;
+
+      setWordDraft(nextWord);
+      setSelectedWordSourceIndex(segmentIndex);
+    };
+
+    document.addEventListener("selectionchange", handleSelectionChange);
+    return () => document.removeEventListener("selectionchange", handleSelectionChange);
+  }, []);
+
   const vadEnabled = recorder.isRecording && repeatFlow === "auto" && !freeSessionActive;
 
   useVAD({
@@ -293,6 +359,74 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
     }
   }, [isPlaying]);
 
+  useEffect(() => {
+    if (!wordFeedback) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      setWordFeedback(undefined);
+    }, RESUME_MESSAGE_TIMEOUT_MS);
+
+    return () => window.clearTimeout(timer);
+  }, [wordFeedback]);
+
+  const handleSaveWord = useCallback(async () => {
+    if (!session || !cleanedWordDraft) {
+      return;
+    }
+
+    try {
+      const sourceIndex = selectedWordSourceIndex ?? displayedSegmentIndex;
+      const sourceSegment = sourceIndex >= 0 ? segments[sourceIndex] : undefined;
+      const { created } = await saveVocabularyWord({
+        text: cleanedWordDraft,
+        videoId: session.video.id,
+        videoTitle: session.video.title,
+        trackId: session.track.id,
+        segmentIndex: sourceSegment?.index,
+        segmentText: sourceSegment?.text,
+      });
+
+      await loadVocabularyState(session.track.id);
+      setWordDraft("");
+      setSelectedWordSourceIndex(null);
+      setWordFeedback(
+        created
+          ? t("wordSaved", { word: cleanedWordDraft })
+          : t("wordUpdated", { word: cleanedWordDraft }),
+      );
+      window.getSelection()?.removeAllRanges();
+    } catch {
+      setWordFeedback(t("wordSaveFailed"));
+    }
+  }, [
+    cleanedWordDraft,
+    displayedSegmentIndex,
+    loadVocabularyState,
+    segments,
+    selectedWordSourceIndex,
+    session,
+    t,
+  ]);
+
+  const handleDeleteWord = useCallback(
+    async (id: string) => {
+      if (!session) {
+        return;
+      }
+
+      try {
+        await deleteVocabularyWord(id);
+        await loadVocabularyState(session.track.id);
+        setWordFeedback(t("wordDeleted"));
+      } catch {
+        setWordFeedback(t("wordDeleteFailed"));
+      }
+    },
+    [loadVocabularyState, session, t],
+  );
+
   useShortcuts(actions.shortcutHandlers);
 
   if (isLoading) {
@@ -312,7 +446,7 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
   }
 
   return (
-    <div className="practice-layout">
+    <div className="practice-layout" ref={practiceLayoutRef}>
       {/* Left panel: video + current sentence + controls */}
       <section className="card main-practice">
         <div className="practice-head">
@@ -334,13 +468,13 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
 
         <div className="current-sentence-wrap">
           <p
+            data-vocabulary-source="current"
+            data-segment-index={displayedSegmentIndex}
             className={
               transcriptHidden ? "current-sentence current-sentence-blurred" : "current-sentence"
             }
           >
-            {repeatFlow === "free" && freeSessionActive
-              ? (segments[freeHighlightIndex]?.text ?? t("noSegment"))
-              : (currentSegment?.text ?? t("noSegment"))}
+            {displayedSegment?.text ?? t("noSegment")}
           </p>
           {repeatFlow === "free" ? (
             <div className="progress-row">
@@ -416,6 +550,67 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
             </button>
           ))}
         </div>
+
+        <section className="vocabulary-panel">
+          <div className="vocabulary-panel-header">
+            <div>
+              <h3 className="segment-title">{t("vocabularyTitle")}</h3>
+              <p className="muted vocabulary-subtitle">{t("vocabularyHint")}</p>
+            </div>
+            <span className="progress-pct">
+              {t("vocabularyCount", { count: vocabularyItems.length })}
+            </span>
+          </div>
+
+          <div className="vocabulary-input-row">
+            <input
+              type="text"
+              value={wordDraft}
+              onChange={(event) => setWordDraft(event.target.value)}
+              placeholder={t("vocabularyPlaceholder")}
+              aria-label={t("vocabularyInputLabel")}
+            />
+            <button
+              type="button"
+              className="btn secondary"
+              disabled={!cleanedWordDraft}
+              onClick={() => void handleSaveWord()}
+            >
+              {t("saveWord")}
+            </button>
+          </div>
+
+          {wordFeedback ? <p className="vocabulary-feedback">{wordFeedback}</p> : null}
+
+          {vocabularyItems.length === 0 ? (
+            <p className="muted">{t("vocabularyEmpty")}</p>
+          ) : (
+            <div className="vocabulary-list" role="list" aria-label={t("vocabularyListLabel")}>
+              {vocabularyItems.map((item) => (
+                <div key={item.id} className="vocabulary-item" role="listitem">
+                  <div className="vocabulary-item-main">
+                    <p className="vocabulary-word">{item.word}</p>
+                    {item.segmentIndex !== undefined ? (
+                      <p className="muted vocabulary-meta">
+                        {t("wordSource", { number: item.segmentIndex + 1 })}
+                      </p>
+                    ) : null}
+                    {item.segmentText ? (
+                      <p className="vocabulary-context">{item.segmentText}</p>
+                    ) : null}
+                  </div>
+                  <button
+                    type="button"
+                    className="text-btn"
+                    onClick={() => void handleDeleteWord(item.id)}
+                  >
+                    {t("deleteWord")}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
 
         {resumeMessage ? <p className="resume-indicator">{resumeMessage}</p> : null}
 

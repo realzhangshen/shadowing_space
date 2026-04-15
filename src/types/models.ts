@@ -53,6 +53,19 @@ export type FreeRecordingRecord = {
   createdAt: number;
 };
 
+export type VocabularyRecord = {
+  id: string;
+  word: string;
+  normalizedWord: string;
+  videoId: string;
+  videoTitle: string;
+  trackId: string;
+  segmentIndex?: number;
+  segmentText?: string;
+  createdAt: number;
+  updatedAt: number;
+};
+
 export type HistoryItem = {
   video: VideoRecord;
   activeTrack?: TrackRecord;

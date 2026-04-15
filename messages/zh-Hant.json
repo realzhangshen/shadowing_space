@@ -147,7 +147,13 @@
     "autoSuffix": "（自動產生）",
     "sentenceProgress": "第 {current} / {total} 句",
     "sentenceCount": "{count} 個句子",
-    "recordedStats": "已錄製 {count} 句（{size}）"
+    "recordedStats": "已錄製 {count} 句（{size}）",
+    "notebookTitle": "生詞本",
+    "notebookSubtitle": "共記錄 {count} 筆。",
+    "notebookEmpty": "還沒有記錄任何生詞。",
+    "wordSource": "第 {number} 句",
+    "deleteWord": "刪除",
+    "errorDeleteWord": "刪除生詞失敗。"
   },
   "PracticeClient": {
     "loading": "正在載入練習...",
@@ -168,7 +174,22 @@
     "errorNoSession": "未找到本地工作階段。請重新匯入影片。",
     "errorNoSentence": "字幕軌道沒有可播放的句子。",
     "errorLoadSession": "載入練習工作階段失敗。",
-    "micAccessError": "無法存取麥克風。請檢查瀏覽器權限設定。"
+    "micAccessError": "無法存取麥克風。請檢查瀏覽器權限設定。",
+    "vocabularyTitle": "生詞本",
+    "vocabularyHint": "選取上方句子中的單詞後會自動帶入，也可以直接手動輸入。",
+    "vocabularyCount": "{count} 筆",
+    "vocabularyPlaceholder": "例如：hesitate",
+    "vocabularyInputLabel": "要記錄的生詞",
+    "saveWord": "記錄",
+    "vocabularyEmpty": "這個軌道還沒有記錄任何生詞。",
+    "vocabularyListLabel": "生詞列表",
+    "wordSource": "來源：第 {number} 句",
+    "deleteWord": "刪除",
+    "wordSaved": "已記錄「{word}」",
+    "wordUpdated": "已更新「{word}」",
+    "wordDeleted": "已刪除生詞",
+    "wordSaveFailed": "記錄生詞失敗。",
+    "wordDeleteFailed": "刪除生詞失敗。"
   },
   "PlaybackControlBar": {
     "prev": "← 上一句",

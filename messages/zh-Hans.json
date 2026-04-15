@@ -147,7 +147,13 @@
     "autoSuffix": "（自动生成）",
     "sentenceProgress": "第 {current} / {total} 句",
     "sentenceCount": "{count} 个句子",
-    "recordedStats": "已录制 {count} 句（{size}）"
+    "recordedStats": "已录制 {count} 句（{size}）",
+    "notebookTitle": "生词本",
+    "notebookSubtitle": "共记录 {count} 条。",
+    "notebookEmpty": "还没有记录任何生词。",
+    "wordSource": "第 {number} 句",
+    "deleteWord": "删除",
+    "errorDeleteWord": "删除生词失败。"
   },
   "PracticeClient": {
     "loading": "正在加载练习...",
@@ -168,7 +174,22 @@
     "errorNoSession": "未找到本地会话。请重新导入视频。",
     "errorNoSentence": "字幕轨道没有可播放的句子。",
     "errorLoadSession": "加载练习会话失败。",
-    "micAccessError": "无法访问麦克风。请检查浏览器权限设置。"
+    "micAccessError": "无法访问麦克风。请检查浏览器权限设置。",
+    "vocabularyTitle": "生词本",
+    "vocabularyHint": "选中上面的单词后会自动带入，也可以直接手动输入。",
+    "vocabularyCount": "{count} 条",
+    "vocabularyPlaceholder": "比如：hesitate",
+    "vocabularyInputLabel": "要记录的生词",
+    "saveWord": "记录",
+    "vocabularyEmpty": "这个轨道还没有记录任何生词。",
+    "vocabularyListLabel": "生词列表",
+    "wordSource": "来源：第 {number} 句",
+    "deleteWord": "删除",
+    "wordSaved": "已记录「{word}」",
+    "wordUpdated": "已更新「{word}」",
+    "wordDeleted": "已删除生词",
+    "wordSaveFailed": "记录生词失败。",
+    "wordDeleteFailed": "删除生词失败。"
   },
   "PlaybackControlBar": {
     "prev": "← 上一句",

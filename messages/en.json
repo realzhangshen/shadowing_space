@@ -147,7 +147,13 @@
     "autoSuffix": " (auto)",
     "sentenceProgress": "Sentence {current} / {total}",
     "sentenceCount": "{count} sentences",
-    "recordedStats": "{count} recorded ({size})"
+    "recordedStats": "{count} recorded ({size})",
+    "notebookTitle": "Vocabulary Notebook",
+    "notebookSubtitle": "{count} saved words.",
+    "notebookEmpty": "No saved words yet.",
+    "wordSource": "Sentence {number}",
+    "deleteWord": "Delete",
+    "errorDeleteWord": "Failed to delete the saved word."
   },
   "PracticeClient": {
     "loading": "Loading practice session...",
@@ -168,7 +174,22 @@
     "errorNoSession": "No local session found. Please import the video again.",
     "errorNoSentence": "Caption track has no playable sentence.",
     "errorLoadSession": "Failed to load practice session.",
-    "micAccessError": "Cannot access microphone. Check browser permission settings."
+    "micAccessError": "Cannot access microphone. Check browser permission settings.",
+    "vocabularyTitle": "Vocabulary Notebook",
+    "vocabularyHint": "Select a word in the sentence above to auto-fill it, or type one manually.",
+    "vocabularyCount": "{count} saved",
+    "vocabularyPlaceholder": "For example: hesitate",
+    "vocabularyInputLabel": "Word to save",
+    "saveWord": "Save",
+    "vocabularyEmpty": "No saved words for this track yet.",
+    "vocabularyListLabel": "Saved vocabulary list",
+    "wordSource": "From sentence {number}",
+    "deleteWord": "Delete",
+    "wordSaved": "Saved “{word}”.",
+    "wordUpdated": "Updated “{word}”.",
+    "wordDeleted": "Saved word deleted.",
+    "wordSaveFailed": "Failed to save the word.",
+    "wordDeleteFailed": "Failed to delete the word."
   },
   "PlaybackControlBar": {
     "prev": "\u2190 Prev",

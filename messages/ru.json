@@ -147,7 +147,13 @@
     "autoSuffix": " (авто)",
     "sentenceProgress": "Предложение {current} / {total}",
     "sentenceCount": "{count} предложений",
-    "recordedStats": "{count} записано ({size})"
+    "recordedStats": "{count} записано ({size})",
+    "notebookTitle": "Словарь",
+    "notebookSubtitle": "Сохранено слов: {count}.",
+    "notebookEmpty": "Пока нет сохраненных слов.",
+    "wordSource": "Предложение {number}",
+    "deleteWord": "Удалить",
+    "errorDeleteWord": "Не удалось удалить слово."
   },
   "PracticeClient": {
     "loading": "Загрузка сеанса практики...",
@@ -168,7 +174,22 @@
     "errorNoSession": "Локальный сеанс не найден. Импортируй видео заново.",
     "errorNoSentence": "В дорожке субтитров нет воспроизводимых предложений.",
     "errorLoadSession": "Не удалось загрузить сеанс практики.",
-    "micAccessError": "Не удалось получить доступ к микрофону. Проверь настройки разрешений браузера."
+    "micAccessError": "Не удалось получить доступ к микрофону. Проверь настройки разрешений браузера.",
+    "vocabularyTitle": "Словарь",
+    "vocabularyHint": "Выделите слово в фразе выше, чтобы подставить его автоматически, или введите вручную.",
+    "vocabularyCount": "{count} слов",
+    "vocabularyPlaceholder": "Например: hesitate",
+    "vocabularyInputLabel": "Слово для сохранения",
+    "saveWord": "Сохранить",
+    "vocabularyEmpty": "Для этой дорожки пока нет сохраненных слов.",
+    "vocabularyListLabel": "Список сохраненных слов",
+    "wordSource": "Из предложения {number}",
+    "deleteWord": "Удалить",
+    "wordSaved": "Слово «{word}» сохранено.",
+    "wordUpdated": "Слово «{word}» обновлено.",
+    "wordDeleted": "Слово удалено.",
+    "wordSaveFailed": "Не удалось сохранить слово.",
+    "wordDeleteFailed": "Не удалось удалить слово."
   },
   "PlaybackControlBar": {
     "prev": "← Пред.",

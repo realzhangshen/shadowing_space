@@ -147,7 +147,13 @@
     "autoSuffix": "（自動生成）",
     "sentenceProgress": "文 {current} / {total}",
     "sentenceCount": "{count} 文",
-    "recordedStats": "{count} 録音済み（{size}）"
+    "recordedStats": "{count} 録音済み（{size}）",
+    "notebookTitle": "単語ノート",
+    "notebookSubtitle": "{count} 件の単語を保存しました。",
+    "notebookEmpty": "まだ単語は保存されていません。",
+    "wordSource": "{number} 文目",
+    "deleteWord": "削除",
+    "errorDeleteWord": "単語を削除できませんでした。"
   },
   "PracticeClient": {
     "loading": "練習セッションを読み込み中...",
@@ -168,7 +174,22 @@
     "errorNoSession": "ローカルセッションが見つかりません。動画を再インポートしてください。",
     "errorNoSentence": "字幕トラックに再生可能な文がありません。",
     "errorLoadSession": "練習セッションの読み込みに失敗しました。",
-    "micAccessError": "マイクにアクセスできません。ブラウザの権限設定を確認してください。"
+    "micAccessError": "マイクにアクセスできません。ブラウザの権限設定を確認してください。",
+    "vocabularyTitle": "単語ノート",
+    "vocabularyHint": "上の文で単語を選ぶと自動入力されます。手入力もできます。",
+    "vocabularyCount": "{count} 件",
+    "vocabularyPlaceholder": "例: hesitate",
+    "vocabularyInputLabel": "保存する単語",
+    "saveWord": "保存",
+    "vocabularyEmpty": "このトラックにはまだ保存した単語がありません。",
+    "vocabularyListLabel": "保存した単語の一覧",
+    "wordSource": "{number} 文目から",
+    "deleteWord": "削除",
+    "wordSaved": "「{word}」を保存しました。",
+    "wordUpdated": "「{word}」を更新しました。",
+    "wordDeleted": "単語を削除しました。",
+    "wordSaveFailed": "単語を保存できませんでした。",
+    "wordDeleteFailed": "単語を削除できませんでした。"
   },
   "PlaybackControlBar": {
     "prev": "← 前へ",

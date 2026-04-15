@@ -5,6 +5,7 @@ import type {
   RecordingRecord,
   SegmentRecord,
   TrackRecord,
+  VocabularyRecord,
   VideoRecord,
 } from "@/types/models";
 
@@ -15,6 +16,7 @@ class ShadowingDB extends Dexie {
   progress!: Table<ProgressRecord, string>;
   recordings!: Table<RecordingRecord, string>;
   freeRecordings!: Table<FreeRecordingRecord, string>;
+  vocabulary!: Table<VocabularyRecord, string>;
 
   constructor() {
     super("shadowing-next-db");
@@ -32,6 +34,15 @@ class ShadowingDB extends Dexie {
       progress: "trackId, updatedAt",
       recordings: "id, trackId, segmentIndex, updatedAt, [trackId+segmentIndex]",
       freeRecordings: "id, trackId, createdAt, [trackId+createdAt]",
+    });
+    this.version(3).stores({
+      videos: "id, youtubeVideoId, createdAt",
+      tracks: "id, videoId, createdAt, [videoId+createdAt]",
+      segments: "id, trackId, [trackId+index], index",
+      progress: "trackId, updatedAt",
+      recordings: "id, trackId, segmentIndex, updatedAt, [trackId+segmentIndex]",
+      freeRecordings: "id, trackId, createdAt, [trackId+createdAt]",
+      vocabulary: "id, trackId, videoId, updatedAt, createdAt",
     });
   }
 }
