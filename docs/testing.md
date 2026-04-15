@@ -1,51 +1,72 @@
 # Testing Strategy and Governance
 
+This document describes the current test workflow implemented by `scripts/tests/status.ts`.
+
 ## Directory Layout
 
-- `tests/server/**`: main test suite (gating path).
-- `tests/diagnostics/**`: diagnostic/manual tests (non-gating by default).
-- `tests/catalog.yaml`: test case registry for ownership and lifecycle review.
+- `tests/**/*.test.ts`: all test files discovered by the status runner.
+- `tests/app/**`: route-handler and app-layer tests.
+- `tests/features/**`: feature-level logic tests.
+- `tests/server/**`: server and YouTube integration tests.
+- `tests/diagnostics/**`: opt-in diagnostic/manual tests that are excluded from the default run.
+- `tests/catalog.yaml`: registry for ownership, validity, and review cadence.
+
+Only `tests/diagnostics/**` is non-gating by default. Everything else under `tests/**/*.test.ts` is part of the main suite.
 
 ## Commands
 
-- `npm run test`: run main suite and generate status artifacts.
-- `npm run test:all`: run main + diagnostics and generate status artifacts.
+- `npm run test`: run the main suite, then write local status reports.
 - `npm run test:status`: same as `npm run test`.
-- `npm run test:catalog`: validate catalog coverage; fails if any discovered test is uncataloged.
+- `npm run test:all`: run the main suite plus `tests/diagnostics/**`.
+- `npm run test:catalog`: validate catalog coverage only; it fails on uncataloged tests or duplicate catalog entries.
 
-## Generated Reports
+## Report Outputs
 
-- `reports/tests/latest.json`: machine-readable latest report.
-- `reports/tests/latest.md`: human-readable summary.
-- `reports/tests/history/<timestamp>.json`: immutable snapshot for each run.
+Every `npm run test` / `test:status` / `test:all` run writes local artifacts under `reports/tests/`.
+These files are generated, gitignored, and can be deleted safely.
+
+- `reports/tests/latest.json`: latest machine-readable report.
+- `reports/tests/latest.md`: latest human-readable summary.
+- `reports/tests/history/<timestamp>.json`: immutable snapshot for that run.
 
 `latest.json` includes:
 
 - `summary`: total/pass/fail/skip counts.
-- `cases`: per-test status with governance metadata.
-- `diff.newFailures`: tests that became failing since previous `latest.json`.
-- `diff.resolved`: tests that were failing previously and now pass.
-- `diff.newSkips`: tests that became skipped since previous `latest.json`.
-- `governance.uncataloged`: discovered tests missing from `catalog.yaml`.
-- `governance.outdatedCandidates`: entries explicitly marked `outdated-candidate`.
-- `governance.reviewOverdue`: entries with `reviewBy` earlier than today.
+- `cases`: per-test runtime status plus catalog metadata when available.
+- `diff.newFailures`: tests that were not failing in the previous local `latest.json` and now fail.
+- `diff.resolved`: tests that failed previously and now pass.
+- `diff.newSkips`: tests that were not skipped previously and now are skipped.
+- `governance.uncataloged`: discovered tests missing from `tests/catalog.yaml`.
+- `governance.outdatedCandidates`: catalog entries marked `outdated-candidate`.
+- `governance.reviewOverdue`: catalog entries whose `reviewBy` date is earlier than today.
+- `governance.catalogOrphans`: catalog entries that no longer match a discovered test.
+- `governance.duplicateCatalogEntries`: duplicate `file + name` catalog entries.
+- `governance.diagnosticPolicyViolations`: diagnostic entries whose validity is not `needs-review`.
+- `parseErrors`: test files whose TAP output could not be parsed correctly.
 
-## Catalog Schema (`tests/catalog.yaml`)
+## Catalog Schema
 
-Each test case entry must include:
+Each `tests/catalog.yaml` entry must include:
 
-- `file`: test file path under `tests/`.
-- `name`: exact `test("...")` case name.
+- `file`: path to the test file under `tests/`.
+- `name`: exact `test("...")` case name discovered from source.
 - `category`: `unit | integration | diagnostic`.
 - `validity`: `reasonable | needs-review | outdated-candidate | obsolete`.
-- `owner`: accountable owner/team.
+- `owner`: accountable owner or team.
 - `reason`: why the test exists.
 - `lastReviewedOn`: `YYYY-MM-DD`.
 - `reviewBy`: `YYYY-MM-DD`.
 
-## Governance Rules
+## Exit Conditions
 
-- Diagnostic entries should use `category: diagnostic` and `validity: needs-review`.
-- Main suite excludes `tests/diagnostics/**` by default.
-- `npm run test:catalog` enforces no uncataloged tests.
-- Overdue review dates and outdated candidates are highlighted in generated reports.
+- `npm run test` fails when any executed test fails.
+- `npm run test` also fails when the reporter hits parse errors or when duplicate catalog entries exist.
+- `npm run test:catalog` fails when there are uncataloged tests or duplicate catalog entries.
+- Overdue review dates, outdated candidates, catalog orphans, and diagnostic policy violations are reported, but do not fail the run by themselves.
+
+## Update Checklist
+
+- Add new tests under `tests/` using the same feature/server/app structure when possible.
+- Add every new `test("...")` case to `tests/catalog.yaml`.
+- Prefer `tests/diagnostics/**` only for manual or troubleshooting-only coverage.
+- Run `npm run test` before committing.
