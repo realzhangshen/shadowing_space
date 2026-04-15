@@ -5,11 +5,11 @@ import type { SegmentDTO, TrackSummary } from "@/types/api";
 import type {
   FreeRecordingRecord,
   HistoryItem,
-  PracticeSessionKind,
   PracticeSessionRecord,
   ProgressRecord,
   RecordingRecord,
   SegmentRecord,
+  StudySessionRecord,
   TrackRecord,
   VocabularyRecord,
   VideoRecord,
@@ -31,13 +31,9 @@ function buildVocabularyId(trackId: string, normalizedWord: string): string {
   return `${trackId}:vocab:${normalizedWord}`;
 }
 
-function buildPracticeSessionId(
-  trackId: string,
-  kind: PracticeSessionKind,
-  createdAt: number,
-): string {
+function buildStudySessionId(trackId: string, endedAt: number): string {
   const suffix = globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2, 10);
-  return `${trackId}:practice:${kind}:${createdAt}:${suffix}`;
+  return `${trackId}:study:${endedAt}:${suffix}`;
 }
 
 function buildLocalDayKey(timestamp: number): string {
@@ -258,6 +254,7 @@ export async function deleteVideo(videoId: string): Promise<void> {
       db.recordings,
       db.freeRecordings,
       db.practiceSessions,
+      db.studySessions,
       db.vocabulary,
     ],
     async () => {
@@ -270,6 +267,7 @@ export async function deleteVideo(videoId: string): Promise<void> {
         await db.progress.delete(track.id);
       }
       await db.practiceSessions.where("videoId").equals(videoId).delete();
+      await db.studySessions.where("videoId").equals(videoId).delete();
       await db.tracks.where("videoId").equals(videoId).delete();
       await db.videos.delete(videoId);
     },
@@ -419,41 +417,6 @@ export async function updateProgress(trackId: string, currentIndex: number): Pro
   });
 }
 
-async function savePracticeSession(params: {
-  trackId: string;
-  createdAt: number;
-  durationMs: number;
-  kind: PracticeSessionKind;
-}): Promise<PracticeSessionRecord | undefined> {
-  if (params.durationMs <= 0) {
-    return undefined;
-  }
-
-  const track = await db.tracks.get(params.trackId);
-  if (!track) {
-    return undefined;
-  }
-
-  const video = await db.videos.get(track.videoId);
-  if (!video) {
-    return undefined;
-  }
-
-  const record: PracticeSessionRecord = {
-    id: buildPracticeSessionId(params.trackId, params.kind, params.createdAt),
-    trackId: params.trackId,
-    videoId: video.id,
-    videoTitle: video.title,
-    durationMs: params.durationMs,
-    createdAt: params.createdAt,
-    dayKey: buildLocalDayKey(params.createdAt),
-    kind: params.kind,
-  };
-
-  await db.practiceSessions.put(record);
-  return record;
-}
-
 export async function getLatestRecording(
   trackId: string,
   segmentIndex: number,
@@ -479,19 +442,7 @@ export async function saveLatestRecording(params: {
     updatedAt: now,
   };
 
-  await db.transaction(
-    "rw",
-    [db.recordings, db.practiceSessions, db.tracks, db.videos],
-    async () => {
-      await db.recordings.put(record);
-      await savePracticeSession({
-        trackId: params.trackId,
-        createdAt: now,
-        durationMs: params.durationMs,
-        kind: "segment",
-      });
-    },
-  );
+  await db.recordings.put(record);
 
   return record;
 }
@@ -517,24 +468,49 @@ export async function saveFreeRecording(params: {
     playbackSpeed: params.playbackSpeed,
     createdAt: now,
   };
-  await db.transaction(
-    "rw",
-    [db.freeRecordings, db.practiceSessions, db.tracks, db.videos],
-    async () => {
-      await db.freeRecordings.put(record);
-      await savePracticeSession({
-        trackId: params.trackId,
-        createdAt: now,
-        durationMs: params.durationMs,
-        kind: "free",
-      });
-    },
-  );
+
+  await db.freeRecordings.put(record);
   return record;
 }
 
 export async function listPracticeSessions(): Promise<PracticeSessionRecord[]> {
   return db.practiceSessions.orderBy("createdAt").reverse().toArray();
+}
+
+export async function saveStudySessionChunk(params: {
+  trackId: string;
+  startedAt: number;
+  endedAt: number;
+  activeMs: number;
+}): Promise<StudySessionRecord | undefined> {
+  if (params.activeMs <= 0 || params.endedAt <= params.startedAt) {
+    return undefined;
+  }
+
+  const track = await db.tracks.get(params.trackId);
+  const video = track ? await db.videos.get(track.videoId) : undefined;
+
+  if (!track || !video) {
+    return undefined;
+  }
+
+  const record: StudySessionRecord = {
+    id: buildStudySessionId(params.trackId, params.endedAt),
+    trackId: params.trackId,
+    videoId: video.id,
+    videoTitle: video.title,
+    startedAt: params.startedAt,
+    endedAt: params.endedAt,
+    activeMs: params.activeMs,
+    dayKey: buildLocalDayKey(params.endedAt),
+  };
+
+  await db.studySessions.put(record);
+  return record;
+}
+
+export async function listStudySessions(): Promise<StudySessionRecord[]> {
+  return db.studySessions.orderBy("endedAt").reverse().toArray();
 }
 
 export async function listVocabularyWords(params?: {
@@ -607,10 +583,12 @@ export async function clearAllData(): Promise<void> {
       db.recordings,
       db.freeRecordings,
       db.practiceSessions,
+      db.studySessions,
       db.vocabulary,
     ],
     async () => {
       await Promise.all([
+        db.studySessions.clear(),
         db.practiceSessions.clear(),
         db.vocabulary.clear(),
         db.freeRecordings.clear(),

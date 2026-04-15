@@ -15,6 +15,7 @@ import { useRecorder } from "@/hooks/useRecorder";
 import { useRecordingPlayback } from "@/hooks/useRecordingPlayback";
 import { useVAD } from "@/hooks/useVAD";
 import { useLiveWaveform } from "@/hooks/useLiveWaveform";
+import { useStudyTimeTracker } from "@/hooks/useStudyTimeTracker";
 import { useWaveform } from "@/hooks/useWaveform";
 import { usePracticeActions } from "@/hooks/usePracticeActions";
 import { fetchTranscriptSegments } from "@/lib/apiClient";
@@ -157,6 +158,13 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
   useEffect(() => {
     setIsRecording(recorder.isRecording);
   }, [recorder.isRecording, setIsRecording]);
+
+  useStudyTimeTracker({
+    enabled: Boolean(session),
+    trackId: session?.track.id ?? trackId,
+    isPlaying,
+    isRecording,
+  });
 
   const loadRecordingState = useCallback(async (nextTrackId: string, nextIndex: number) => {
     const recording = await getLatestRecording(nextTrackId, nextIndex);

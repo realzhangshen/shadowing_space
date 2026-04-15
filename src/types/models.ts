@@ -66,6 +66,17 @@ export type PracticeSessionRecord = {
   kind: PracticeSessionKind;
 };
 
+export type StudySessionRecord = {
+  id: string;
+  trackId: string;
+  videoId: string;
+  videoTitle: string;
+  startedAt: number;
+  endedAt: number;
+  activeMs: number;
+  dayKey: string;
+};
+
 export type VocabularyRecord = {
   id: string;
   word: string;

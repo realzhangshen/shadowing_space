@@ -5,6 +5,7 @@ import type {
   ProgressRecord,
   RecordingRecord,
   SegmentRecord,
+  StudySessionRecord,
   TrackRecord,
   VocabularyRecord,
   VideoRecord,
@@ -18,6 +19,7 @@ class ShadowingDB extends Dexie {
   recordings!: Table<RecordingRecord, string>;
   freeRecordings!: Table<FreeRecordingRecord, string>;
   practiceSessions!: Table<PracticeSessionRecord, string>;
+  studySessions!: Table<StudySessionRecord, string>;
   vocabulary!: Table<VocabularyRecord, string>;
 
   constructor() {
@@ -54,6 +56,17 @@ class ShadowingDB extends Dexie {
       recordings: "id, trackId, segmentIndex, updatedAt, [trackId+segmentIndex]",
       freeRecordings: "id, trackId, createdAt, [trackId+createdAt]",
       practiceSessions: "id, trackId, videoId, createdAt, dayKey, [videoId+createdAt]",
+      vocabulary: "id, trackId, videoId, updatedAt, createdAt",
+    });
+    this.version(5).stores({
+      videos: "id, youtubeVideoId, createdAt",
+      tracks: "id, videoId, createdAt, [videoId+createdAt]",
+      segments: "id, trackId, [trackId+index], index",
+      progress: "trackId, updatedAt",
+      recordings: "id, trackId, segmentIndex, updatedAt, [trackId+segmentIndex]",
+      freeRecordings: "id, trackId, createdAt, [trackId+createdAt]",
+      practiceSessions: "id, trackId, videoId, createdAt, dayKey, [videoId+createdAt]",
+      studySessions: "id, trackId, videoId, endedAt, dayKey, [videoId+endedAt]",
       vocabulary: "id, trackId, videoId, updatedAt, createdAt",
     });
   }

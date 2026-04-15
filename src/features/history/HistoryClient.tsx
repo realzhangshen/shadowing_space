@@ -2,10 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import {
-  formatPracticeDuration,
-  summarizePracticeSessions,
-} from "@/features/history/practiceSummary";
+import { formatStudyDuration, summarizeStudySessions } from "@/features/history/studySummary";
 import { Link, useRouter } from "@/i18n/navigation";
 import {
   clearAllData,
@@ -13,10 +10,10 @@ import {
   deleteVideo,
   deleteVocabularyWord,
   listHistory,
-  listPracticeSessions,
+  listStudySessions,
   listVocabularyWords,
 } from "@/features/storage/repository";
-import type { HistoryItem, PracticeSessionRecord, VocabularyRecord } from "@/types/models";
+import type { HistoryItem, StudySessionRecord, VocabularyRecord } from "@/types/models";
 
 function formatTime(timestamp: number): string {
   return new Date(timestamp).toLocaleDateString(undefined, {
@@ -60,25 +57,25 @@ export function HistoryClient(): JSX.Element {
   const router = useRouter();
   const [items, setItems] = useState<HistoryItem[]>([]);
   const [vocabularyItems, setVocabularyItems] = useState<VocabularyRecord[]>([]);
-  const [practiceSessions, setPracticeSessions] = useState<PracticeSessionRecord[]>([]);
+  const [studySessions, setStudySessions] = useState<StudySessionRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | undefined>();
   const [storageUsage, setStorageUsage] = useState<string | undefined>();
-  const practiceSummary = summarizePracticeSessions(practiceSessions);
+  const studySummary = summarizeStudySessions(studySessions);
 
   const refresh = useCallback(async () => {
     setError(undefined);
     setIsLoading(true);
 
     try {
-      const [nextHistory, nextVocabulary, nextPracticeSessions] = await Promise.all([
+      const [nextHistory, nextVocabulary, nextStudySessions] = await Promise.all([
         listHistory(),
         listVocabularyWords(),
-        listPracticeSessions(),
+        listStudySessions(),
       ]);
       setItems(nextHistory);
       setVocabularyItems(nextVocabulary);
-      setPracticeSessions(nextPracticeSessions);
+      setStudySessions(nextStudySessions);
 
       if (navigator.storage?.estimate) {
         const estimate = await navigator.storage.estimate();
@@ -270,17 +267,17 @@ export function HistoryClient(): JSX.Element {
             <div>
               <h3>{t("practiceRecordTitle")}</h3>
               <p className="muted">
-                {practiceSummary.totalSessionCount > 0
+                {studySummary.totalDurationMs > 0
                   ? t("practiceRecordSubtitle", {
-                      count: practiceSummary.totalSessionCount,
-                      duration: formatPracticeDuration(practiceSummary.totalDurationMs),
+                      days: studySummary.dayCount,
+                      duration: formatStudyDuration(studySummary.totalDurationMs),
                     })
                   : t("practiceRecordEmptySubtitle")}
               </p>
             </div>
           </div>
 
-          {practiceSummary.totalSessionCount === 0 ? (
+          {studySummary.totalDurationMs === 0 ? (
             <div className="card">
               <p className="muted">{t("practiceRecordEmpty")}</p>
             </div>
@@ -290,35 +287,32 @@ export function HistoryClient(): JSX.Element {
                 <article className="card practice-summary-card">
                   <p className="practice-summary-label">{t("practiceSummaryTime")}</p>
                   <p className="practice-summary-value">
-                    {formatPracticeDuration(practiceSummary.totalDurationMs)}
+                    {formatStudyDuration(studySummary.totalDurationMs)}
                   </p>
                 </article>
                 <article className="card practice-summary-card">
                   <p className="practice-summary-label">{t("practiceSummaryDays")}</p>
-                  <p className="practice-summary-value">{practiceSummary.dayCount}</p>
+                  <p className="practice-summary-value">{studySummary.dayCount}</p>
                 </article>
                 <article className="card practice-summary-card">
                   <p className="practice-summary-label">{t("practiceSummaryLatest")}</p>
                   <p className="practice-summary-value practice-summary-value-sm">
-                    {practiceSummary.latestSessionAt
-                      ? formatDateTime(practiceSummary.latestSessionAt)
+                    {studySummary.latestSessionAt
+                      ? formatDateTime(studySummary.latestSessionAt)
                       : t("practiceNever")}
                   </p>
                 </article>
               </div>
 
               <div className="practice-log-list">
-                {practiceSummary.days.map((day) => (
+                {studySummary.days.map((day) => (
                   <article key={day.dayKey} className="card practice-day-card">
                     <div className="practice-day-header">
                       <div>
                         <h4 className="practice-day-title">{formatDayLabel(day.dayKey)}</h4>
-                        <p className="muted practice-day-meta">
-                          {t("practiceDayMeta", { count: day.sessionCount })}
-                        </p>
                       </div>
                       <p className="practice-day-total">
-                        {formatPracticeDuration(day.totalDurationMs)}
+                        {formatStudyDuration(day.totalDurationMs)}
                       </p>
                     </div>
 
@@ -327,12 +321,9 @@ export function HistoryClient(): JSX.Element {
                         <div key={`${day.dayKey}:${video.videoId}`} className="practice-day-video">
                           <div>
                             <p className="practice-day-video-title">{video.videoTitle}</p>
-                            <p className="muted practice-day-video-meta">
-                              {t("practiceVideoMeta", { count: video.sessionCount })}
-                            </p>
                           </div>
                           <p className="practice-day-video-duration">
-                            {formatPracticeDuration(video.totalDurationMs)}
+                            {formatStudyDuration(video.totalDurationMs)}
                           </p>
                         </div>
                       ))}

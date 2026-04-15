@@ -1,4 +1,60 @@
 tests:
+  - file: tests/features/history/studySummary.test.ts
+    name: summarizeStudySessions groups duration by day and video in descending order
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks the new dashboard study-time aggregation so time totals stay stable per day and video.
+    lastReviewedOn: 2026-04-15
+    reviewBy: 2026-10-15
+  - file: tests/features/history/studySummary.test.ts
+    name: summarizeStudySessions ignores non-positive active durations
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Prevents empty or corrupt study session rows from inflating practice time.
+    lastReviewedOn: 2026-04-15
+    reviewBy: 2026-10-15
+  - file: tests/features/history/studySummary.test.ts
+    name: formatStudyDuration returns a compact hour minute second label
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Keeps dashboard duration labels readable across short and long study sessions.
+    lastReviewedOn: 2026-04-15
+    reviewBy: 2026-10-15
+  - file: tests/features/practice/studyTimer.test.ts
+    name: isStudyTimerRunning returns true when page is focused and interaction is recent
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Defines the simplified active-study timing rule for recent foreground interaction.
+    lastReviewedOn: 2026-04-15
+    reviewBy: 2026-10-15
+  - file: tests/features/practice/studyTimer.test.ts
+    name: isStudyTimerRunning stays active while audio is playing or recording
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Ensures active playback or recording continues counting as study time.
+    lastReviewedOn: 2026-04-15
+    reviewBy: 2026-10-15
+  - file: tests/features/practice/studyTimer.test.ts
+    name: isStudyTimerRunning returns false when page is hidden or unfocused
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Prevents background tabs from inflating study time.
+    lastReviewedOn: 2026-04-15
+    reviewBy: 2026-10-15
+  - file: tests/features/practice/studyTimer.test.ts
+    name: isStudyTimerRunning stops after idle timeout when there is no playback
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Stops counting when the practice page has been idle too long.
+    lastReviewedOn: 2026-04-15
+    reviewBy: 2026-10-15
   - file: tests/features/history/practiceSummary.test.ts
     name: summarizePracticeSessions groups records by day and video in descending order
     category: unit
