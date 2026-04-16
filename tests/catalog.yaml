@@ -231,6 +231,38 @@ tests:
     reason: Sanitizes user-supplied URLs in the options page before persisting them.
     lastReviewedOn: 2026-04-16
     reviewBy: 2026-10-16
+  - file: tests/extension/timestamp.test.ts
+    name: parseTimestampToMs handles M:SS format
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Supports DOM-based transcript extraction when YouTube returns empty caption payloads.
+    lastReviewedOn: 2026-04-16
+    reviewBy: 2026-10-16
+  - file: tests/extension/timestamp.test.ts
+    name: parseTimestampToMs handles H:MM:SS format
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Handles long-form videos where timestamps cross the one-hour boundary.
+    lastReviewedOn: 2026-04-16
+    reviewBy: 2026-10-16
+  - file: tests/extension/timestamp.test.ts
+    name: parseTimestampToMs returns NaN for malformed input
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Guards the DOM reader from accepting garbage timestamp text.
+    lastReviewedOn: 2026-04-16
+    reviewBy: 2026-10-16
+  - file: tests/extension/timestamp.test.ts
+    name: parseTimestampToMs tolerates whitespace around the value
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: YouTube's DOM timestamps include surrounding whitespace that must be stripped.
+    lastReviewedOn: 2026-04-16
+    reviewBy: 2026-10-16
   - file: tests/extension/summarizeTracks.test.ts
     name: summarizeTracks returns title, video id and normalized track entries
     category: unit

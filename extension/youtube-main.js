@@ -143,6 +143,110 @@
       );
   }
 
+  function parseTimestampToMs(value) {
+    if (typeof value !== "string") return NaN;
+    const trimmed = value.trim();
+    if (!trimmed) return NaN;
+    const parts = trimmed.split(":");
+    if (parts.length < 2 || parts.length > 3) return NaN;
+    const numbers = parts.map((part) => Number.parseInt(part, 10));
+    if (numbers.some((n) => !Number.isFinite(n))) return NaN;
+    if (numbers.length === 2) {
+      const [m, s] = numbers;
+      return (m * 60 + s) * 1000;
+    }
+    const [h, m, s] = numbers;
+    return (h * 3600 + m * 60 + s) * 1000;
+  }
+
+  function sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  function findTranscriptList() {
+    return document.querySelector("ytd-transcript-segment-list-renderer");
+  }
+
+  async function openTranscriptPanel(maxWaitMs = 6_000) {
+    if (findTranscriptList()) return true;
+
+    // Expand description first — the "Show transcript" button lives there on modern YouTube.
+    const expandBtn = document.querySelector(
+      "ytd-text-inline-expander tp-yt-paper-button#expand, ytd-text-inline-expander #expand, #description #expand",
+    );
+    if (expandBtn) {
+      expandBtn.click();
+      await sleep(200);
+    }
+
+    // Find the transcript button. YouTube uses several variants over time; cover them all.
+    const candidates = [
+      'ytd-video-description-transcript-section-renderer button[aria-label*="ranscript" i]',
+      'ytd-button-renderer button[aria-label*="ranscript" i]',
+      'button[aria-label*="Show transcript" i]',
+      'button[aria-label*="字幕" i]',
+      'button[aria-label*="transcript" i]',
+    ];
+    let transcriptBtn = null;
+    for (const selector of candidates) {
+      transcriptBtn = document.querySelector(selector);
+      if (transcriptBtn) break;
+    }
+
+    if (!transcriptBtn) return false;
+    transcriptBtn.click();
+
+    const started = performance.now();
+    while (performance.now() - started < maxWaitMs) {
+      const list = findTranscriptList();
+      const rows = list?.querySelectorAll("ytd-transcript-segment-renderer");
+      if (rows && rows.length > 0) return true;
+      await sleep(200);
+    }
+    return false;
+  }
+
+  function readTranscriptFromDom() {
+    const list = findTranscriptList();
+    if (!list) return null;
+
+    const rows = list.querySelectorAll("ytd-transcript-segment-renderer");
+    if (rows.length === 0) return null;
+
+    const parsed = [];
+    rows.forEach((row) => {
+      // The segment container sometimes has data-start-ms for exact timing.
+      const segmentDiv = row.querySelector(".segment") ?? row;
+      const startAttr =
+        segmentDiv.getAttribute?.("data-start-ms") ?? row.getAttribute?.("data-start-ms") ?? null;
+      let startMs = startAttr ? Number.parseInt(startAttr, 10) : NaN;
+
+      if (!Number.isFinite(startMs)) {
+        const ts = row.querySelector(".segment-timestamp");
+        startMs = parseTimestampToMs(ts?.textContent ?? "");
+      }
+
+      const textEl =
+        row.querySelector(".segment-text yt-formatted-string") ??
+        row.querySelector(".segment-text") ??
+        row.querySelector("yt-formatted-string.segment-text");
+      const text = normalizeText(textEl?.textContent ?? "");
+
+      if (Number.isFinite(startMs) && text) {
+        parsed.push({ startMs, text });
+      }
+    });
+
+    if (parsed.length === 0) return null;
+
+    // Compute endMs from the next segment's start. Last segment gets +3s padding.
+    return parsed.map((seg, index) => {
+      const next = parsed[index + 1];
+      const endMs = next ? Math.max(next.startMs, seg.startMs + 200) : seg.startMs + 3_000;
+      return { startMs: seg.startMs, endMs, text: seg.text };
+    });
+  }
+
   function parseXmlSegments(payloadText) {
     const xml = new DOMParser().parseFromString(payloadText, "text/xml");
     const textNodes = Array.from(xml.querySelectorAll("text"));
@@ -312,7 +416,53 @@
       throw new Error("The selected caption track is missing required metadata.");
     }
 
-    const { segments, attempts } = await fetchTrackSegments(track.baseUrl, track);
+    let segments = null;
+    let attempts = [];
+    let source = "fetch";
+    let fetchError = null;
+
+    try {
+      const result = await fetchTrackSegments(track.baseUrl, track);
+      segments = result.segments;
+      attempts = result.attempts;
+    } catch (error) {
+      fetchError = error;
+      attempts = error?.attempts ?? [];
+    }
+
+    // Fallback path: YouTube's PO-token protection on timedtext returns HTTP 200
+    // with empty text/html bodies. Reading the already-rendered transcript panel
+    // sidesteps that entirely (no unsigned network request needed).
+    if (!segments || segments.length === 0) {
+      source = "dom";
+      let panelOpened = Boolean(findTranscriptList());
+      if (!panelOpened) {
+        panelOpened = await openTranscriptPanel();
+      }
+
+      if (!panelOpened) {
+        const err = new Error(
+          (fetchError?.message ??
+            "YouTube returned no usable caption data via the timedtext endpoint.") +
+            " Additionally, I could not open the on-page Transcript panel automatically. " +
+            'On YouTube, click "…more" under the video → "Show transcript", then retry.',
+        );
+        err.attempts = attempts;
+        throw err;
+      }
+
+      // Small settle so the last few rows get rendered before we read.
+      await sleep(300);
+      const domSegments = readTranscriptFromDom();
+      if (!domSegments || domSegments.length === 0) {
+        const err = new Error(
+          "Transcript panel is open but contains no readable segments. It may still be loading — wait a moment and retry.",
+        );
+        err.attempts = attempts;
+        throw err;
+      }
+      segments = domSegments;
+    }
 
     return {
       payload: {
@@ -332,7 +482,7 @@
         },
         segments,
       },
-      debug: { attempts },
+      debug: { attempts, source, fetchError: fetchError?.message ?? null },
     };
   }
 

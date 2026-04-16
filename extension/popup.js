@@ -176,7 +176,15 @@ async function extractSelectedTrack(tabId) {
   appendLog("info", "Extraction complete", {
     segments: response.payload.segments?.length ?? 0,
     languageCode: response.payload.track?.languageCode,
+    source: response.debug?.source ?? "fetch",
   });
+  if (response.debug?.source === "dom") {
+    appendLog(
+      "warn",
+      "Captions read from YouTube's on-page transcript panel (fetch path was blocked).",
+      { fetchError: response.debug.fetchError },
+    );
+  }
   return response.payload;
 }
 
