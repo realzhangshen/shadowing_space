@@ -173,16 +173,23 @@ async function extractSelectedTrack(tabId) {
   if (!response?.ok || !response.payload) {
     throw new Error(response?.error || "Extraction failed without a reason.");
   }
+  const source = response.debug?.source ?? "fetch";
+  const precision = response.debug?.precisionCounts;
   appendLog("info", "Extraction complete", {
     segments: response.payload.segments?.length ?? 0,
     languageCode: response.payload.track?.languageCode,
-    source: response.debug?.source ?? "fetch",
+    source,
+    precision,
   });
-  if (response.debug?.source === "dom") {
+  if (source === "dom" || source === "dom-prefetch") {
+    appendLog("info", "Captions read from YouTube's on-page transcript panel.", {
+      fetchError: response.debug?.fetchError,
+    });
+  }
+  if (precision && precision.text > 0 && precision["polymer-ms"] === 0) {
     appendLog(
       "warn",
-      "Captions read from YouTube's on-page transcript panel (fetch path was blocked).",
-      { fetchError: response.debug.fetchError },
+      `⚠ ${precision.text} segment(s) used second-precision timestamps (rounded to nearest second). Shadowing may drift ±500ms. This happens when YouTube's internal data can't be accessed.`,
     );
   }
   return response.payload;

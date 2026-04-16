@@ -143,6 +143,46 @@
       );
   }
 
+  function readRowData(row) {
+    if (!row || typeof row !== "object") return null;
+    return row.data ?? row.__data ?? row._data ?? null;
+  }
+
+  function toFiniteNumber(value) {
+    if (value == null) return null;
+    const n = typeof value === "number" ? value : Number.parseInt(String(value), 10);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  function readStartMsFromRow(row) {
+    const data = readRowData(row);
+    if (!data) return null;
+    const nested = data.transcriptSegmentRenderer;
+    const candidates = [
+      data.startMs,
+      nested?.startMs,
+      data.cueGroupStartOffsetMs,
+      nested?.cueGroupStartOffsetMs,
+    ];
+    for (const value of candidates) {
+      const ms = toFiniteNumber(value);
+      if (ms !== null) return ms;
+    }
+    return null;
+  }
+
+  function readEndMsFromRow(row) {
+    const data = readRowData(row);
+    if (!data) return null;
+    const nested = data.transcriptSegmentRenderer;
+    const directEnd = toFiniteNumber(data.endMs ?? nested?.endMs);
+    if (directEnd !== null) return directEnd;
+    const startMs = toFiniteNumber(data.startMs ?? nested?.startMs);
+    const durationMs = toFiniteNumber(data.durationMs ?? nested?.durationMs);
+    if (startMs !== null && durationMs !== null) return startMs + durationMs;
+    return null;
+  }
+
   function parseTimestampToMs(value) {
     if (typeof value !== "string") return NaN;
     const trimmed = value.trim();
@@ -213,17 +253,38 @@
     const rows = list.querySelectorAll("ytd-transcript-segment-renderer");
     if (rows.length === 0) return null;
 
+    // Track which timing source was used so the popup can log it:
+    // - "polymer-ms" = millisecond precision from YouTube's internal Polymer data (ideal)
+    // - "data-attr"  = data-start-ms DOM attribute (ms precision)
+    // - "text"       = parsed from "M:SS" displayed text (second precision, ±500ms drift)
+    const precisionCounts = { "polymer-ms": 0, "data-attr": 0, text: 0 };
+
     const parsed = [];
     rows.forEach((row) => {
-      // The segment container sometimes has data-start-ms for exact timing.
-      const segmentDiv = row.querySelector(".segment") ?? row;
-      const startAttr =
-        segmentDiv.getAttribute?.("data-start-ms") ?? row.getAttribute?.("data-start-ms") ?? null;
-      let startMs = startAttr ? Number.parseInt(startAttr, 10) : NaN;
+      let startMs = readStartMsFromRow(row);
+      const endMs = readEndMsFromRow(row);
+      let precision = "polymer-ms";
 
-      if (!Number.isFinite(startMs)) {
+      if (startMs === null) {
+        const segmentDiv = row.querySelector(".segment") ?? row;
+        const attr =
+          segmentDiv.getAttribute?.("data-start-ms") ?? row.getAttribute?.("data-start-ms") ?? null;
+        if (attr != null) {
+          const n = Number.parseInt(attr, 10);
+          if (Number.isFinite(n)) {
+            startMs = n;
+            precision = "data-attr";
+          }
+        }
+      }
+
+      if (startMs === null) {
         const ts = row.querySelector(".segment-timestamp");
-        startMs = parseTimestampToMs(ts?.textContent ?? "");
+        const n = parseTimestampToMs(ts?.textContent ?? "");
+        if (Number.isFinite(n)) {
+          startMs = n;
+          precision = "text";
+        }
       }
 
       const textEl =
@@ -232,19 +293,27 @@
         row.querySelector("yt-formatted-string.segment-text");
       const text = normalizeText(textEl?.textContent ?? "");
 
-      if (Number.isFinite(startMs) && text) {
-        parsed.push({ startMs, text });
+      if (startMs !== null && text) {
+        precisionCounts[precision] += 1;
+        parsed.push({ startMs, endMs, text });
       }
     });
 
     if (parsed.length === 0) return null;
 
-    // Compute endMs from the next segment's start. Last segment gets +3s padding.
-    return parsed.map((seg, index) => {
+    // Fill missing endMs from the next segment's start; last segment gets +3s padding.
+    const segments = parsed.map((seg, index) => {
       const next = parsed[index + 1];
-      const endMs = next ? Math.max(next.startMs, seg.startMs + 200) : seg.startMs + 3_000;
-      return { startMs: seg.startMs, endMs, text: seg.text };
+      const resolvedEnd =
+        seg.endMs !== null
+          ? seg.endMs
+          : next
+            ? Math.max(next.startMs, seg.startMs + 200)
+            : seg.startMs + 3_000;
+      return { startMs: seg.startMs, endMs: resolvedEnd, text: seg.text };
     });
+
+    return { segments, precisionCounts };
   }
 
   function parseXmlSegments(payloadText) {
@@ -420,14 +489,29 @@
     let attempts = [];
     let source = "fetch";
     let fetchError = null;
+    let precisionCounts = null;
 
-    try {
-      const result = await fetchTrackSegments(track.baseUrl, track);
-      segments = result.segments;
-      attempts = result.attempts;
-    } catch (error) {
-      fetchError = error;
-      attempts = error?.attempts ?? [];
+    // Prefer the DOM path when the transcript panel is already open. It's both
+    // faster (no ~500ms per fetch attempt) and immune to YouTube's silent-reject.
+    if (findTranscriptList()) {
+      await sleep(200);
+      const domResult = readTranscriptFromDom();
+      if (domResult && domResult.segments.length > 0) {
+        segments = domResult.segments;
+        precisionCounts = domResult.precisionCounts;
+        source = "dom-prefetch";
+      }
+    }
+
+    if (!segments || segments.length === 0) {
+      try {
+        const result = await fetchTrackSegments(track.baseUrl, track);
+        segments = result.segments;
+        attempts = result.attempts;
+      } catch (error) {
+        fetchError = error;
+        attempts = error?.attempts ?? [];
+      }
     }
 
     // Fallback path: YouTube's PO-token protection on timedtext returns HTTP 200
@@ -453,15 +537,16 @@
 
       // Small settle so the last few rows get rendered before we read.
       await sleep(300);
-      const domSegments = readTranscriptFromDom();
-      if (!domSegments || domSegments.length === 0) {
+      const domResult = readTranscriptFromDom();
+      if (!domResult || !domResult.segments || domResult.segments.length === 0) {
         const err = new Error(
           "Transcript panel is open but contains no readable segments. It may still be loading — wait a moment and retry.",
         );
         err.attempts = attempts;
         throw err;
       }
-      segments = domSegments;
+      segments = domResult.segments;
+      precisionCounts = domResult.precisionCounts;
     }
 
     return {
@@ -482,7 +567,12 @@
         },
         segments,
       },
-      debug: { attempts, source, fetchError: fetchError?.message ?? null },
+      debug: {
+        attempts,
+        source,
+        precisionCounts,
+        fetchError: fetchError?.message ?? null,
+      },
     };
   }
 

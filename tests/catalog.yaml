@@ -231,6 +231,70 @@ tests:
     reason: Sanitizes user-supplied URLs in the options page before persisting them.
     lastReviewedOn: 2026-04-16
     reviewBy: 2026-10-16
+  - file: tests/extension/transcriptRowTiming.test.ts
+    name: readStartMsFromRow prefers Polymer data.startMs (ms precision)
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Eliminates the ±500ms shadowing drift caused by YouTube rounding displayed timestamps to seconds.
+    lastReviewedOn: 2026-04-16
+    reviewBy: 2026-10-16
+  - file: tests/extension/transcriptRowTiming.test.ts
+    name: readStartMsFromRow reads nested data.transcriptSegmentRenderer.startMs
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Handles the variant Polymer shape where YouTube nests segment data under transcriptSegmentRenderer.
+    lastReviewedOn: 2026-04-16
+    reviewBy: 2026-10-16
+  - file: tests/extension/transcriptRowTiming.test.ts
+    name: readStartMsFromRow also tries __data for older Polymer builds
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Covers older YouTube Polymer exposures where row data lives under __data.
+    lastReviewedOn: 2026-04-16
+    reviewBy: 2026-10-16
+  - file: tests/extension/transcriptRowTiming.test.ts
+    name: readStartMsFromRow falls back to cueGroupStartOffsetMs
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Accepts the alternate cue-group naming some YouTube builds use for transcript segments.
+    lastReviewedOn: 2026-04-16
+    reviewBy: 2026-10-16
+  - file: tests/extension/transcriptRowTiming.test.ts
+    name: readStartMsFromRow returns null when no known data path is available
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Lets the DOM reader fall back to attribute or text parsing instead of yielding garbage ms values.
+    lastReviewedOn: 2026-04-16
+    reviewBy: 2026-10-16
+  - file: tests/extension/transcriptRowTiming.test.ts
+    name: readEndMsFromRow prefers explicit endMs
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Uses YouTube's precise segment end timing instead of guessing from the next segment's start.
+    lastReviewedOn: 2026-04-16
+    reviewBy: 2026-10-16
+  - file: tests/extension/transcriptRowTiming.test.ts
+    name: readEndMsFromRow derives endMs from startMs + durationMs when endMs missing
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Recovers precise end time from duration on YouTube builds that omit explicit endMs.
+    lastReviewedOn: 2026-04-16
+    reviewBy: 2026-10-16
+  - file: tests/extension/transcriptRowTiming.test.ts
+    name: readEndMsFromRow returns null when neither endMs nor durationMs is available
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Signals to the caller that end time has to be reconstructed from neighboring segments.
+    lastReviewedOn: 2026-04-16
+    reviewBy: 2026-10-16
   - file: tests/extension/timestamp.test.ts
     name: parseTimestampToMs handles M:SS format
     category: unit

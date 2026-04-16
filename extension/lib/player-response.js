@@ -132,6 +132,61 @@ function safeFilenamePart(value, fallback) {
   return cleaned || fallback;
 }
 
+function readRowData(row) {
+  if (!row || typeof row !== "object") return null;
+  return row.data ?? row.__data ?? row._data ?? null;
+}
+
+function toFiniteNumber(value) {
+  if (value == null) return null;
+  const n = typeof value === "number" ? value : Number.parseInt(String(value), 10);
+  return Number.isFinite(n) ? n : null;
+}
+
+/**
+ * Reads millisecond-precision start time from a YouTube transcript segment
+ * renderer. YouTube's Polymer element stores precise ms values (not rounded
+ * to seconds like the displayed `1:23` timestamp), so preferring this path
+ * avoids the "off by 0.x seconds" shadowing drift.
+ */
+export function readStartMsFromRow(row) {
+  const data = readRowData(row);
+  if (!data) return null;
+
+  const nested = data.transcriptSegmentRenderer;
+  const candidates = [
+    data.startMs,
+    nested?.startMs,
+    data.cueGroupStartOffsetMs,
+    nested?.cueGroupStartOffsetMs,
+  ];
+  for (const value of candidates) {
+    const ms = toFiniteNumber(value);
+    if (ms !== null) return ms;
+  }
+  return null;
+}
+
+/**
+ * Reads millisecond-precision end time. Falls back to startMs + durationMs
+ * when the element only exposes a duration.
+ */
+export function readEndMsFromRow(row) {
+  const data = readRowData(row);
+  if (!data) return null;
+
+  const nested = data.transcriptSegmentRenderer;
+  const directEnd = toFiniteNumber(data.endMs ?? nested?.endMs);
+  if (directEnd !== null) return directEnd;
+
+  const startMs = toFiniteNumber(data.startMs ?? nested?.startMs);
+  const durationMs = toFiniteNumber(data.durationMs ?? nested?.durationMs);
+  if (startMs !== null && durationMs !== null) {
+    return startMs + durationMs;
+  }
+  return null;
+}
+
 export function parseTimestampToMs(value) {
   if (typeof value !== "string") return NaN;
   const trimmed = value.trim();
