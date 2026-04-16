@@ -32,5 +32,7 @@ export function parsePlaybackSpeedInput(value: string, fallback: number): number
 }
 
 export function formatPlaybackSpeed(value: number): string {
-  return normalizePlaybackSpeed(value).toFixed(2).replace(/\.?0+$/, "");
+  return normalizePlaybackSpeed(value)
+    .toFixed(2)
+    .replace(/\.?0+$/, "");
 }

@@ -52,7 +52,8 @@ export const usePracticeStore = create<PracticeState>((set) => ({
   freeSessionActive: false,
   setCurrentIndex: (currentIndex) => set({ currentIndex }),
   setPlaybackMode: (playbackMode) => set({ playbackMode }),
-  setPlaybackSpeed: (playbackSpeed) => set({ playbackSpeed: normalizePlaybackSpeed(playbackSpeed) }),
+  setPlaybackSpeed: (playbackSpeed) =>
+    set({ playbackSpeed: normalizePlaybackSpeed(playbackSpeed) }),
   setIsRecording: (isRecording) => set({ isRecording }),
   setIsPlaying: (isPlaying) => set({ isPlaying }),
   toggleTranscriptHidden: () => set((s) => ({ transcriptHidden: !s.transcriptHidden })),

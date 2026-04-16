@@ -463,7 +463,10 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
 
   const commitPlaybackSpeedInput = useCallback(
     (rawValue: string) => {
-      const nextSpeed = parsePlaybackSpeedInput(rawValue, usePracticeStore.getState().playbackSpeed);
+      const nextSpeed = parsePlaybackSpeedInput(
+        rawValue,
+        usePracticeStore.getState().playbackSpeed,
+      );
       setPlaybackSpeedInStore(nextSpeed);
       setPlaybackSpeedInput(formatPlaybackSpeed(nextSpeed));
     },

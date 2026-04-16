@@ -1,6 +1,14 @@
 "use client";
 
-import { forwardRef, useCallback, useEffect, useId, useImperativeHandle, useRef, useState } from "react";
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useId,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from "react";
 import { DEFAULT_PLAYBACK_SPEED, normalizePlaybackSpeed } from "@/features/practice/playbackSpeed";
 import type { PlaybackSpeed } from "@/store/practiceStore";
 

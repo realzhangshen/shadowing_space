@@ -51,7 +51,10 @@ test("createImportBundleFromExtensionPayload maps a valid payload into determini
   assert.equal(bundle.tracks[0]?.token, "ext-v1:en:manual:.en");
 
   assert.equal(bundle.targetTrackId, "FRI78tq9Eik:ext-v1:en:manual:.en");
-  assert.deepEqual(bundle.segments.map((segment) => segment.text), ["Hello there.", "How are you?"]);
+  assert.deepEqual(
+    bundle.segments.map((segment) => segment.text),
+    ["Hello there.", "How are you?"],
+  );
   assert.deepEqual(
     bundle.segments.map((segment) => ({
       id: segment.id,
