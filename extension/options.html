@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Shadowing Space Importer Options</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #ffffff;
+        --fg: #1f2328;
+        --muted: #656d76;
+        --border: #d0d7de;
+        --accent: #0969da;
+        --error: #d1242f;
+        --ok: #1a7f37;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #0d1117;
+          --fg: #e6edf3;
+          --muted: #8b949e;
+          --border: #30363d;
+          --accent: #4493f8;
+          --error: #f85149;
+          --ok: #3fb950;
+        }
+      }
+      html,
+      body {
+        background: var(--bg);
+        color: var(--fg);
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        max-width: 640px;
+        margin: 40px auto;
+        padding: 0 20px;
+        line-height: 1.5;
+      }
+      h1 {
+        font-size: 20px;
+        margin: 0 0 8px;
+      }
+      p.subtitle {
+        color: var(--muted);
+        margin: 0 0 24px;
+      }
+      fieldset {
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 16px 20px;
+        margin-bottom: 16px;
+      }
+      legend {
+        padding: 0 6px;
+        font-weight: 600;
+        font-size: 14px;
+      }
+      label.option {
+        display: flex;
+        gap: 10px;
+        align-items: flex-start;
+        padding: 8px 0;
+        cursor: pointer;
+      }
+      label.option input[type="radio"] {
+        margin-top: 4px;
+      }
+      label.option .label-body {
+        display: flex;
+        flex-direction: column;
+      }
+      label.option .label-title {
+        font-weight: 500;
+      }
+      label.option .label-hint {
+        color: var(--muted);
+        font-size: 13px;
+      }
+      input[type="url"] {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 8px 10px;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 13px;
+        background: var(--bg);
+        color: var(--fg);
+      }
+      input[type="url"]:disabled {
+        opacity: 0.5;
+      }
+      .custom-field {
+        margin-top: 8px;
+        margin-left: 26px;
+      }
+      .actions {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+      }
+      button {
+        border: 1px solid var(--accent);
+        background: var(--accent);
+        color: white;
+        padding: 8px 16px;
+        border-radius: 6px;
+        font-size: 14px;
+        cursor: pointer;
+      }
+      button:hover {
+        filter: brightness(1.1);
+      }
+      .status {
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .status.ok {
+        color: var(--ok);
+      }
+      .status.error {
+        color: var(--error);
+      }
+      .note {
+        font-size: 12px;
+        color: var(--muted);
+        margin-top: 8px;
+      }
+      .note code {
+        background: rgba(128, 128, 128, 0.15);
+        padding: 1px 4px;
+        border-radius: 3px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Shadowing Space Importer</h1>
+    <p class="subtitle">Choose where transcripts are delivered after extraction.</p>
+
+    <form id="options-form">
+      <fieldset>
+        <legend>Import endpoint</legend>
+
+        <label class="option">
+          <input type="radio" name="mode" value="prod" checked />
+          <span class="label-body">
+            <span class="label-title">Production · shadowing.space</span>
+            <span class="label-hint"
+              >Default. Opens <code>https://shadowing.space/en/import</code>.</span
+            >
+          </span>
+        </label>
+
+        <label class="option">
+          <input type="radio" name="mode" value="localhost" />
+          <span class="label-body">
+            <span class="label-title">Localhost · http://localhost:3000</span>
+            <span class="label-hint"
+              >For running <code>npm run dev</code> against this extension.</span
+            >
+          </span>
+        </label>
+
+        <label class="option">
+          <input type="radio" name="mode" value="custom" />
+          <span class="label-body">
+            <span class="label-title">Custom / self-hosted</span>
+            <span class="label-hint"
+              >Use your own deployment URL. Must be http(s) and include <code>/import</code>.</span
+            >
+          </span>
+        </label>
+
+        <div class="custom-field">
+          <input
+            type="url"
+            id="custom-url"
+            placeholder="https://my-shadowing.example.com/en/import"
+            disabled
+          />
+          <p class="note">
+            You may be prompted to grant host permission the first time this extension delivers to a
+            new origin.
+          </p>
+        </div>
+      </fieldset>
+
+      <div class="actions">
+        <button type="submit">Save</button>
+        <span class="status" id="status" role="status" aria-live="polite"></span>
+      </div>
+    </form>
+
+    <script src="options.js" type="module"></script>
+  </body>
+</html>

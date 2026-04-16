@@ -175,6 +175,62 @@ tests:
     reason: Prevents duplicate notebook entries caused by case-only differences.
     lastReviewedOn: 2026-04-15
     reviewBy: 2026-10-15
+  - file: tests/extension/endpoint.test.ts
+    name: resolveImportEndpoint returns the production URL when settings are empty
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Keeps the extension's default delivery target on the hosted app when the user has not configured anything.
+    lastReviewedOn: 2026-04-16
+    reviewBy: 2026-10-16
+  - file: tests/extension/endpoint.test.ts
+    name: resolveImportEndpoint returns the localhost URL when mode is localhost
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Enables local development workflow by letting contributors switch the extension to http://localhost:3000.
+    lastReviewedOn: 2026-04-16
+    reviewBy: 2026-10-16
+  - file: tests/extension/endpoint.test.ts
+    name: resolveImportEndpoint returns the custom URL when mode is custom and URL is valid
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Supports self-hosted Shadowing Space instances by honoring a custom delivery endpoint.
+    lastReviewedOn: 2026-04-16
+    reviewBy: 2026-10-16
+  - file: tests/extension/endpoint.test.ts
+    name: resolveImportEndpoint preserves ?source=extension if already present in custom URL
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Prevents the source query param from being duplicated when the user supplies a fully formed URL.
+    lastReviewedOn: 2026-04-16
+    reviewBy: 2026-10-16
+  - file: tests/extension/endpoint.test.ts
+    name: resolveImportEndpoint preserves existing query params and appends source=extension
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Keeps the import page able to detect the extension flow even when custom URLs include extra query state.
+    lastReviewedOn: 2026-04-16
+    reviewBy: 2026-10-16
+  - file: tests/extension/endpoint.test.ts
+    name: resolveImportEndpoint falls back to default when custom URL is missing or invalid
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Guards against invalid or malicious protocols reaching chrome.tabs.create.
+    lastReviewedOn: 2026-04-16
+    reviewBy: 2026-10-16
+  - file: tests/extension/endpoint.test.ts
+    name: normalizeImportEndpoint trims whitespace and rejects non-http(s) URLs
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Sanitizes user-supplied URLs in the options page before persisting them.
+    lastReviewedOn: 2026-04-16
+    reviewBy: 2026-10-16
   - file: tests/features/import/extensionImport.test.ts
     name: createImportBundleFromExtensionPayload maps a valid payload into deterministic local records
     category: unit
