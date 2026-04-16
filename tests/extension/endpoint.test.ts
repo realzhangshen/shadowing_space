@@ -12,6 +12,16 @@ test("resolveImportEndpoint returns the production URL when settings are empty",
   assert.equal(resolveImportEndpoint({ mode: undefined }), DEFAULT_IMPORT_ENDPOINT);
 });
 
+test("DEFAULT_IMPORT_ENDPOINT targets www.shadowing.space so the bridge content script matches the final URL", () => {
+  // Production redirects apex → www. If the extension opens the apex host the
+  // bridge content script must also match the www host, otherwise the handoff
+  // never runs. Pinning the default here keeps the two wired up.
+  assert.ok(
+    DEFAULT_IMPORT_ENDPOINT.startsWith("https://www.shadowing.space/"),
+    `expected DEFAULT_IMPORT_ENDPOINT to point at www.shadowing.space, got ${DEFAULT_IMPORT_ENDPOINT}`,
+  );
+});
+
 test("resolveImportEndpoint returns the localhost URL when mode is localhost", () => {
   assert.equal(resolveImportEndpoint({ mode: "localhost" }), LOCAL_IMPORT_ENDPOINT);
 });

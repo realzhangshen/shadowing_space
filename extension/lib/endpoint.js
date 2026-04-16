@@ -2,7 +2,9 @@
 // Kept dependency-free so it can run in both the extension service worker
 // and Node (for unit tests).
 
-export const DEFAULT_IMPORT_ENDPOINT = "https://shadowing.space/en/import?source=extension";
+// Must stay on the www host: production redirects shadowing.space → www.shadowing.space,
+// and the bridge content script in manifest.json only runs on the host the tab lands on.
+export const DEFAULT_IMPORT_ENDPOINT = "https://www.shadowing.space/en/import?source=extension";
 export const LOCAL_IMPORT_ENDPOINT = "http://localhost:3000/en/import?source=extension";
 
 const ALLOWED_PROTOCOLS = new Set(["http:", "https:"]);

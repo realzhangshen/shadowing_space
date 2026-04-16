@@ -184,6 +184,14 @@ tests:
     lastReviewedOn: 2026-04-16
     reviewBy: 2026-10-16
   - file: tests/extension/endpoint.test.ts
+    name: DEFAULT_IMPORT_ENDPOINT targets www.shadowing.space so the bridge content script matches the final URL
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Regression guard for the apex→www redirect that otherwise prevents the bridge content script from delivering the popup handoff.
+    lastReviewedOn: 2026-04-16
+    reviewBy: 2026-10-16
+  - file: tests/extension/endpoint.test.ts
     name: resolveImportEndpoint returns the localhost URL when mode is localhost
     category: unit
     validity: reasonable

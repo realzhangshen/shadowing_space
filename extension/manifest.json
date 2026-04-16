@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Shadowing Space Importer",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Import YouTube captions into Shadowing Space using the viewer's own browser network.",
   "permissions": ["tabs", "scripting", "storage", "downloads"],
   "host_permissions": ["https://www.youtube.com/*"],
@@ -43,6 +43,7 @@
     {
       "matches": [
         "https://shadowing.space/*",
+        "https://www.shadowing.space/*",
         "http://localhost:3000/*",
         "http://127.0.0.1:3000/*"
       ],
