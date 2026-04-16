@@ -231,6 +231,46 @@ tests:
     reason: Sanitizes user-supplied URLs in the options page before persisting them.
     lastReviewedOn: 2026-04-16
     reviewBy: 2026-10-16
+  - file: tests/extension/handoff.test.ts
+    name: createEnvelope wraps the payload with timestamp + version
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks the storage envelope shape used by the popup-to-bridge handoff.
+    lastReviewedOn: 2026-04-16
+    reviewBy: 2026-10-16
+  - file: tests/extension/handoff.test.ts
+    name: HANDOFF_STORAGE_KEY is a stable string constant
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Prevents accidental key renames that would break the popup/bridge contract.
+    lastReviewedOn: 2026-04-16
+    reviewBy: 2026-10-16
+  - file: tests/extension/handoff.test.ts
+    name: isEnvelopeFresh returns true within TTL
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Confirms the freshness check accepts handoffs delivered within the configured window.
+    lastReviewedOn: 2026-04-16
+    reviewBy: 2026-10-16
+  - file: tests/extension/handoff.test.ts
+    name: isEnvelopeFresh returns false after TTL elapses
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Prevents the bridge from re-delivering ancient handoffs from previous sessions.
+    lastReviewedOn: 2026-04-16
+    reviewBy: 2026-10-16
+  - file: tests/extension/handoff.test.ts
+    name: isEnvelopeFresh rejects malformed envelopes
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Defends the bridge against partially written or unexpected storage shapes.
+    lastReviewedOn: 2026-04-16
+    reviewBy: 2026-10-16
   - file: tests/extension/transcriptRowTiming.test.ts
     name: readStartMsFromRow prefers Polymer data.startMs (ms precision)
     category: unit

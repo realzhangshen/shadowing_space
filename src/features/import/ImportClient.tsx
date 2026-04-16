@@ -480,6 +480,11 @@ export function ImportClient(): JSX.Element {
         reduceExtensionHandoff(previous, { type: "payload_received", at: Date.now() }),
       );
 
+      // Tell the extension's bridge content script we got the payload so it
+      // stops the every-500ms retry loop. Bridge ignores any payload field;
+      // a same-origin postMessage with this type is enough.
+      window.postMessage({ type: "shadowing-space-extension/ack" }, window.location.origin);
+
       void (async () => {
         try {
           const bundle = createImportBundleFromExtensionPayload(payload);

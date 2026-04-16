@@ -1,10 +1,10 @@
 import { resolveImportEndpoint } from "./lib/endpoint.js";
 import { buildDownloadFilename } from "./lib/player-response.js";
+import { createEnvelope, HANDOFF_STORAGE_KEY } from "./lib/handoff.js";
 
 const LOG_PREFIX = "[SS]";
 const MESSAGE_LIST_TRACKS = "shadowing-space-extension/list-tracks";
 const MESSAGE_EXTRACT_TRACK = "shadowing-space-extension/extract-track";
-const MESSAGE_DELIVER = "shadowing-space-extension/deliver";
 
 const els = {
   status: document.getElementById("status"),
@@ -198,50 +198,19 @@ async function extractSelectedTrack(tabId) {
 async function deliverToImportTab(payload) {
   const settings = await chrome.storage.sync.get(["mode", "customUrl"]);
   const endpoint = resolveImportEndpoint(settings);
-  appendLog("info", "Opening import tab", { endpoint });
 
-  const importTab = await chrome.tabs.create({ url: endpoint, active: true });
-  if (!importTab.id) throw new Error("Failed to open import tab.");
-
-  // Wait for the tab to finish loading, then retry delivery until the bridge
-  // content script acknowledges. Each retry is a round-trip — surface attempts
-  // into the popup debug log so you can see how long it took.
-  await new Promise((resolve) => {
-    const onUpdated = (tabId, info) => {
-      if (tabId === importTab.id && info.status === "complete") {
-        chrome.tabs.onUpdated.removeListener(onUpdated);
-        resolve();
-      }
-    };
-    chrome.tabs.onUpdated.addListener(onUpdated);
+  // Stash the payload in chrome.storage.local. The destination page's bridge
+  // content script reads this on load and posts it into the React app, which
+  // means the popup is free to close immediately when the new tab takes focus.
+  const envelope = createEnvelope(payload);
+  await chrome.storage.local.set({ [HANDOFF_STORAGE_KEY]: envelope });
+  appendLog("info", "Payload stashed for handoff", {
+    endpoint,
+    segments: payload.segments?.length ?? 0,
   });
 
-  appendLog("info", "Import tab ready", { tabId: importTab.id });
-
-  const MAX_ATTEMPTS = 30;
-  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
-    try {
-      const response = await chrome.tabs.sendMessage(importTab.id, {
-        type: MESSAGE_DELIVER,
-        payload,
-      });
-      if (response?.ok) {
-        appendLog("info", "Import tab acknowledged payload", { attempt });
-        return;
-      }
-      appendLog("warn", "Delivery attempt rejected", { attempt, response });
-    } catch (error) {
-      appendLog("warn", "Delivery attempt threw", {
-        attempt,
-        message: error?.message ?? String(error),
-      });
-    }
-    await new Promise((r) => setTimeout(r, 500));
-  }
-
-  throw new Error(
-    "Import page never acknowledged the payload. The tab may not have the Shadowing Space bridge script.",
-  );
+  await chrome.tabs.create({ url: endpoint, active: true });
+  appendLog("info", "Import tab opened — popup will close, bridge takes over.", { endpoint });
 }
 
 function downloadPayload(payload) {
