@@ -79,6 +79,38 @@ tests:
     reason: Keeps custom speed text input predictable while displaying compact labels like 0.9x.
     lastReviewedOn: 2026-04-15
     reviewBy: 2026-10-15
+  - file: tests/features/practice/playbackSpeed.test.ts
+    name: YOUTUBE_SUPPORTED_PLAYBACK_RATES includes the rates YouTube accepts
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks the fallback list of YouTube-accepted playback rates so snapping keeps working if getAvailablePlaybackRates is missing.
+    lastReviewedOn: 2026-04-16
+    reviewBy: 2026-10-16
+  - file: tests/features/practice/playbackSpeed.test.ts
+    name: snapToSupportedPlaybackRate keeps values that are already supported
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Ensures preset speed buttons (0.75x, 1.25x, etc.) pass through unchanged so the iframe actually applies them.
+    lastReviewedOn: 2026-04-16
+    reviewBy: 2026-10-16
+  - file: tests/features/practice/playbackSpeed.test.ts
+    name: snapToSupportedPlaybackRate snaps custom speeds to the nearest supported rate
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Guarantees custom inputs like 0.9x resolve to a rate YouTube will honor instead of being silently ignored.
+    lastReviewedOn: 2026-04-16
+    reviewBy: 2026-10-16
+  - file: tests/features/practice/playbackSpeed.test.ts
+    name: snapToSupportedPlaybackRate falls back to the default when no rates are provided
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Defends against the rare case where the player reports no available playback rates.
+    lastReviewedOn: 2026-04-16
+    reviewBy: 2026-10-16
   - file: tests/features/history/practiceSummary.test.ts
     name: summarizePracticeSessions groups records by day and video in descending order
     category: unit

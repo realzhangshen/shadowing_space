@@ -9,14 +9,22 @@ import {
   useRef,
   useState,
 } from "react";
-import { DEFAULT_PLAYBACK_SPEED, normalizePlaybackSpeed } from "@/features/practice/playbackSpeed";
+import {
+  DEFAULT_PLAYBACK_SPEED,
+  YOUTUBE_SUPPORTED_PLAYBACK_RATES,
+  normalizePlaybackSpeed,
+  snapToSupportedPlaybackRate,
+} from "@/features/practice/playbackSpeed";
 import type { PlaybackSpeed } from "@/store/practiceStore";
 
 const SCRIPT_ID = "youtube-iframe-api-script";
 const API_POLL_INTERVAL_MS = 50;
 const API_LOAD_TIMEOUT_MS = 10_000;
 let apiReadyPromise: Promise<void> | null = null;
-type PlaybackRatePlayer = YT.Player & { getPlaybackRate?: () => number };
+type PlaybackRatePlayer = YT.Player & {
+  getPlaybackRate?: () => number;
+  getAvailablePlaybackRates?: () => number[];
+};
 
 function loadYouTubeApi(): Promise<void> {
   if (window.YT?.Player) {
@@ -135,8 +143,11 @@ export const YouTubeSegmentPlayer = forwardRef<
         return requestedSpeed;
       }
 
-      player.setPlaybackRate(requestedSpeed);
-      const appliedSpeed = normalizePlaybackSpeed(player.getPlaybackRate?.() ?? requestedSpeed);
+      const availableRates = player.getAvailablePlaybackRates?.() ?? [
+        ...YOUTUBE_SUPPORTED_PLAYBACK_RATES,
+      ];
+      const appliedSpeed = snapToSupportedPlaybackRate(requestedSpeed, availableRates);
+      player.setPlaybackRate(appliedSpeed);
       onPlaybackSpeedChange?.(appliedSpeed);
       return appliedSpeed;
     },

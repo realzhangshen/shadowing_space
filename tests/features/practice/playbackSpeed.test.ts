@@ -4,9 +4,11 @@ import {
   DEFAULT_PLAYBACK_SPEED,
   MAX_PLAYBACK_SPEED,
   MIN_PLAYBACK_SPEED,
+  YOUTUBE_SUPPORTED_PLAYBACK_RATES,
   formatPlaybackSpeed,
   normalizePlaybackSpeed,
   parsePlaybackSpeedInput,
+  snapToSupportedPlaybackRate,
 } from "@/features/practice/playbackSpeed";
 
 test("normalizePlaybackSpeed preserves fine-grained custom speeds", () => {
@@ -29,4 +31,26 @@ test("parsePlaybackSpeedInput falls back safely and formatted values stay compac
   assert.equal(formatPlaybackSpeed(1), "1");
   assert.equal(formatPlaybackSpeed(1.5), "1.5");
   assert.equal(formatPlaybackSpeed(1.25), "1.25");
+});
+
+test("YOUTUBE_SUPPORTED_PLAYBACK_RATES includes the rates YouTube accepts", () => {
+  assert.deepEqual([...YOUTUBE_SUPPORTED_PLAYBACK_RATES], [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2]);
+});
+
+test("snapToSupportedPlaybackRate keeps values that are already supported", () => {
+  assert.equal(snapToSupportedPlaybackRate(0.75, YOUTUBE_SUPPORTED_PLAYBACK_RATES), 0.75);
+  assert.equal(snapToSupportedPlaybackRate(1, YOUTUBE_SUPPORTED_PLAYBACK_RATES), 1);
+  assert.equal(snapToSupportedPlaybackRate(1.5, YOUTUBE_SUPPORTED_PLAYBACK_RATES), 1.5);
+});
+
+test("snapToSupportedPlaybackRate snaps custom speeds to the nearest supported rate", () => {
+  assert.equal(snapToSupportedPlaybackRate(0.7, YOUTUBE_SUPPORTED_PLAYBACK_RATES), 0.75);
+  assert.equal(snapToSupportedPlaybackRate(0.9, YOUTUBE_SUPPORTED_PLAYBACK_RATES), 1);
+  assert.equal(snapToSupportedPlaybackRate(1.1, YOUTUBE_SUPPORTED_PLAYBACK_RATES), 1);
+  assert.equal(snapToSupportedPlaybackRate(1.3, YOUTUBE_SUPPORTED_PLAYBACK_RATES), 1.25);
+  assert.equal(snapToSupportedPlaybackRate(1.6, YOUTUBE_SUPPORTED_PLAYBACK_RATES), 1.5);
+});
+
+test("snapToSupportedPlaybackRate falls back to the default when no rates are provided", () => {
+  assert.equal(snapToSupportedPlaybackRate(0.75, []), DEFAULT_PLAYBACK_SPEED);
 });
