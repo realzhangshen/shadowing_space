@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title>Shadowing Space Importer Options</title>
+    <title>Shadowing Space Importer — Options</title>
     <style>
       :root {
         color-scheme: light dark;
@@ -11,8 +11,10 @@
         --muted: #656d76;
         --border: #d0d7de;
         --accent: #0969da;
+        --accent-fg: #ffffff;
         --error: #d1242f;
         --ok: #1a7f37;
+        --surface: rgba(31, 111, 235, 0.06);
       }
       @media (prefers-color-scheme: dark) {
         :root {
@@ -21,8 +23,10 @@
           --muted: #8b949e;
           --border: #30363d;
           --accent: #4493f8;
+          --accent-fg: #0b1220;
           --error: #f85149;
           --ok: #3fb950;
+          --surface: rgba(31, 111, 235, 0.1);
         }
       }
       html,
@@ -40,44 +44,110 @@
         line-height: 1.5;
       }
       h1 {
-        font-size: 20px;
-        margin: 0 0 8px;
+        font-size: 22px;
+        margin: 0 0 6px;
       }
       p.subtitle {
         color: var(--muted);
-        margin: 0 0 24px;
+        margin: 0 0 28px;
       }
-      fieldset {
+      .card {
         border: 1px solid var(--border);
-        border-radius: 8px;
-        padding: 16px 20px;
+        border-radius: 10px;
+        padding: 18px 20px;
         margin-bottom: 16px;
       }
-      legend {
-        padding: 0 6px;
+      .card h2 {
+        font-size: 15px;
+        margin: 0 0 6px;
         font-weight: 600;
-        font-size: 14px;
       }
-      label.option {
+      .card p {
+        margin: 0 0 12px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .radio-row {
         display: flex;
-        gap: 10px;
-        align-items: flex-start;
-        padding: 8px 0;
+        gap: 12px;
+        align-items: center;
+        padding: 10px 0;
         cursor: pointer;
       }
-      label.option input[type="radio"] {
-        margin-top: 4px;
+      .radio-row input[type="radio"] {
+        margin: 0;
       }
-      label.option .label-body {
+      .radio-row .radio-body {
         display: flex;
         flex-direction: column;
       }
-      label.option .label-title {
+      .radio-row .radio-title {
         font-weight: 500;
       }
-      label.option .label-hint {
+      .radio-row .radio-hint {
         color: var(--muted);
         font-size: 13px;
+      }
+      .preview {
+        background: var(--surface);
+        border-radius: 6px;
+        padding: 10px 12px;
+        font-size: 12px;
+        color: var(--muted);
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        margin-top: 12px;
+        word-break: break-all;
+      }
+      .preview strong {
+        color: var(--fg);
+        font-weight: 500;
+      }
+      details.advanced {
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 0;
+        margin-bottom: 16px;
+      }
+      details.advanced[open] {
+        padding-bottom: 16px;
+      }
+      details.advanced > summary {
+        list-style: none;
+        padding: 14px 20px;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      details.advanced > summary::-webkit-details-marker {
+        display: none;
+      }
+      details.advanced > summary::before {
+        content: "›";
+        display: inline-block;
+        transition: transform 0.15s ease;
+        color: var(--muted);
+        font-size: 16px;
+      }
+      details.advanced[open] > summary::before {
+        transform: rotate(90deg);
+      }
+      details.advanced > summary .hint {
+        font-weight: 400;
+        color: var(--muted);
+        font-size: 13px;
+        margin-left: auto;
+      }
+      details.advanced .advanced-body {
+        padding: 0 20px;
+      }
+      details.advanced .advanced-body .radio-row {
+        border-top: 1px solid var(--border);
+      }
+      details.advanced .advanced-body .radio-row:first-child {
+        border-top: none;
       }
       input[type="url"] {
         width: 100%;
@@ -94,22 +164,34 @@
         opacity: 0.5;
       }
       .custom-field {
-        margin-top: 8px;
-        margin-left: 26px;
+        margin: 0 0 12px 26px;
+      }
+      .custom-field .note {
+        font-size: 12px;
+        color: var(--muted);
+        margin-top: 6px;
+      }
+      .custom-field .note code {
+        background: rgba(128, 128, 128, 0.15);
+        padding: 1px 4px;
+        border-radius: 3px;
       }
       .actions {
         display: flex;
         gap: 12px;
         align-items: center;
+        margin-top: 20px;
       }
       button {
+        appearance: none;
         border: 1px solid var(--accent);
         background: var(--accent);
-        color: white;
+        color: var(--accent-fg);
         padding: 8px 16px;
         border-radius: 6px;
         font-size: 14px;
         cursor: pointer;
+        font-family: inherit;
       }
       button:hover {
         filter: brightness(1.1);
@@ -124,75 +206,90 @@
       .status.error {
         color: var(--error);
       }
-      .note {
-        font-size: 12px;
+      .footer-note {
         color: var(--muted);
-        margin-top: 8px;
+        font-size: 12px;
+        margin-top: 28px;
+        text-align: center;
       }
-      .note code {
-        background: rgba(128, 128, 128, 0.15);
-        padding: 1px 4px;
-        border-radius: 3px;
+      .footer-note a {
+        color: var(--accent);
       }
     </style>
   </head>
   <body>
     <h1>Shadowing Space Importer</h1>
-    <p class="subtitle">Choose where transcripts are delivered after extraction.</p>
+    <p class="subtitle">
+      Decide where transcripts go after you click <strong>Send &amp; start practicing</strong> in
+      the popup. The default works for most people.
+    </p>
 
     <form id="options-form">
-      <fieldset>
-        <legend>Import endpoint</legend>
+      <div class="card">
+        <h2>Destination</h2>
+        <p>Hosted Shadowing Space is the default. Change this only if you know you need to.</p>
 
-        <label class="option">
+        <label class="radio-row">
           <input type="radio" name="mode" value="prod" checked />
-          <span class="label-body">
-            <span class="label-title">Production · shadowing.space</span>
-            <span class="label-hint"
-              >Default. Opens <code>https://shadowing.space/en/import</code>.</span
-            >
+          <span class="radio-body">
+            <span class="radio-title">Send to shadowing.space</span>
+            <span class="radio-hint">Opens the import page on the hosted app. Recommended.</span>
           </span>
         </label>
 
-        <label class="option">
-          <input type="radio" name="mode" value="localhost" />
-          <span class="label-body">
-            <span class="label-title">Localhost · http://localhost:3000</span>
-            <span class="label-hint"
-              >For running <code>npm run dev</code> against this extension.</span
-            >
-          </span>
-        </label>
-
-        <label class="option">
-          <input type="radio" name="mode" value="custom" />
-          <span class="label-body">
-            <span class="label-title">Custom / self-hosted</span>
-            <span class="label-hint"
-              >Use your own deployment URL. Must be http(s) and include <code>/import</code>.</span
-            >
-          </span>
-        </label>
-
-        <div class="custom-field">
-          <input
-            type="url"
-            id="custom-url"
-            placeholder="https://my-shadowing.example.com/en/import"
-            disabled
-          />
-          <p class="note">
-            You may be prompted to grant host permission the first time this extension delivers to a
-            new origin.
-          </p>
+        <div class="preview" id="endpoint-preview">
+          Currently delivering to: <strong id="endpoint-preview-url">…</strong>
         </div>
-      </fieldset>
+      </div>
+
+      <details class="advanced" id="advanced">
+        <summary>
+          Advanced
+          <span class="hint">Self-hosted or local dev</span>
+        </summary>
+        <div class="advanced-body">
+          <label class="radio-row">
+            <input type="radio" name="mode" value="localhost" />
+            <span class="radio-body">
+              <span class="radio-title">Local dev · http://localhost:3000</span>
+              <span class="radio-hint"
+                >For running <code>npm run dev</code> on Shadowing Space itself.</span
+              >
+            </span>
+          </label>
+
+          <label class="radio-row">
+            <input type="radio" name="mode" value="custom" />
+            <span class="radio-body">
+              <span class="radio-title">Custom URL</span>
+              <span class="radio-hint">A self-hosted Shadowing Space deployment.</span>
+            </span>
+          </label>
+
+          <div class="custom-field">
+            <input
+              type="url"
+              id="custom-url"
+              placeholder="https://my-shadowing.example.com/en/import"
+              disabled
+            />
+            <p class="note">
+              Must be http or https and point at an <code>/import</code> page. You may be prompted
+              to grant host permission the first time you save.
+            </p>
+          </div>
+        </div>
+      </details>
 
       <div class="actions">
         <button type="submit">Save</button>
         <span class="status" id="status" role="status" aria-live="polite"></span>
       </div>
     </form>
+
+    <p class="footer-note">
+      Need help? Open the popup on a YouTube video — the welcome card walks you through it.
+    </p>
 
     <script src="options.js" type="module"></script>
   </body>

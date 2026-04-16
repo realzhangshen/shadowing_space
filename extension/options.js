@@ -1,8 +1,20 @@
-import { normalizeImportEndpoint } from "./lib/endpoint.js";
+import { normalizeImportEndpoint, resolveImportEndpoint } from "./lib/endpoint.js";
 
 const form = document.getElementById("options-form");
 const customUrlInput = document.getElementById("custom-url");
 const statusEl = document.getElementById("status");
+const advancedEl = document.getElementById("advanced");
+const previewUrlEl = document.getElementById("endpoint-preview-url");
+
+function isAdvancedMode(mode) {
+  return mode === "localhost" || mode === "custom";
+}
+
+function readCurrentSelection() {
+  const mode = new FormData(form).get("mode") ?? "prod";
+  const customUrl = customUrlInput.value.trim();
+  return { mode, customUrl };
+}
 
 function setCustomEnabled(enabled) {
   customUrlInput.disabled = !enabled;
@@ -18,6 +30,12 @@ function setStatus(text, kind) {
   if (kind === "error") statusEl.classList.add("error");
 }
 
+function refreshPreview() {
+  const { mode, customUrl } = readCurrentSelection();
+  const endpoint = resolveImportEndpoint({ mode, customUrl });
+  previewUrlEl.textContent = endpoint;
+}
+
 async function load() {
   const stored = await chrome.storage.sync.get(["mode", "customUrl"]);
   const mode = stored.mode ?? "prod";
@@ -25,17 +43,26 @@ async function load() {
   if (modeInput) modeInput.checked = true;
   customUrlInput.value = stored.customUrl ?? "";
   setCustomEnabled(mode === "custom");
+  if (isAdvancedMode(mode)) {
+    advancedEl.open = true;
+  }
+  refreshPreview();
 }
 
 form.addEventListener("change", (event) => {
   if (event.target?.name === "mode") {
     setCustomEnabled(event.target.value === "custom");
   }
+  refreshPreview();
+});
+
+customUrlInput.addEventListener("input", () => {
+  refreshPreview();
 });
 
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
-  const mode = new FormData(form).get("mode");
+  const { mode } = readCurrentSelection();
 
   if (mode === "custom") {
     const normalized = normalizeImportEndpoint(customUrlInput.value);
@@ -65,6 +92,7 @@ form.addEventListener("submit", async (event) => {
   }
 
   setStatus("Saved.", "ok");
+  refreshPreview();
 });
 
 load().catch((error) => {
