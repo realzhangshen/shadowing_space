@@ -1,41 +1,38 @@
 import type { Viewport } from "next";
-import { Inter, JetBrains_Mono, Noto_Sans_SC, Noto_Sans_TC, Noto_Sans_JP } from "next/font/google";
+import localFont from "next/font/local";
 import { getLocale } from "next-intl/server";
 import { siteConfig } from "@/lib/siteConfig";
 import "./globals.css";
 
-const inter = Inter({
-  subsets: ["latin", "cyrillic"],
-  weight: ["400", "500", "600", "700"],
+// Self-hosted WOFF2 files live in app/fonts/ (see app/fonts/README.md). This
+// keeps the build independent of fonts.googleapis.com and avoids a runtime
+// CDN hop. CJK text falls back to the platform's system font via globals.css.
+const inter = localFont({
+  src: [
+    {
+      path: "./fonts/inter-latin-wght-normal.woff2",
+      style: "normal",
+      weight: "100 900",
+    },
+    {
+      path: "./fonts/inter-cyrillic-wght-normal.woff2",
+      style: "normal",
+      weight: "100 900",
+    },
+  ],
   variable: "--font-inter",
   display: "swap",
 });
 
-const jetbrainsMono = JetBrains_Mono({
-  subsets: ["latin"],
-  weight: ["400", "500"],
+const jetbrainsMono = localFont({
+  src: [
+    {
+      path: "./fonts/jetbrains-mono-latin-wght-normal.woff2",
+      style: "normal",
+      weight: "100 800",
+    },
+  ],
   variable: "--font-mono",
-  display: "swap",
-});
-
-const notoSansSC = Noto_Sans_SC({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-sc",
-  display: "swap",
-});
-
-const notoSansTC = Noto_Sans_TC({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-tc",
-  display: "swap",
-});
-
-const notoSansJP = Noto_Sans_JP({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-jp",
   display: "swap",
 });
 
@@ -53,10 +50,7 @@ export default async function RootLayout({ children }: RootLayoutProps): Promise
   const locale = await getLocale();
 
   return (
-    <html
-      lang={locale}
-      className={`${inter.variable} ${jetbrainsMono.variable} ${notoSansSC.variable} ${notoSansTC.variable} ${notoSansJP.variable}`}
-    >
+    <html lang={locale} className={`${inter.variable} ${jetbrainsMono.variable}`}>
       <head>
         <link rel="apple-touch-icon" href="/icons/apple-touch-icon.svg" />
       </head>
