@@ -647,6 +647,62 @@ tests:
     reason: Ensures first-time users see a one-time onboarding banner without blocking the main flow.
     lastReviewedOn: 2026-04-16
     reviewBy: 2026-10-16
+  - file: tests/extension/popupError.test.ts
+    name: mapPopupError maps content-script-unreachable errors to a friendly refresh prompt
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Translates the most common popup failure into a clear message plus a one-click fix.
+    lastReviewedOn: 2026-04-16
+    reviewBy: 2026-10-16
+  - file: tests/extension/popupError.test.ts
+    name: mapPopupError also matches the legacy 'Content script unreachable' message shape
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Keeps older pre-refactor error messages mapped to the same friendly card.
+    lastReviewedOn: 2026-04-16
+    reviewBy: 2026-10-16
+  - file: tests/extension/popupError.test.ts
+    name: mapPopupError tells the user to pick a track when none is selected
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Prevents a confusing raw stack trace when the user clicks send without choosing a track.
+    lastReviewedOn: 2026-04-16
+    reviewBy: 2026-10-16
+  - file: tests/extension/popupError.test.ts
+    name: mapPopupError explains extraction failures and suggests a retry
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Guides users past transient YouTube parsing failures with a refresh-tab suggestion.
+    lastReviewedOn: 2026-04-16
+    reviewBy: 2026-10-16
+  - file: tests/extension/popupError.test.ts
+    name: mapPopupError maps Chrome permission denials to a helpful open-options prompt
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Points users at the Options page when a self-hosted endpoint lacks host permission.
+    lastReviewedOn: 2026-04-16
+    reviewBy: 2026-10-16
+  - file: tests/extension/popupError.test.ts
+    name: mapPopupError falls back to a generic unknown-error entry for unexpected messages
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Ensures unmapped failures still render as a readable card instead of a blank popup.
+    lastReviewedOn: 2026-04-16
+    reviewBy: 2026-10-16
+  - file: tests/extension/popupError.test.ts
+    name: mapPopupError tolerates string or null input
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Defends the popup against non-Error values being thrown or returned by browser APIs.
+    lastReviewedOn: 2026-04-16
+    reviewBy: 2026-10-16
   - file: tests/features/import/extensionImport.test.ts
     name: createImportBundleFromExtensionPayload maps a valid payload into deterministic local records
     category: unit

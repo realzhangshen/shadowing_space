@@ -303,6 +303,38 @@
       .intro-banner button.dismiss:hover {
         color: var(--fg);
       }
+
+      /* Error card: structured failure state with optional next-action button. */
+      .error-card {
+        border: 1px solid var(--error);
+        border-radius: 6px;
+        padding: 10px 12px;
+        background: rgba(209, 36, 47, 0.06);
+      }
+      @media (prefers-color-scheme: dark) {
+        .error-card {
+          background: rgba(248, 81, 73, 0.08);
+        }
+      }
+      .error-card .error-title {
+        font-weight: 600;
+        color: var(--error);
+        margin-bottom: 2px;
+      }
+      .error-card .error-body {
+        color: var(--fg);
+        font-size: 12px;
+      }
+      .error-card .error-actions {
+        margin-top: 8px;
+        display: flex;
+        gap: 6px;
+      }
+      .error-card .error-actions button {
+        text-align: center;
+        font-size: 12px;
+        padding: 6px 10px;
+      }
     </style>
   </head>
   <body>
@@ -379,6 +411,11 @@
         <section>
           <div id="status" class="status" role="status" aria-live="polite">
             Reading caption tracks…
+          </div>
+          <div id="error-card" class="error-card" role="alert" hidden>
+            <div class="error-title" id="error-title"></div>
+            <div class="error-body" id="error-body"></div>
+            <div class="error-actions" id="error-actions"></div>
           </div>
           <details class="log" id="log-details">
             <summary id="log-summary">Details (0)</summary>

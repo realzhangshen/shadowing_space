@@ -2,6 +2,7 @@ import { resolveImportEndpoint } from "./lib/endpoint.js";
 import { buildDownloadFilename } from "./lib/player-response.js";
 import { createEnvelope, HANDOFF_STORAGE_KEY } from "./lib/handoff.js";
 import { classifyTab, pickPopupView } from "./lib/popup-view.js";
+import { mapPopupError } from "./lib/popup-error.js";
 
 const LOG_PREFIX = "[SS]";
 const MESSAGE_LIST_TRACKS = "shadowing-space-extension/list-tracks";
@@ -30,6 +31,10 @@ const els = {
   nudgeReload: document.getElementById("nudge-reload"),
   introBanner: document.getElementById("intro-banner"),
   introBannerDismiss: document.getElementById("intro-banner-dismiss"),
+  errorCard: document.getElementById("error-card"),
+  errorTitle: document.getElementById("error-title"),
+  errorBody: document.getElementById("error-body"),
+  errorActions: document.getElementById("error-actions"),
 };
 
 const logEntries = [];
@@ -53,18 +58,63 @@ function setStatus(kind, text) {
   els.status.textContent = text;
 }
 
-function showError(text, detail) {
-  setStatus("error", text);
-  appendLog("error", text, detail);
+function clearErrorCard() {
+  if (!els.errorCard) return;
+  els.errorCard.hidden = true;
+  els.errorTitle.textContent = "";
+  els.errorBody.textContent = "";
+  clearChildren(els.errorActions);
+}
+
+function renderErrorAction(action) {
+  if (!action) return null;
+  const button = document.createElement("button");
+  button.type = "button";
+  button.textContent = action.label;
+  if (action.kind === "refresh-tab") {
+    button.addEventListener("click", async () => {
+      try {
+        const tab = await getActiveTab();
+        await chrome.tabs.reload(tab.id);
+        window.close();
+      } catch (error) {
+        appendLog("warn", "Refresh action failed", { error: error?.message });
+      }
+    });
+  } else if (action.kind === "open-options") {
+    button.addEventListener("click", () => {
+      chrome.runtime.openOptionsPage();
+    });
+  }
+  return button;
+}
+
+function showErrorFromRaw(raw) {
+  const mapped = mapPopupError(raw);
+  appendLog("error", `${mapped.kind}: ${mapped.title}`, {
+    message: raw?.message ?? String(raw ?? ""),
+    stack: raw?.stack,
+  });
+  setStatus("error", mapped.title);
+  if (els.errorCard) {
+    els.errorTitle.textContent = mapped.title;
+    els.errorBody.textContent = mapped.body;
+    clearChildren(els.errorActions);
+    const actionButton = renderErrorAction(mapped.action);
+    if (actionButton) els.errorActions.append(actionButton);
+    els.errorCard.hidden = false;
+  }
   if (els.logDetails) els.logDetails.open = true;
 }
 
 function showInfo(text, detail) {
+  clearErrorCard();
   setStatus("", text);
   appendLog("info", text, detail);
 }
 
 function showOk(text, detail) {
+  clearErrorCard();
   setStatus("ok", text);
   appendLog("info", text, detail);
 }
@@ -294,7 +344,7 @@ async function runReadyFlow(tab) {
       showInfo(`Ready. ${summary.tracks.length} track(s) available.`);
     }
   } catch (error) {
-    showError(error?.message ?? String(error), { stack: error?.stack });
+    showErrorFromRaw(error);
   }
 }
 
@@ -329,7 +379,7 @@ async function init() {
       await deliverToImportTab(payload);
       showOk("Sent! Shadowing Space should redirect into practice shortly.");
     } catch (error) {
-      showError(error?.message ?? String(error), { stack: error?.stack });
+      showErrorFromRaw(error);
     } finally {
       els.sendBtn.disabled = false;
       els.downloadBtn.disabled = false;
@@ -346,7 +396,7 @@ async function init() {
       await downloadPayload(payload);
       showOk("Download dialog opened.");
     } catch (error) {
-      showError(error?.message ?? String(error), { stack: error?.stack });
+      showErrorFromRaw(error);
     } finally {
       els.sendBtn.disabled = false;
       els.downloadBtn.disabled = false;
