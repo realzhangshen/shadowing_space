@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Shadowing Space Importer</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #ffffff;
+        --fg: #1f2328;
+        --muted: #656d76;
+        --border: #d0d7de;
+        --accent: #0969da;
+        --success: #1a7f37;
+        --warning: #9a6700;
+        --error: #d1242f;
+        --surface: rgba(31, 111, 235, 0.06);
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #0d1117;
+          --fg: #e6edf3;
+          --muted: #8b949e;
+          --border: #30363d;
+          --accent: #4493f8;
+          --success: #3fb950;
+          --warning: #d29922;
+          --error: #f85149;
+          --surface: rgba(31, 111, 235, 0.1);
+        }
+      }
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        background: var(--bg);
+        color: var(--fg);
+      }
+      body {
+        width: 360px;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        font-size: 13px;
+        line-height: 1.5;
+      }
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 14px;
+        border-bottom: 1px solid var(--border);
+      }
+      header h1 {
+        font-size: 13px;
+        margin: 0;
+        font-weight: 600;
+      }
+      header a {
+        color: var(--muted);
+        font-size: 12px;
+        text-decoration: none;
+      }
+      header a:hover {
+        color: var(--fg);
+      }
+      main {
+        padding: 12px 14px;
+      }
+      section + section {
+        margin-top: 14px;
+      }
+      .video {
+        display: flex;
+        gap: 10px;
+        align-items: flex-start;
+      }
+      .video img {
+        width: 80px;
+        height: 45px;
+        object-fit: cover;
+        border-radius: 4px;
+        background: var(--surface);
+        flex-shrink: 0;
+      }
+      .video-meta {
+        min-width: 0;
+      }
+      .video-title {
+        font-weight: 500;
+        overflow: hidden;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+      }
+      .video-id {
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        color: var(--muted);
+        font-size: 11px;
+        margin-top: 2px;
+      }
+      h2 {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--muted);
+        margin: 0 0 6px;
+        font-weight: 600;
+      }
+      .track-list {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        max-height: 180px;
+        overflow-y: auto;
+      }
+      .track-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 8px;
+        border-radius: 6px;
+        cursor: pointer;
+        border: 1px solid transparent;
+      }
+      .track-item:hover {
+        background: var(--surface);
+      }
+      .track-item input[type="radio"] {
+        margin: 0;
+      }
+      .track-item-label {
+        flex: 1;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .track-item-lang {
+        color: var(--muted);
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 11px;
+      }
+      .badge-auto {
+        color: var(--warning);
+        font-size: 11px;
+      }
+      .actions {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      button {
+        appearance: none;
+        border: 1px solid var(--border);
+        background: var(--bg);
+        color: var(--fg);
+        padding: 8px 12px;
+        border-radius: 6px;
+        font-size: 13px;
+        cursor: pointer;
+        font-family: inherit;
+        text-align: left;
+      }
+      button:hover:not(:disabled) {
+        background: var(--surface);
+      }
+      button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      button.primary {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: white;
+      }
+      button.primary:hover:not(:disabled) {
+        filter: brightness(1.1);
+        background: var(--accent);
+      }
+      .status {
+        background: var(--surface);
+        border-radius: 6px;
+        padding: 10px 12px;
+        font-size: 12px;
+        min-height: 18px;
+        white-space: pre-wrap;
+        border-left: 3px solid var(--muted);
+      }
+      .status.ok {
+        border-left-color: var(--success);
+      }
+      .status.warning {
+        border-left-color: var(--warning);
+      }
+      .status.error {
+        border-left-color: var(--error);
+        color: var(--error);
+      }
+      .log {
+        margin-top: 6px;
+      }
+      .log summary {
+        font-size: 11px;
+        color: var(--muted);
+        cursor: pointer;
+        user-select: none;
+      }
+      .log pre {
+        max-height: 140px;
+        overflow: auto;
+        background: rgba(128, 128, 128, 0.08);
+        padding: 8px;
+        border-radius: 4px;
+        font-size: 11px;
+        margin: 4px 0 0;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+      .note {
+        color: var(--muted);
+        font-size: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Shadowing Space</h1>
+      <a href="#" id="open-options">Options</a>
+    </header>
+    <main>
+      <section class="video" id="video-block" hidden>
+        <img id="video-thumbnail" alt="" />
+        <div class="video-meta">
+          <div class="video-title" id="video-title"></div>
+          <div class="video-id" id="video-id"></div>
+        </div>
+      </section>
+
+      <section id="tracks-section" hidden>
+        <h2>Caption track</h2>
+        <div class="track-list" id="track-list" role="radiogroup"></div>
+      </section>
+
+      <section id="actions-section" hidden>
+        <div class="actions">
+          <button class="primary" type="button" id="send-btn">Send to Shadowing Space</button>
+          <button type="button" id="download-btn">Download JSON</button>
+        </div>
+      </section>
+
+      <section>
+        <div id="status" class="status" role="status" aria-live="polite">Detecting video…</div>
+        <details class="log">
+          <summary id="log-summary">Debug log (0)</summary>
+          <pre id="log-output"></pre>
+        </details>
+      </section>
+    </main>
+    <script src="popup.js" type="module"></script>
+  </body>
+</html>

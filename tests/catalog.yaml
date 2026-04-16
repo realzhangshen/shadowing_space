@@ -231,6 +231,54 @@ tests:
     reason: Sanitizes user-supplied URLs in the options page before persisting them.
     lastReviewedOn: 2026-04-16
     reviewBy: 2026-10-16
+  - file: tests/extension/summarizeTracks.test.ts
+    name: summarizeTracks returns title, video id and normalized track entries
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks the popup track picker payload so UI labels and language codes stay correct.
+    lastReviewedOn: 2026-04-16
+    reviewBy: 2026-10-16
+  - file: tests/extension/summarizeTracks.test.ts
+    name: summarizeTracks returns empty tracks when captions are missing
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Ensures the popup renders a clean empty state when videos have no captions.
+    lastReviewedOn: 2026-04-16
+    reviewBy: 2026-10-16
+  - file: tests/extension/summarizeTracks.test.ts
+    name: summarizeTracks returns empty summary for non-player-response input
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Guards the popup from crashing when the player data shape is unfamiliar.
+    lastReviewedOn: 2026-04-16
+    reviewBy: 2026-10-16
+  - file: tests/extension/summarizeTracks.test.ts
+    name: buildDownloadFilename composes a slug from video id + language + auto flag
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Keeps downloaded transcript filenames consistent and identifiable.
+    lastReviewedOn: 2026-04-16
+    reviewBy: 2026-10-16
+  - file: tests/extension/summarizeTracks.test.ts
+    name: buildDownloadFilename sanitizes unsafe characters from language code
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Prevents path traversal and invalid filesystem characters in downloaded filenames.
+    lastReviewedOn: 2026-04-16
+    reviewBy: 2026-10-16
+  - file: tests/extension/summarizeTracks.test.ts
+    name: buildDownloadFilename falls back to 'unknown' for empty inputs
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Keeps filenames human-readable when upstream metadata is missing.
+    lastReviewedOn: 2026-04-16
+    reviewBy: 2026-10-16
   - file: tests/extension/playerResponse.test.ts
     name: readPlayerResponse returns ytInitialPlayerResponse when present
     category: unit

@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
   "name": "Shadowing Space Importer",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Import YouTube captions into Shadowing Space using the viewer's own browser network.",
-  "permissions": ["tabs", "scripting", "storage", "notifications"],
+  "permissions": ["tabs", "scripting", "storage", "downloads"],
   "host_permissions": ["https://www.youtube.com/*"],
   "optional_host_permissions": ["https://*/*", "http://*/*"],
   "background": {
@@ -17,6 +17,7 @@
   },
   "action": {
     "default_title": "Import into Shadowing Space",
+    "default_popup": "popup.html",
     "default_icon": {
       "16": "icons/icon-16.png",
       "48": "icons/icon-48.png",
