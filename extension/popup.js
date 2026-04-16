@@ -1,15 +1,18 @@
 import { resolveImportEndpoint } from "./lib/endpoint.js";
 import { buildDownloadFilename } from "./lib/player-response.js";
 import { createEnvelope, HANDOFF_STORAGE_KEY } from "./lib/handoff.js";
+import { classifyTab, pickPopupView } from "./lib/popup-view.js";
 
 const LOG_PREFIX = "[SS]";
 const MESSAGE_LIST_TRACKS = "shadowing-space-extension/list-tracks";
 const MESSAGE_EXTRACT_TRACK = "shadowing-space-extension/extract-track";
+const INTRO_SEEN_STORAGE_KEY = "hasSeenIntro";
 
 const els = {
   status: document.getElementById("status"),
   log: document.getElementById("log-output"),
   logSummary: document.getElementById("log-summary"),
+  logDetails: document.getElementById("log-details"),
   videoBlock: document.getElementById("video-block"),
   videoTitle: document.getElementById("video-title"),
   videoId: document.getElementById("video-id"),
@@ -20,6 +23,13 @@ const els = {
   sendBtn: document.getElementById("send-btn"),
   downloadBtn: document.getElementById("download-btn"),
   openOptions: document.getElementById("open-options"),
+  welcomeView: document.getElementById("welcome-view"),
+  youtubeNudgeView: document.getElementById("youtube-nudge-view"),
+  readyView: document.getElementById("ready-view"),
+  welcomeOpenYoutube: document.getElementById("welcome-open-youtube"),
+  nudgeReload: document.getElementById("nudge-reload"),
+  introBanner: document.getElementById("intro-banner"),
+  introBannerDismiss: document.getElementById("intro-banner-dismiss"),
 };
 
 const logEntries = [];
@@ -32,7 +42,7 @@ function appendLog(level, message, detail) {
       : `${timestamp} ${level.toUpperCase()} ${message}`;
   logEntries.push(line);
   els.log.textContent = logEntries.join("\n");
-  els.logSummary.textContent = `Debug log (${logEntries.length})`;
+  els.logSummary.textContent = `Details (${logEntries.length})`;
   if (level === "error") console.error(LOG_PREFIX, message, detail ?? "");
   else if (level === "warn") console.warn(LOG_PREFIX, message, detail ?? "");
   else console.log(LOG_PREFIX, message, detail ?? "");
@@ -46,6 +56,7 @@ function setStatus(kind, text) {
 function showError(text, detail) {
   setStatus("error", text);
   appendLog("error", text, detail);
+  if (els.logDetails) els.logDetails.open = true;
 }
 
 function showInfo(text, detail) {
@@ -58,9 +69,28 @@ function showOk(text, detail) {
   appendLog("info", text, detail);
 }
 
-function showWarn(text, detail) {
-  setStatus("warning", text);
-  appendLog("warn", text, detail);
+function showView(name) {
+  els.welcomeView.hidden = name !== "welcome";
+  els.youtubeNudgeView.hidden = name !== "youtube-nudge";
+  els.readyView.hidden = name !== "ready";
+}
+
+async function readIntroFlag() {
+  try {
+    const stored = await chrome.storage.sync.get([INTRO_SEEN_STORAGE_KEY]);
+    return Boolean(stored?.[INTRO_SEEN_STORAGE_KEY]);
+  } catch (error) {
+    console.warn(LOG_PREFIX, "Could not read intro flag", error);
+    return false;
+  }
+}
+
+async function markIntroSeen() {
+  try {
+    await chrome.storage.sync.set({ [INTRO_SEEN_STORAGE_KEY]: true });
+  } catch (error) {
+    console.warn(LOG_PREFIX, "Could not persist intro flag", error);
+  }
 }
 
 async function getActiveTab() {
@@ -69,17 +99,13 @@ async function getActiveTab() {
   return tab;
 }
 
-function isYouTubeWatchUrl(url) {
-  return typeof url === "string" && /^https:\/\/www\.youtube\.com\/watch\b/i.test(url);
-}
-
 async function sendToTab(tabId, message) {
   appendLog("debug", "sendToTab", { tabId, type: message?.type });
   try {
     return await chrome.tabs.sendMessage(tabId, message);
   } catch (error) {
     throw new Error(
-      `Content script unreachable (${error?.message ?? error}). Try refreshing the YouTube tab.`,
+      `Can't reach the YouTube tab (${error?.message ?? error}). Please refresh the page and try again.`,
     );
   }
 }
@@ -237,10 +263,59 @@ function downloadPayload(payload) {
   });
 }
 
+async function runReadyFlow(tab) {
+  showInfo("Reading caption tracks…");
+  try {
+    const response = await sendToTab(tab.id, { type: MESSAGE_LIST_TRACKS });
+    if (!response?.ok || !response.summary) {
+      throw new Error(response?.error || "Could not read caption tracks.");
+    }
+    const summary = response.summary;
+    appendLog("info", "Tracks found", {
+      videoId: summary.video.videoId,
+      trackCount: summary.tracks.length,
+    });
+
+    els.videoTitle.textContent = summary.video.title || "(no title)";
+    els.videoId.textContent = summary.video.videoId || "(no id)";
+    if (summary.video.thumbnailUrl) {
+      els.videoThumbnail.src = summary.video.thumbnailUrl;
+      els.videoThumbnail.hidden = false;
+    } else {
+      els.videoThumbnail.hidden = true;
+    }
+    els.videoBlock.hidden = false;
+
+    renderTracks(summary);
+
+    if (summary.tracks.length === 0) {
+      setStatus("warning", "This video has no caption tracks.");
+    } else {
+      showInfo(`Ready. ${summary.tracks.length} track(s) available.`);
+    }
+  } catch (error) {
+    showError(error?.message ?? String(error), { stack: error?.stack });
+  }
+}
+
 async function init() {
   els.openOptions.addEventListener("click", (event) => {
     event.preventDefault();
     chrome.runtime.openOptionsPage();
+  });
+
+  els.welcomeOpenYoutube.addEventListener("click", async () => {
+    await chrome.tabs.create({ url: "https://www.youtube.com/", active: true });
+    window.close();
+  });
+
+  els.nudgeReload.addEventListener("click", async () => {
+    window.location.reload();
+  });
+
+  els.introBannerDismiss.addEventListener("click", async () => {
+    els.introBanner.hidden = true;
+    await markIntroSeen();
   });
 
   els.sendBtn.addEventListener("click", async () => {
@@ -282,49 +357,27 @@ async function init() {
   try {
     tab = await getActiveTab();
   } catch (error) {
-    showError(error?.message ?? String(error));
+    // No active tab is effectively the same as a non-YouTube tab from the
+    // user's perspective: show the welcome card so they know what to do.
+    appendLog("warn", "No active tab", { error: error?.message });
+    showView("welcome");
     return;
   }
 
-  appendLog("info", "Active tab", { url: tab.url, id: tab.id });
+  const tabKind = classifyTab(tab.url);
+  const isFirstRun = !(await readIntroFlag());
+  const { view, showIntroBanner } = pickPopupView({ tabKind, isFirstRun });
 
-  if (!isYouTubeWatchUrl(tab.url)) {
-    showWarn("Open a YouTube watch page first, then click the Shadowing Space icon again.");
+  appendLog("info", "Popup view resolved", { url: tab.url, tabKind, view, showIntroBanner });
+
+  showView(view);
+
+  if (view !== "ready") {
     return;
   }
 
-  showInfo("Reading caption tracks…");
-  try {
-    const response = await sendToTab(tab.id, { type: MESSAGE_LIST_TRACKS });
-    if (!response?.ok || !response.summary) {
-      throw new Error(response?.error || "Could not read caption tracks.");
-    }
-    const summary = response.summary;
-    appendLog("info", "Tracks found", {
-      videoId: summary.video.videoId,
-      trackCount: summary.tracks.length,
-    });
-
-    els.videoTitle.textContent = summary.video.title || "(no title)";
-    els.videoId.textContent = summary.video.videoId || "(no id)";
-    if (summary.video.thumbnailUrl) {
-      els.videoThumbnail.src = summary.video.thumbnailUrl;
-      els.videoThumbnail.hidden = false;
-    } else {
-      els.videoThumbnail.hidden = true;
-    }
-    els.videoBlock.hidden = false;
-
-    renderTracks(summary);
-
-    if (summary.tracks.length === 0) {
-      showWarn("This video has no caption tracks.");
-    } else {
-      showInfo(`Ready. ${summary.tracks.length} track(s) available.`);
-    }
-  } catch (error) {
-    showError(error?.message ?? String(error), { stack: error?.stack });
-  }
+  els.introBanner.hidden = !showIntroBanner;
+  await runReadyFlow(tab);
 }
 
 void init();

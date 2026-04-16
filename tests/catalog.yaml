@@ -591,6 +591,62 @@ tests:
     reason: Handles files annotated by OS tooling or saved with BOM encoding.
     lastReviewedOn: 2026-04-16
     reviewBy: 2026-10-16
+  - file: tests/extension/popupView.test.ts
+    name: classifyTab returns 'youtube-watch' for a watch URL
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks the watch-page detection used to decide whether the popup can extract captions.
+    lastReviewedOn: 2026-04-16
+    reviewBy: 2026-10-16
+  - file: tests/extension/popupView.test.ts
+    name: classifyTab returns 'youtube-other' for non-watch YouTube pages
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Distinguishes YouTube browsing pages so the popup can show a "open a video" nudge.
+    lastReviewedOn: 2026-04-16
+    reviewBy: 2026-10-16
+  - file: tests/extension/popupView.test.ts
+    name: classifyTab returns 'non-youtube' for unrelated URLs
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Routes unrelated tabs to the welcome card instead of a misleading error.
+    lastReviewedOn: 2026-04-16
+    reviewBy: 2026-10-16
+  - file: tests/extension/popupView.test.ts
+    name: classifyTab returns 'non-youtube' for missing or malformed URLs
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Defends the popup when chrome.tabs returns a tab without a URL.
+    lastReviewedOn: 2026-04-16
+    reviewBy: 2026-10-16
+  - file: tests/extension/popupView.test.ts
+    name: pickPopupView returns 'welcome' for non-youtube tabs regardless of first-run flag
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Keeps the welcome card as the catch-all entry point for users on non-YouTube pages.
+    lastReviewedOn: 2026-04-16
+    reviewBy: 2026-10-16
+  - file: tests/extension/popupView.test.ts
+    name: pickPopupView returns 'youtube-nudge' when on YouTube but not a watch page
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Gives users a clear next step when they open the popup from YouTube home or search.
+    lastReviewedOn: 2026-04-16
+    reviewBy: 2026-10-16
+  - file: tests/extension/popupView.test.ts
+    name: pickPopupView returns 'ready' on a watch page and flags intro banner only on first run
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Ensures first-time users see a one-time onboarding banner without blocking the main flow.
+    lastReviewedOn: 2026-04-16
+    reviewBy: 2026-10-16
   - file: tests/features/import/extensionImport.test.ts
     name: createImportBundleFromExtensionPayload maps a valid payload into deterministic local records
     category: unit

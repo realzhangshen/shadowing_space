@@ -11,10 +11,12 @@
         --muted: #656d76;
         --border: #d0d7de;
         --accent: #0969da;
+        --accent-fg: #ffffff;
         --success: #1a7f37;
         --warning: #9a6700;
         --error: #d1242f;
         --surface: rgba(31, 111, 235, 0.06);
+        --surface-strong: rgba(31, 111, 235, 0.12);
       }
       @media (prefers-color-scheme: dark) {
         :root {
@@ -23,10 +25,12 @@
           --muted: #8b949e;
           --border: #30363d;
           --accent: #4493f8;
+          --accent-fg: #0b1220;
           --success: #3fb950;
           --warning: #d29922;
           --error: #f85149;
           --surface: rgba(31, 111, 235, 0.1);
+          --surface-strong: rgba(31, 111, 235, 0.18);
         }
       }
       html,
@@ -49,15 +53,27 @@
         padding: 10px 14px;
         border-bottom: 1px solid var(--border);
       }
+      .header-title {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+      }
       header h1 {
         font-size: 13px;
         margin: 0;
         font-weight: 600;
       }
+      header .subtitle {
+        font-size: 11px;
+        color: var(--muted);
+        margin-top: 1px;
+      }
       header a {
         color: var(--muted);
         font-size: 12px;
         text-decoration: none;
+        flex-shrink: 0;
+        margin-left: 8px;
       }
       header a:hover {
         color: var(--fg);
@@ -170,7 +186,7 @@
       button.primary {
         background: var(--accent);
         border-color: var(--accent);
-        color: white;
+        color: var(--accent-fg);
       }
       button.primary:hover:not(:disabled) {
         filter: brightness(1.1);
@@ -220,41 +236,156 @@
         color: var(--muted);
         font-size: 12px;
       }
+
+      /* Empty-state cards (welcome / youtube-nudge) */
+      .empty-card {
+        padding: 6px 2px 2px;
+      }
+      .empty-card h2.card-title {
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--fg);
+        text-transform: none;
+        letter-spacing: 0;
+        margin: 0 0 6px;
+      }
+      .empty-card p {
+        margin: 0 0 12px;
+        color: var(--muted);
+      }
+      .empty-card ol {
+        margin: 0 0 14px;
+        padding-left: 20px;
+        color: var(--fg);
+      }
+      .empty-card ol li + li {
+        margin-top: 4px;
+      }
+      .empty-card .cta-row {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .empty-card .cta-row button {
+        text-align: center;
+      }
+
+      /* First-run banner above the ready view */
+      .intro-banner {
+        background: var(--surface-strong);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 10px 12px;
+        font-size: 12px;
+        color: var(--fg);
+        display: flex;
+        gap: 8px;
+        align-items: flex-start;
+      }
+      .intro-banner-body {
+        flex: 1;
+      }
+      .intro-banner strong {
+        display: block;
+        font-weight: 600;
+        margin-bottom: 2px;
+      }
+      .intro-banner button.dismiss {
+        appearance: none;
+        background: transparent;
+        border: none;
+        color: var(--muted);
+        cursor: pointer;
+        font-size: 16px;
+        line-height: 1;
+        padding: 0 2px;
+      }
+      .intro-banner button.dismiss:hover {
+        color: var(--fg);
+      }
     </style>
   </head>
   <body>
     <header>
-      <h1>Shadowing Space</h1>
+      <div class="header-title">
+        <h1>Shadowing Space</h1>
+        <span class="subtitle">Import YouTube captions for shadowing practice</span>
+      </div>
       <a href="#" id="open-options">Options</a>
     </header>
     <main>
-      <section class="video" id="video-block" hidden>
-        <img id="video-thumbnail" alt="" />
-        <div class="video-meta">
-          <div class="video-title" id="video-title"></div>
-          <div class="video-id" id="video-id"></div>
+      <!-- Welcome view: shown when the active tab isn't YouTube at all. -->
+      <section class="empty-card" id="welcome-view" hidden>
+        <h2 class="card-title">Import captions from YouTube</h2>
+        <p>
+          This extension reads the captions of a YouTube video you have open and sends them into
+          Shadowing Space so you can practice shadowing.
+        </p>
+        <ol>
+          <li>Open a YouTube video (any <code>youtube.com/watch</code> page).</li>
+          <li>Click this toolbar icon again.</li>
+          <li>Pick a caption track, then send or download it.</li>
+        </ol>
+        <div class="cta-row">
+          <button class="primary" type="button" id="welcome-open-youtube">Open YouTube</button>
         </div>
       </section>
 
-      <section id="tracks-section" hidden>
-        <h2>Caption track</h2>
-        <div class="track-list" id="track-list" role="radiogroup"></div>
-      </section>
-
-      <section id="actions-section" hidden>
-        <div class="actions">
-          <button class="primary" type="button" id="send-btn">Send to Shadowing Space</button>
-          <button type="button" id="download-btn">Download JSON</button>
+      <!-- YouTube-nudge view: on youtube.com but not a watch page. -->
+      <section class="empty-card" id="youtube-nudge-view" hidden>
+        <h2 class="card-title">Open a specific video first</h2>
+        <p>
+          You are on YouTube, but not on a video page. Pick any video (its URL will look like
+          <code>youtube.com/watch?v=…</code>), then click this icon again.
+        </p>
+        <div class="cta-row">
+          <button type="button" id="nudge-reload">Try again</button>
         </div>
       </section>
 
-      <section>
-        <div id="status" class="status" role="status" aria-live="polite">Detecting video…</div>
-        <details class="log">
-          <summary id="log-summary">Debug log (0)</summary>
-          <pre id="log-output"></pre>
-        </details>
-      </section>
+      <!-- Ready view: full watch-page flow. -->
+      <div id="ready-view" hidden>
+        <section class="intro-banner" id="intro-banner" hidden>
+          <div class="intro-banner-body">
+            <strong>Welcome! Here is how this works:</strong>
+            Pick a caption track below, then <em>Send &amp; start practicing</em> opens the video in
+            Shadowing Space. <em>Download JSON</em> saves it for offline import later.
+          </div>
+          <button type="button" class="dismiss" id="intro-banner-dismiss" aria-label="Dismiss">
+            ×
+          </button>
+        </section>
+
+        <section class="video" id="video-block" hidden>
+          <img id="video-thumbnail" alt="" />
+          <div class="video-meta">
+            <div class="video-title" id="video-title"></div>
+            <div class="video-id" id="video-id"></div>
+          </div>
+        </section>
+
+        <section id="tracks-section" hidden>
+          <h2>Caption track</h2>
+          <div class="track-list" id="track-list" role="radiogroup"></div>
+        </section>
+
+        <section id="actions-section" hidden>
+          <div class="actions">
+            <button class="primary" type="button" id="send-btn">Send &amp; start practicing</button>
+            <button type="button" id="download-btn">Download JSON</button>
+          </div>
+        </section>
+
+        <section>
+          <div id="status" class="status" role="status" aria-live="polite">
+            Reading caption tracks…
+          </div>
+          <details class="log" id="log-details">
+            <summary id="log-summary">Details (0)</summary>
+            <pre id="log-output"></pre>
+          </details>
+        </section>
+      </div>
     </main>
     <script src="popup.js" type="module"></script>
   </body>
