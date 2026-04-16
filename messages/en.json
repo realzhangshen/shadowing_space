@@ -121,7 +121,18 @@
     "errorYOUTUBE_UPSTREAM_ERROR": "YouTube is not responding. Please try again later.",
     "errorTOO_MANY_REQUESTS": "Too many requests. Please wait a moment and try again.",
     "errorTRACK_TOKEN_INVALID": "The track selection is invalid. Please re-fetch tracks.",
-    "errorTRACK_TOKEN_EXPIRED": "The track selection has expired. Please re-fetch tracks."
+    "errorTRACK_TOKEN_EXPIRED": "The track selection has expired. Please re-fetch tracks.",
+    "extensionAwaitingTitle": "Importing from your YouTube tab",
+    "extensionAwaitingBody": "The Shadowing Space extension is sending us your transcript. This usually takes a second.",
+    "extensionProcessingTitle": "Saving your transcript",
+    "extensionProcessingBody": "Storing sentences in your local database…",
+    "extensionTimeoutTitle": "Still waiting for the extension",
+    "extensionTimeoutBody": "We haven't received a transcript yet. Go back to the YouTube tab and click the Shadowing Space icon, or switch to manual import below.",
+    "extensionTimeoutAction": "Switch to manual import",
+    "extensionErrorTitle": "Extension handoff failed",
+    "extensionErrorBody": "The transcript arrived but we couldn't save it: {message}",
+    "extensionErrorRetry": "Try manual import instead",
+    "extensionInstallHint": "Don't have the extension? Install it from the project's README."
   },
   "HistoryClient": {
     "title": "Dashboard",

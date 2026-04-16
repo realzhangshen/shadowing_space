@@ -121,7 +121,18 @@
     "errorYOUTUBE_UPSTREAM_ERROR": "YouTube 沒有回應。請稍後重試。",
     "errorTOO_MANY_REQUESTS": "請求過於頻繁。請稍等片刻再試。",
     "errorTRACK_TOKEN_INVALID": "軌道選擇無效。請重新取得軌道。",
-    "errorTRACK_TOKEN_EXPIRED": "軌道選擇已過期。請重新取得軌道。"
+    "errorTRACK_TOKEN_EXPIRED": "軌道選擇已過期。請重新取得軌道。",
+    "extensionAwaitingTitle": "正在從 YouTube 匯入字幕",
+    "extensionAwaitingBody": "Shadowing Space 瀏覽器擴充功能正在把字幕送過來，通常只需要一兩秒。",
+    "extensionProcessingTitle": "正在儲存字幕",
+    "extensionProcessingBody": "正在把句子寫入瀏覽器的本機資料庫…",
+    "extensionTimeoutTitle": "尚未收到擴充功能送來的資料",
+    "extensionTimeoutBody": "請回到 YouTube 分頁重新點擊 Shadowing Space 圖示；或者在下方切換到手動匯入。",
+    "extensionTimeoutAction": "切換到手動匯入",
+    "extensionErrorTitle": "擴充功能交接失敗",
+    "extensionErrorBody": "字幕已送達但儲存失敗：{message}",
+    "extensionErrorRetry": "改用手動匯入",
+    "extensionInstallHint": "還沒安裝擴充功能？到專案 README 下載 unpacked 版本。"
   },
   "HistoryClient": {
     "title": "儀表板",

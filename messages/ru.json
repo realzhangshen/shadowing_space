@@ -121,7 +121,18 @@
     "errorYOUTUBE_UPSTREAM_ERROR": "YouTube не отвечает. Попробуй позже.",
     "errorTOO_MANY_REQUESTS": "Слишком много запросов. Подожди немного и попробуй снова.",
     "errorTRACK_TOKEN_INVALID": "Выбор дорожки недействителен. Получи дорожки заново.",
-    "errorTRACK_TOKEN_EXPIRED": "Выбор дорожки истёк. Получи дорожки заново."
+    "errorTRACK_TOKEN_EXPIRED": "Выбор дорожки истёк. Получи дорожки заново.",
+    "extensionAwaitingTitle": "Импорт из вкладки YouTube",
+    "extensionAwaitingBody": "Расширение Shadowing Space передаёт субтитры. Обычно это занимает пару секунд.",
+    "extensionProcessingTitle": "Сохраняем субтитры",
+    "extensionProcessingBody": "Записываем предложения в локальную базу браузера…",
+    "extensionTimeoutTitle": "Пока не получили данные от расширения",
+    "extensionTimeoutBody": "Вернись на вкладку YouTube и снова нажми значок Shadowing Space, либо переключись на ручной импорт ниже.",
+    "extensionTimeoutAction": "Перейти к ручному импорту",
+    "extensionErrorTitle": "Передача из расширения не удалась",
+    "extensionErrorBody": "Субтитры пришли, но сохранить не вышло: {message}",
+    "extensionErrorRetry": "Попробовать ручной импорт",
+    "extensionInstallHint": "Расширение ещё не установлено? Инструкция в README проекта."
   },
   "HistoryClient": {
     "title": "Панель",

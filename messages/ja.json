@@ -121,7 +121,18 @@
     "errorYOUTUBE_UPSTREAM_ERROR": "YouTubeが応答していません。後でもう一度お試しください。",
     "errorTOO_MANY_REQUESTS": "リクエストが多すぎます。しばらく待ってから再試行してください。",
     "errorTRACK_TOKEN_INVALID": "トラックの選択が無効です。トラックを再取得してください。",
-    "errorTRACK_TOKEN_EXPIRED": "トラックの選択が期限切れです。トラックを再取得してください。"
+    "errorTRACK_TOKEN_EXPIRED": "トラックの選択が期限切れです。トラックを再取得してください。",
+    "extensionAwaitingTitle": "YouTube タブから字幕を取得しています",
+    "extensionAwaitingBody": "Shadowing Space 拡張機能が字幕を送信しています。通常は数秒で完了します。",
+    "extensionProcessingTitle": "字幕を保存しています",
+    "extensionProcessingBody": "ブラウザのローカルデータベースに文を保存中です…",
+    "extensionTimeoutTitle": "まだ拡張機能からデータを受け取っていません",
+    "extensionTimeoutBody": "YouTube タブに戻って Shadowing Space アイコンをもう一度クリックするか、下から手動インポートに切り替えてください。",
+    "extensionTimeoutAction": "手動インポートに切り替え",
+    "extensionErrorTitle": "拡張機能の連携に失敗しました",
+    "extensionErrorBody": "字幕は届きましたが保存に失敗しました：{message}",
+    "extensionErrorRetry": "代わりに手動インポートを試す",
+    "extensionInstallHint": "拡張機能が未インストール？プロジェクトの README からインストールしてください。"
   },
   "HistoryClient": {
     "title": "ダッシュボード",

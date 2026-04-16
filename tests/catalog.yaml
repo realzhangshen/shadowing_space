@@ -231,6 +231,70 @@ tests:
     reason: Sanitizes user-supplied URLs in the options page before persisting them.
     lastReviewedOn: 2026-04-16
     reviewBy: 2026-10-16
+  - file: tests/features/import/importMode.test.ts
+    name: deriveImportMode returns 'manual' when source is absent
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Default import page behavior keeps server-fetch UX visible when no extension is involved.
+    lastReviewedOn: 2026-04-16
+    reviewBy: 2026-10-16
+  - file: tests/features/import/importMode.test.ts
+    name: deriveImportMode returns 'extension' when source=extension is present
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks the extension handoff URL marker so the page switches to the waiting state.
+    lastReviewedOn: 2026-04-16
+    reviewBy: 2026-10-16
+  - file: tests/features/import/importMode.test.ts
+    name: deriveImportMode ignores source values other than 'extension'
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Prevents unrelated source query values from accidentally triggering extension mode.
+    lastReviewedOn: 2026-04-16
+    reviewBy: 2026-10-16
+  - file: tests/features/import/importMode.test.ts
+    name: reduceExtensionHandoff starts in 'awaiting' and transitions on payload_received
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Confirms the core extension handoff transition from waiting to processing.
+    lastReviewedOn: 2026-04-16
+    reviewBy: 2026-10-16
+  - file: tests/features/import/importMode.test.ts
+    name: reduceExtensionHandoff transitions to 'timeout' after the grace period elapses
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Guarantees that a stalled handoff shows a fallback UX instead of spinning forever.
+    lastReviewedOn: 2026-04-16
+    reviewBy: 2026-10-16
+  - file: tests/features/import/importMode.test.ts
+    name: reduceExtensionHandoff ignores tick once payload was received
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Prevents the timeout state machine from regressing processed imports.
+    lastReviewedOn: 2026-04-16
+    reviewBy: 2026-10-16
+  - file: tests/features/import/importMode.test.ts
+    name: reduceExtensionHandoff transitions from processing to error on failure
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Surfaces handoff-side failures to the user instead of silently retrying forever.
+    lastReviewedOn: 2026-04-16
+    reviewBy: 2026-10-16
+  - file: tests/features/import/importMode.test.ts
+    name: reduceExtensionHandoff recovers from timeout back to awaiting on payload_received
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Lets a user retry by clicking the extension again after a first-attempt timeout.
+    lastReviewedOn: 2026-04-16
+    reviewBy: 2026-10-16
   - file: tests/features/import/extensionImport.test.ts
     name: createImportBundleFromExtensionPayload maps a valid payload into deterministic local records
     category: unit

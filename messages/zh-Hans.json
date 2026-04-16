@@ -121,7 +121,18 @@
     "errorYOUTUBE_UPSTREAM_ERROR": "YouTube 没有响应。请稍后重试。",
     "errorTOO_MANY_REQUESTS": "请求过于频繁。请稍等片刻再试。",
     "errorTRACK_TOKEN_INVALID": "轨道选择无效。请重新获取轨道。",
-    "errorTRACK_TOKEN_EXPIRED": "轨道选择已过期。请重新获取轨道。"
+    "errorTRACK_TOKEN_EXPIRED": "轨道选择已过期。请重新获取轨道。",
+    "extensionAwaitingTitle": "正在从 YouTube 导入字幕",
+    "extensionAwaitingBody": "Shadowing Space 浏览器扩展正在把字幕发送过来，通常只需要一两秒。",
+    "extensionProcessingTitle": "正在保存字幕",
+    "extensionProcessingBody": "正在把句子写入你浏览器的本地数据库…",
+    "extensionTimeoutTitle": "还没有收到扩展发来的数据",
+    "extensionTimeoutBody": "请回到 YouTube 标签页重新点击 Shadowing Space 图标；或者在下方切换到手动导入。",
+    "extensionTimeoutAction": "切换到手动导入",
+    "extensionErrorTitle": "扩展交接失败",
+    "extensionErrorBody": "字幕已送达但保存失败：{message}",
+    "extensionErrorRetry": "改用手动导入",
+    "extensionInstallHint": "还没装扩展？到项目 README 里下载 unpacked 版本。"
   },
   "HistoryClient": {
     "title": "仪表盘",

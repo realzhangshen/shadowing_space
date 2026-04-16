@@ -1854,3 +1854,54 @@ kbd {
 .proxy-check-text {
   color: var(--text-secondary);
 }
+
+.extension-handoff {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 24px;
+  border-radius: 12px;
+  background: var(--surface-muted, rgba(31, 111, 235, 0.06));
+  border: 1px solid rgba(31, 111, 235, 0.18);
+  margin-top: 8px;
+}
+
+.extension-handoff h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.extension-handoff p {
+  margin: 0;
+  line-height: 1.55;
+}
+
+.extension-handoff-spinner {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid rgba(31, 111, 235, 0.25);
+  border-top-color: #1f6feb;
+  animation: extension-handoff-spin 0.9s linear infinite;
+}
+
+@keyframes extension-handoff-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.extension-handoff-warn {
+  background: rgba(227, 159, 25, 0.08);
+  border-color: rgba(227, 159, 25, 0.35);
+}
+
+.extension-handoff-error {
+  background: var(--danger-muted);
+  border-color: rgba(197, 48, 48, 0.35);
+}
+
+.extension-handoff-hint {
+  font-size: 13px;
+}

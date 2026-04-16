@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
+import { useSearchParams } from "next/navigation";
 import { useRouter } from "@/i18n/navigation";
 import {
   ApiError,
@@ -14,6 +15,12 @@ import {
   parseExtensionImportMessage,
 } from "@/features/import/extensionImport";
 import {
+  deriveImportMode,
+  reduceExtensionHandoff,
+  type ExtensionHandoffState,
+  type ImportMode,
+} from "@/features/import/importMode";
+import {
   buildTrackId,
   mapSegments,
   mapTracks,
@@ -23,6 +30,7 @@ import type { FetchTranscriptResponse, ProxyHealthResponse, TrackSummary } from 
 import type { VideoRecord } from "@/types/models";
 
 const DEFAULT_YOUTUBE_URL = "";
+const EXTENSION_TICK_INTERVAL_MS = 500;
 
 type ErrorDisplay = {
   message: string;
@@ -128,10 +136,73 @@ function ErrorBlock({
   );
 }
 
+function ExtensionHandoffPanel({
+  state,
+  onSwitchToManual,
+  t,
+}: {
+  state: ExtensionHandoffState;
+  onSwitchToManual: () => void;
+  t: ReturnType<typeof useTranslations<"ImportClient">>;
+}): JSX.Element {
+  if (state.kind === "awaiting" || state.kind === "processing") {
+    const title =
+      state.kind === "awaiting" ? t("extensionAwaitingTitle") : t("extensionProcessingTitle");
+    const body =
+      state.kind === "awaiting" ? t("extensionAwaitingBody") : t("extensionProcessingBody");
+    return (
+      <div className="extension-handoff" role="status" aria-live="polite">
+        <div className="extension-handoff-spinner" aria-hidden="true" />
+        <h3>{title}</h3>
+        <p className="muted">{body}</p>
+      </div>
+    );
+  }
+
+  if (state.kind === "timed_out") {
+    return (
+      <div className="extension-handoff extension-handoff-warn" role="status" aria-live="polite">
+        <h3>{t("extensionTimeoutTitle")}</h3>
+        <p className="muted">{t("extensionTimeoutBody")}</p>
+        <button className="btn secondary" type="button" onClick={onSwitchToManual}>
+          {t("extensionTimeoutAction")}
+        </button>
+        <p className="muted extension-handoff-hint">{t("extensionInstallHint")}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="extension-handoff extension-handoff-error" role="alert">
+      <h3>{t("extensionErrorTitle")}</h3>
+      <p>{t("extensionErrorBody", { message: state.message })}</p>
+      <button className="btn secondary" type="button" onClick={onSwitchToManual}>
+        {t("extensionErrorRetry")}
+      </button>
+    </div>
+  );
+}
+
 export function ImportClient(): JSX.Element {
   const t = useTranslations("ImportClient");
   const locale = useLocale();
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const initialMode = useMemo<ImportMode>(
+    () =>
+      deriveImportMode({
+        searchParams: new URLSearchParams(searchParams?.toString() ?? ""),
+      }),
+    [searchParams],
+  );
+
+  const [mode, setMode] = useState<ImportMode>(initialMode);
+  const [extensionState, setExtensionState] = useState<ExtensionHandoffState>(() =>
+    initialMode === "extension"
+      ? { kind: "awaiting", startedAt: Date.now() }
+      : { kind: "awaiting", startedAt: 0 },
+  );
 
   const [youtubeUrl, setYoutubeUrl] = useState(DEFAULT_YOUTUBE_URL);
   const [fetchResult, setFetchResult] = useState<FetchTranscriptResponse | null>(null);
@@ -146,28 +217,55 @@ export function ImportClient(): JSX.Element {
 
   const canImport = Boolean(fetchResult && selectedTrackToken) && !isImporting;
 
-  const friendlyMessage = useCallback((errorCode: string | undefined): string | undefined => {
-    if (!errorCode) return undefined;
-    const key = ERROR_CODE_KEYS[errorCode];
-    if (!key) return undefined;
-    return t(key as Parameters<typeof t>[0]);
-  }, [t]);
+  const friendlyMessage = useCallback(
+    (errorCode: string | undefined): string | undefined => {
+      if (!errorCode) return undefined;
+      const key = ERROR_CODE_KEYS[errorCode];
+      if (!key) return undefined;
+      return t(key as Parameters<typeof t>[0]);
+    },
+    [t],
+  );
 
-  const normalizeApiError = useCallback((apiError: unknown): ErrorDisplay => {
-    if (apiError instanceof ApiError) {
-      const friendly = friendlyMessage(apiError.errorCode);
+  const normalizeApiError = useCallback(
+    (apiError: unknown): ErrorDisplay => {
+      if (apiError instanceof ApiError) {
+        const friendly = friendlyMessage(apiError.errorCode);
+        return {
+          message: friendly ?? apiError.message,
+          errorCode: apiError.errorCode,
+          details: apiError.details,
+          requestId: apiError.requestId,
+        };
+      }
+
       return {
-        message: friendly ?? apiError.message,
-        errorCode: apiError.errorCode,
-        details: apiError.details,
-        requestId: apiError.requestId,
+        message: apiError instanceof Error ? apiError.message : t("errorFallback"),
       };
+    },
+    [friendlyMessage, t],
+  );
+
+  const switchToManual = useCallback(() => {
+    setMode("manual");
+  }, []);
+
+  // Extension-mode ticker: flips to timed_out once the grace period elapses.
+  useEffect(() => {
+    if (mode !== "extension" || extensionState.kind !== "awaiting") {
+      return;
     }
 
-    return {
-      message: apiError instanceof Error ? apiError.message : t("errorFallback"),
+    const interval = window.setInterval(() => {
+      setExtensionState((previous) =>
+        reduceExtensionHandoff(previous, { type: "tick", now: Date.now() }),
+      );
+    }, EXTENSION_TICK_INTERVAL_MS);
+
+    return () => {
+      window.clearInterval(interval);
     };
-  }, [friendlyMessage, t]);
+  }, [mode, extensionState.kind]);
 
   const onTestProxy = async () => {
     setProxyChecking(true);
@@ -315,6 +413,9 @@ export function ImportClient(): JSX.Element {
       extensionImportInFlightRef.current = true;
       setIsImporting(true);
       setError(undefined);
+      setExtensionState((previous) =>
+        reduceExtensionHandoff(previous, { type: "payload_received", at: Date.now() }),
+      );
 
       void (async () => {
         try {
@@ -323,7 +424,14 @@ export function ImportClient(): JSX.Element {
           const practiceUrl = `/practice/${bundle.video.id}/${encodeURIComponent(effectiveTargetTrackId)}`;
           router.push(practiceUrl);
         } catch (importError) {
-          setError(normalizeApiError(importError));
+          const display = normalizeApiError(importError);
+          setError(display);
+          setExtensionState((previous) =>
+            reduceExtensionHandoff(previous, {
+              type: "failed",
+              message: display.message,
+            }),
+          );
         } finally {
           extensionImportInFlightRef.current = false;
           setIsImporting(false);
@@ -336,6 +444,15 @@ export function ImportClient(): JSX.Element {
       window.removeEventListener("message", onExtensionImportMessage);
     };
   }, [normalizeApiError, router]);
+
+  if (mode === "extension") {
+    return (
+      <section className="card">
+        <h2>{t("title")}</h2>
+        <ExtensionHandoffPanel state={extensionState} onSwitchToManual={switchToManual} t={t} />
+      </section>
+    );
+  }
 
   return (
     <section className="card">
