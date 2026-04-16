@@ -111,6 +111,46 @@ tests:
     reason: Defends against the rare case where the player reports no available playback rates.
     lastReviewedOn: 2026-04-16
     reviewBy: 2026-10-16
+  - file: tests/features/practice/listenMode.test.ts
+    name: nextListenIndex advances to the next segment when more remain
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks the sequential advance rule that powers the new continuous-listen mode.
+    lastReviewedOn: 2026-04-16
+    reviewBy: 2026-10-16
+  - file: tests/features/practice/listenMode.test.ts
+    name: nextListenIndex returns null when the current segment is the last one
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Stops the listen session cleanly at the end of the transcript instead of looping.
+    lastReviewedOn: 2026-04-16
+    reviewBy: 2026-10-16
+  - file: tests/features/practice/listenMode.test.ts
+    name: nextListenIndex returns null when there are no segments
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Guards listen mode against starting on tracks with no transcript segments.
+    lastReviewedOn: 2026-04-16
+    reviewBy: 2026-10-16
+  - file: tests/features/practice/listenMode.test.ts
+    name: nextRepeatFlow rotates manual → auto → free → listen → manual
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks the practice-flow rotation order surfaced by the M shortcut and mode picker.
+    lastReviewedOn: 2026-04-16
+    reviewBy: 2026-10-16
+  - file: tests/features/practice/listenMode.test.ts
+    name: REPEAT_FLOW_ORDER exposes the listen mode so UI pickers can render it
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Prevents the listen mode from being silently dropped from the rotation list.
+    lastReviewedOn: 2026-04-16
+    reviewBy: 2026-10-16
   - file: tests/features/history/practiceSummary.test.ts
     name: summarizePracticeSessions groups records by day and video in descending order
     category: unit

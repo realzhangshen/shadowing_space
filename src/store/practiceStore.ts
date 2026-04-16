@@ -8,7 +8,7 @@ import {
 type PlaybackMode = "idle" | "source" | "attempt";
 export type PlaybackSpeed = number;
 export const SPEEDS = [...DEFAULT_PLAYBACK_SPEEDS] satisfies readonly PlaybackSpeed[];
-export type RepeatFlow = "manual" | "auto" | "free";
+export type RepeatFlow = "manual" | "auto" | "free" | "listen";
 export type FreeRange = { startIndex: number; endIndex: number };
 
 type PracticeState = {
@@ -24,6 +24,7 @@ type PracticeState = {
   freeRange: FreeRange | null;
   freeHighlightIndex: number;
   freeSessionActive: boolean;
+  listenSessionActive: boolean;
   setCurrentIndex: (index: number) => void;
   setPlaybackMode: (mode: PlaybackMode) => void;
   setPlaybackSpeed: (speed: PlaybackSpeed) => void;
@@ -36,6 +37,7 @@ type PracticeState = {
   setFreeRange: (range: FreeRange | null) => void;
   setFreeHighlightIndex: (index: number) => void;
   setFreeSessionActive: (active: boolean) => void;
+  setListenSessionActive: (active: boolean) => void;
   resetForSession: (startIndex: number) => void;
 };
 
@@ -50,6 +52,7 @@ export const usePracticeStore = create<PracticeState>((set) => ({
   freeRange: null,
   freeHighlightIndex: 0,
   freeSessionActive: false,
+  listenSessionActive: false,
   setCurrentIndex: (currentIndex) => set({ currentIndex }),
   setPlaybackMode: (playbackMode) => set({ playbackMode }),
   setPlaybackSpeed: (playbackSpeed) =>
@@ -63,6 +66,7 @@ export const usePracticeStore = create<PracticeState>((set) => ({
   setFreeRange: (freeRange) => set({ freeRange }),
   setFreeHighlightIndex: (freeHighlightIndex) => set({ freeHighlightIndex }),
   setFreeSessionActive: (freeSessionActive) => set({ freeSessionActive }),
+  setListenSessionActive: (listenSessionActive) => set({ listenSessionActive }),
   resetForSession: (startIndex) =>
     set({
       currentIndex: startIndex,
@@ -76,5 +80,6 @@ export const usePracticeStore = create<PracticeState>((set) => ({
       freeRange: null,
       freeHighlightIndex: 0,
       freeSessionActive: false,
+      listenSessionActive: false,
     }),
 }));

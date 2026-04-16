@@ -114,6 +114,7 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
     freeRange,
     freeHighlightIndex,
     freeSessionActive,
+    listenSessionActive,
     setFreeRange,
     resetForSession,
   } = usePracticeStore();
@@ -362,7 +363,10 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
     return () => document.removeEventListener("selectionchange", handleSelectionChange);
   }, []);
 
-  const vadEnabled = recorder.isRecording && repeatFlow === "auto" && !freeSessionActive;
+  const vadEnabled =
+    recorder.isRecording &&
+    !freeSessionActive &&
+    (repeatFlow === "auto" || (repeatFlow === "listen" && listenSessionActive));
 
   useVAD({
     stream: recorder.stream,
@@ -600,6 +604,9 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
           freeSessionActive={freeSessionActive}
           onStartFree={() => void actions.startFreeShadowing()}
           onStopFree={() => void actions.stopFreeShadowing()}
+          listenSessionActive={listenSessionActive}
+          onStartListen={() => void actions.startListenSession()}
+          onStopListen={() => void actions.stopListenSession()}
         />
 
         <div className="actions-row speed-row">
@@ -706,7 +713,11 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
         {resumeMessage ? <p className="resume-indicator">{resumeMessage}</p> : null}
 
         <p className="muted shortcuts-hint">
-          {repeatFlow === "free" ? t("shortcutsHintFree") : t("shortcutsHint")}
+          {repeatFlow === "free"
+            ? t("shortcutsHintFree")
+            : repeatFlow === "listen"
+              ? t("shortcutsHintListen")
+              : t("shortcutsHint")}
         </p>
 
         <div aria-live="polite">

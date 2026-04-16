@@ -22,6 +22,9 @@ type PlaybackControlBarProps = {
   freeSessionActive?: boolean;
   onStartFree?: () => void;
   onStopFree?: () => void;
+  listenSessionActive?: boolean;
+  onStartListen?: () => void;
+  onStopListen?: () => void;
 };
 
 export const PlaybackControlBar = memo(function PlaybackControlBar({
@@ -41,18 +44,23 @@ export const PlaybackControlBar = memo(function PlaybackControlBar({
   freeSessionActive,
   onStartFree,
   onStopFree,
+  listenSessionActive,
+  onStartListen,
+  onStopListen,
 }: PlaybackControlBarProps): JSX.Element {
   const t = useTranslations("PlaybackControlBar");
   const isAuto = repeatFlow === "auto";
   const isFree = repeatFlow === "free";
-  const showRecord = !isAuto && !isFree;
-  const showReplay = hasRecording && !isFree;
-  const showHeadphoneHint = isAuto || isFree;
+  const isListen = repeatFlow === "listen";
+  const showRecord = !isAuto && !isFree && !isListen;
+  const showReplay = hasRecording && !isFree && !isListen;
+  const showHeadphoneHint = isAuto || isFree || isListen;
 
   const flows: { value: RepeatFlow; label: string }[] = [
     { value: "manual", label: t("manual") },
     { value: "auto", label: t("auto") },
     { value: "free", label: t("free") },
+    { value: "listen", label: t("listen") },
   ];
 
   function getPlayLabel(): string {
@@ -92,6 +100,42 @@ export const PlaybackControlBar = memo(function PlaybackControlBar({
             {freeSessionActive ? t("stopFree") : t("startFree")}
           </button>
           {!freeSessionActive && hasRecording ? (
+            <button
+              type="button"
+              className="btn secondary"
+              title={t("playRecordingTitle")}
+              onClick={onPlayRecording}
+            >
+              {t("replay")}
+            </button>
+          ) : null}
+          <MicStatusIndicator />
+        </div>
+      ) : isListen ? (
+        <div className="control-bar">
+          <button
+            type="button"
+            className={
+              listenSessionActive
+                ? "btn primary recording free-start-btn"
+                : "btn primary free-start-btn"
+            }
+            onClick={listenSessionActive ? onStopListen : onStartListen}
+          >
+            {listenSessionActive ? t("stopListen") : t("startListen")}
+          </button>
+          {listenSessionActive ? (
+            <button
+              type="button"
+              className={isRecording ? "btn primary recording" : "btn secondary"}
+              title={isRecording ? t("stopRecordingTitle") : t("shadowOneTitle")}
+              aria-pressed={isRecording}
+              onClick={onToggleRecording}
+            >
+              {isRecording ? t("stop") : t("shadowOne")}
+            </button>
+          ) : null}
+          {!listenSessionActive && hasRecording ? (
             <button
               type="button"
               className="btn secondary"
@@ -172,7 +216,7 @@ export const PlaybackControlBar = memo(function PlaybackControlBar({
               role="radio"
               aria-checked={repeatFlow === f.value}
               className={repeatFlow === f.value ? "scope-option active" : "scope-option"}
-              disabled={freeSessionActive}
+              disabled={freeSessionActive || listenSessionActive}
               onClick={() => onSetRepeatFlow(f.value)}
             >
               {f.label}

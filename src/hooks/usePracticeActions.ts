@@ -11,7 +11,8 @@ import {
   saveFreeRecording,
   saveLatestRecording,
 } from "@/features/storage/repository";
-import { usePracticeStore, type RepeatFlow } from "@/store/practiceStore";
+import { nextListenIndex, nextRepeatFlow } from "@/features/practice/listenMode";
+import { usePracticeStore } from "@/store/practiceStore";
 import type { SegmentRecord } from "@/types/models";
 
 type Recorder = ReturnType<typeof useRecorder>;
@@ -65,12 +66,14 @@ export function usePracticeActions(deps: PracticeActionsDeps) {
     isPlaying,
     repeatFlow,
     freeSessionActive,
+    listenSessionActive,
     setCurrentIndex,
     setPlaybackMode,
     setMicrophoneError,
     setFreeRange,
     setFreeHighlightIndex,
     setFreeSessionActive,
+    setListenSessionActive,
   } = usePracticeStore();
 
   // Stable refs for values that change frequently but are used inside callbacks
@@ -130,6 +133,11 @@ export function usePracticeActions(deps: PracticeActionsDeps) {
         return;
       }
 
+      if (state.repeatFlow === "listen") {
+        // Listen session keeps driving playback; do not switch into "attempt" review mode.
+        return;
+      }
+
       if (state.repeatFlow === "auto") {
         setPlaybackMode("idle");
       } else {
@@ -186,6 +194,9 @@ export function usePracticeActions(deps: PracticeActionsDeps) {
         clearTimeout(autoAdvanceTimerRef.current);
         autoAdvanceTimerRef.current = null;
       }
+      if (usePracticeStore.getState().listenSessionActive) {
+        setListenSessionActive(false);
+      }
       if (recorder?.isRecording) {
         manualStopRef.current = true;
         await recorder.stop();
@@ -205,6 +216,7 @@ export function usePracticeActions(deps: PracticeActionsDeps) {
       segments,
       setCurrentIndex,
       setPlaybackMode,
+      setListenSessionActive,
       autoAdvanceTimerRef,
       manualStopRef,
       playerRef,
@@ -278,25 +290,23 @@ export function usePracticeActions(deps: PracticeActionsDeps) {
     const recorder = recorderRef.current;
     setMicrophoneError(undefined);
 
+    const state = usePracticeStore.getState();
+    const inLiveListenSession = state.repeatFlow === "listen" && state.listenSessionActive;
+
     if (recorder?.isRecording) {
-      if (usePracticeStore.getState().repeatFlow === "manual") {
+      if (state.repeatFlow === "manual") {
         playerRef.current?.pause();
       }
       await recorder.stop();
     } else {
-      playerRef.current?.pause();
+      if (!inLiveListenSession) {
+        playerRef.current?.pause();
+      }
       recordingPlayback.stop();
-      recordingTargetRef.current = currentIndex;
+      recordingTargetRef.current = state.currentIndex;
       await recorder?.start();
     }
-  }, [
-    currentIndex,
-    recorderRef,
-    recordingPlayback,
-    setMicrophoneError,
-    playerRef,
-    recordingTargetRef,
-  ]);
+  }, [recorderRef, recordingPlayback, setMicrophoneError, playerRef, recordingTargetRef]);
 
   const toggleOriginal = useCallback(async () => {
     const recorder = recorderRef.current;
@@ -406,16 +416,14 @@ export function usePracticeActions(deps: PracticeActionsDeps) {
 
   const toggleRepeatFlow = useCallback(() => {
     const recorder = recorderRef.current;
-    if (freeSessionActive) return;
+    if (freeSessionActive || listenSessionActive) return;
     if (recorder?.isRecording) {
       manualStopRef.current = true;
       void recorder.stop();
     }
     const state = usePracticeStore.getState();
-    const order: readonly RepeatFlow[] = ["manual", "auto", "free"];
-    const idx = order.indexOf(state.repeatFlow);
-    state.setRepeatFlow(order[(idx + 1) % order.length]);
-  }, [freeSessionActive, recorderRef, manualStopRef]);
+    state.setRepeatFlow(nextRepeatFlow(state.repeatFlow));
+  }, [freeSessionActive, listenSessionActive, recorderRef, manualStopRef]);
 
   const stopFreeShadowing = useCallback(async () => {
     const recorder = recorderRef.current;
@@ -500,6 +508,94 @@ export function usePracticeActions(deps: PracticeActionsDeps) {
     }
   }, [repeatFlow, freeSessionActive, startFreeShadowing, stopFreeShadowing]);
 
+  const stopListenSession = useCallback(async () => {
+    const recorder = recorderRef.current;
+    setListenSessionActive(false);
+    playerRef.current?.pause();
+    if (recorder?.isRecording) {
+      manualStopRef.current = true;
+      await recorder.stop();
+    }
+    setPlaybackMode("idle");
+  }, [recorderRef, playerRef, manualStopRef, setListenSessionActive, setPlaybackMode]);
+
+  const startListenSession = useCallback(async () => {
+    if (!hasSession) return;
+    const segs = segmentsRef.current;
+    if (segs.length === 0) return;
+    setMicrophoneError(undefined);
+    recordingPlayback.stop();
+
+    const startIdx = Math.min(usePracticeStore.getState().currentIndex, segs.length - 1);
+    setCurrentIndex(startIdx);
+    setListenSessionActive(true);
+
+    const playSegmentAt = (index: number) => {
+      const state = usePracticeStore.getState();
+      if (!state.listenSessionActive) return;
+      const segments = segmentsRef.current;
+      const seg = segments[index];
+      if (!seg) {
+        setListenSessionActive(false);
+        setPlaybackMode("idle");
+        return;
+      }
+      audioFinishedRef.current = false;
+      setCurrentIndex(index);
+      setPlaybackMode("source");
+      playerRef.current?.playContinuous(seg.startMs, seg.endMs, state.playbackSpeed, () => {
+        if (!usePracticeStore.getState().listenSessionActive) return;
+        const recorder = recorderRef.current;
+        if (recorder?.isRecording) {
+          // Bind the in-flight recording to this finishing sentence and let it save normally.
+          manualStopRef.current = false;
+          void recorder.stop();
+        }
+        const next = nextListenIndex({
+          currentIndex: index,
+          totalSegments: segmentsRef.current.length,
+        });
+        if (next === null) {
+          setListenSessionActive(false);
+          setPlaybackMode("idle");
+          return;
+        }
+        playSegmentAt(next);
+      });
+    };
+
+    playSegmentAt(startIdx);
+  }, [
+    hasSession,
+    segmentsRef,
+    recorderRef,
+    playerRef,
+    audioFinishedRef,
+    manualStopRef,
+    recordingPlayback,
+    setMicrophoneError,
+    setCurrentIndex,
+    setPlaybackMode,
+    setListenSessionActive,
+  ]);
+
+  const toggleListenSession = useCallback(() => {
+    if (repeatFlow !== "listen") return;
+    if (listenSessionActive) {
+      void stopListenSession();
+    } else {
+      void startListenSession();
+    }
+  }, [repeatFlow, listenSessionActive, startListenSession, stopListenSession]);
+
+  const toggleSessionForMode = useCallback(() => {
+    if (repeatFlow === "free") {
+      toggleFreeSession();
+    } else if (repeatFlow === "listen") {
+      toggleListenSession();
+    }
+  }, [repeatFlow, toggleFreeSession, toggleListenSession]);
+
   const shortcutHandlers = useMemo(
     () => ({
       onPlayOrPauseSource: () => {
@@ -518,7 +614,7 @@ export function usePracticeActions(deps: PracticeActionsDeps) {
       onNextSegment: goNext,
       onToggleTranscript: usePracticeStore.getState().toggleTranscriptHidden,
       onToggleRepeatFlow: toggleRepeatFlow,
-      onToggleFreeSession: toggleFreeSession,
+      onToggleSession: toggleSessionForMode,
     }),
     [
       goNext,
@@ -528,7 +624,7 @@ export function usePracticeActions(deps: PracticeActionsDeps) {
       toggleOriginal,
       toggleRecording,
       toggleRepeatFlow,
-      toggleFreeSession,
+      toggleSessionForMode,
     ],
   );
 
@@ -547,6 +643,9 @@ export function usePracticeActions(deps: PracticeActionsDeps) {
     startFreeShadowing,
     stopFreeShadowing,
     toggleFreeSession,
+    startListenSession,
+    stopListenSession,
+    toggleListenSession,
     startShadowing,
     shortcutHandlers,
   };

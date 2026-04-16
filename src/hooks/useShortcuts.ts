@@ -11,7 +11,7 @@ type ShortcutHandlers = {
   onNextSegment: () => void;
   onToggleTranscript: () => void;
   onToggleRepeatFlow: () => void;
-  onToggleFreeSession?: () => void;
+  onToggleSession?: () => void;
 };
 
 function isEditableTarget(target: EventTarget | null): boolean {
@@ -68,9 +68,9 @@ export function useShortcuts(handlers: ShortcutHandlers): void {
           handlers.onToggleRepeatFlow();
           break;
         case "f":
-          if (handlers.onToggleFreeSession) {
+          if (handlers.onToggleSession) {
             event.preventDefault();
-            handlers.onToggleFreeSession();
+            handlers.onToggleSession();
           }
           break;
         default:
