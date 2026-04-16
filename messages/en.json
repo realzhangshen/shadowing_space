@@ -132,7 +132,11 @@
     "extensionErrorTitle": "Extension handoff failed",
     "extensionErrorBody": "The transcript arrived but we couldn't save it: {message}",
     "extensionErrorRetry": "Try manual import instead",
-    "extensionInstallHint": "Don't have the extension? Install it from the project's README."
+    "extensionInstallHint": "Don't have the extension? Install it from the project's README.",
+    "fileImportLabel": "Or import from a downloaded JSON file",
+    "fileImportButton": "Choose JSON file",
+    "fileImportHint": "If you used the extension's \"Download JSON\" option, pick that file here.",
+    "fileImportInvalid": "That file isn't a Shadowing Space transcript: {message}"
   },
   "HistoryClient": {
     "title": "Dashboard",

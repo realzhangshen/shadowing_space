@@ -132,7 +132,11 @@
     "extensionErrorTitle": "拡張機能の連携に失敗しました",
     "extensionErrorBody": "字幕は届きましたが保存に失敗しました：{message}",
     "extensionErrorRetry": "代わりに手動インポートを試す",
-    "extensionInstallHint": "拡張機能が未インストール？プロジェクトの README からインストールしてください。"
+    "extensionInstallHint": "拡張機能が未インストール？プロジェクトの README からインストールしてください。",
+    "fileImportLabel": "またはダウンロードした JSON ファイルからインポート",
+    "fileImportButton": "JSON ファイルを選択",
+    "fileImportHint": "拡張機能の「Download JSON」で保存したファイルを選んでください。",
+    "fileImportInvalid": "このファイルは Shadowing Space の字幕ファイルではありません：{message}"
   },
   "HistoryClient": {
     "title": "ダッシュボード",

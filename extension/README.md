@@ -2,21 +2,6 @@
 
 A Chrome Manifest V3 extension that imports YouTube captions into Shadowing Space using the viewer's own browser network.
 
-## What it does
-
-1. You open a normal YouTube watch page.
-2. You click the extension action.
-3. The extension reads the current video's caption metadata inside `youtube.com`.
-4. It fetches one preferred caption track using the user's own browser session and IP.
-5. It opens your configured Shadowing Space import URL and hands the transcript payload to the app.
-6. The app stores the imported video locally and jumps into practice.
-
-## Why this approach
-
-- The fragile part of YouTube transcript access runs on `youtube.com`, not on Vercel/Cloudflare.
-- Requests go out from the end user's browser, which tends to have a cleaner reputation than cloud IP ranges.
-- The main app stays local-first. It only receives a structured payload and saves it to IndexedDB.
-
 ## Install locally
 
 1. Open `chrome://extensions`.
@@ -26,35 +11,57 @@ A Chrome Manifest V3 extension that imports YouTube captions into Shadowing Spac
 
 ## Usage
 
-1. Open a YouTube video page with captions.
-2. Click the `Shadowing Space Importer` toolbar icon.
-   - The toolbar badge shows status: `…` while working, `✓` on success, `!` on failure.
-   - Errors are delivered via Chrome notifications with the actual error message.
-3. Wait for the Shadowing Space import page to open.
-4. If extraction succeeds, the app should redirect into the practice session automatically.
+1. Open any YouTube **watch** page (`/watch?v=…`).
+2. Click the `Shadowing Space` toolbar icon.
+3. The popup shows:
+   - The current video's title, ID, and thumbnail.
+   - A radio-button list of every caption track YouTube exposes (manual + `auto` labels).
+   - An inline status area and a **Debug log** (click to expand).
+4. Pick the track you want and choose one of two actions:
+   - **Send to Shadowing Space** — extracts the track, opens your configured import endpoint, and hands the payload over. The status line updates each step; delivery attempts are logged in the Debug log.
+   - **Download JSON** — saves the transcript to a `shadowing-<videoId>-<lang>.json` file. You can re-import this later on the site via the "Import from JSON file" button.
+
+There are **no Chrome notifications**. Every outcome appears inline in the popup and mirrors to the page console (under a `[SS]` prefix) for easy debugging.
 
 ## Options page
 
-Open the extension's **Options** page (right-click the toolbar icon → `Options`, or from `chrome://extensions`) to choose where transcripts are delivered:
+Right-click the toolbar icon → `Options` (or open from `chrome://extensions`). Choose where transcripts are delivered:
 
 - **Production · shadowing.space** (default)
 - **Localhost · http://localhost:3000** — for local `npm run dev`
-- **Custom / self-hosted** — any http(s) URL. The first save will prompt for host permission.
+- **Custom / self-hosted** — any http(s) URL. The first save prompts for host permission.
 
-Settings are synced via `chrome.storage.sync`.
+Settings are stored in `chrome.storage.sync`.
 
-## Feedback & status
+## How it works
 
-- Success → badge `✓` for 4 s, then clears.
-- Failure → badge `!` for 8 s + a Chrome notification with the error text.
-- Non-YouTube page → a notification reminding you to open a watch page.
+- **youtube-main.js** (MAIN world): reads `ytInitialPlayerResponse` and its fallbacks (`ytplayer.config.args.player_response`, `ytd-watch-flexy.__data`), then fetches the selected caption track using the user's own YouTube session.
+- **youtube-bridge.js** (ISOLATED world): mediates between the popup's `chrome.tabs.sendMessage` and the MAIN-world script's window events.
+- **popup.js**: drives the UX — track listing, action buttons, status line, debug log, and delivery/download.
+- **background.js**: install hint only. The popup owns the work because MV3 service workers suspend aggressively and losing state mid-delivery would hide errors.
 
-## Visual assets
+## Debugging tips
 
-Icons in `icons/` are auto-generated solid-color PNGs by `scripts/extension/generate-icons.mjs`. Run `node scripts/extension/generate-icons.mjs` to regenerate them; swap in branded artwork at the same paths to rebrand.
+1. Open the popup → click **Debug log** to see a time-stamped record of every step.
+2. Right-click the popup → `Inspect` to open DevTools on the popup itself; look at the Console for `[SS]` logs.
+3. If the popup reports "Content script unreachable", refresh the YouTube tab — SPA navigation can occasionally leave the bridge inactive.
+4. If delivery keeps looping: open the Shadowing Space import tab in DevTools and check the Network tab + console for the delivery handshake.
 
-## Development notes
+## Files
 
-- The default destination is `https://shadowing.space/en/import?source=extension`. Override via the options page, not by editing source.
-- End-to-end extension flow is not covered by automated tests; only `extension/lib/endpoint.js` (endpoint resolution) and the app-side payload contract are tested.
-- The extension uses `world: "MAIN"` content script isolation to read `ytInitialPlayerResponse`. The isolated world bridge (`youtube-bridge.js`) mediates between main-world extraction and the extension background service worker.
+```
+extension/
+├── manifest.json
+├── background.js           # install hint only
+├── popup.html / popup.js   # primary UI
+├── options.html / options.js
+├── youtube-bridge.js       # ISOLATED-world bridge
+├── youtube-main.js         # MAIN-world extractor
+├── shadowing-space-bridge.js # injected on shadowing.space / localhost
+├── icons/                  # auto-generated (scripts/extension/generate-icons.mjs)
+└── lib/
+    ├── endpoint.js         # import URL resolution (unit tested)
+    └── player-response.js  # YouTube player data extraction (unit tested)
+```
+
+`lib/` is the canonical source for the pure helpers. `youtube-main.js` inlines a matching copy because MV3 manifest-declared scripts cannot `import`. If you edit one, update the other.

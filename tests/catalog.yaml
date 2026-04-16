@@ -423,6 +423,38 @@ tests:
     reason: Lets a user retry by clicking the extension again after a first-attempt timeout.
     lastReviewedOn: 2026-04-16
     reviewBy: 2026-10-16
+  - file: tests/features/import/fileImport.test.ts
+    name: parseExtensionPayloadFromText returns the payload for a well-formed JSON file
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Supports offline import by parsing JSON files downloaded from the extension.
+    lastReviewedOn: 2026-04-16
+    reviewBy: 2026-10-16
+  - file: tests/features/import/fileImport.test.ts
+    name: parseExtensionPayloadFromText throws a clear message for invalid JSON
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Guides users past malformed JSON files with an actionable error.
+    lastReviewedOn: 2026-04-16
+    reviewBy: 2026-10-16
+  - file: tests/features/import/fileImport.test.ts
+    name: parseExtensionPayloadFromText throws a clear message when the schema is wrong
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Prevents importing unrelated JSON files that happen to be well-formed.
+    lastReviewedOn: 2026-04-16
+    reviewBy: 2026-10-16
+  - file: tests/features/import/fileImport.test.ts
+    name: parseExtensionPayloadFromText trims leading whitespace and BOM
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Handles files annotated by OS tooling or saved with BOM encoding.
+    lastReviewedOn: 2026-04-16
+    reviewBy: 2026-10-16
   - file: tests/features/import/extensionImport.test.ts
     name: createImportBundleFromExtensionPayload maps a valid payload into deterministic local records
     category: unit

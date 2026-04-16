@@ -132,7 +132,11 @@
     "extensionErrorTitle": "Передача из расширения не удалась",
     "extensionErrorBody": "Субтитры пришли, но сохранить не вышло: {message}",
     "extensionErrorRetry": "Попробовать ручной импорт",
-    "extensionInstallHint": "Расширение ещё не установлено? Инструкция в README проекта."
+    "extensionInstallHint": "Расширение ещё не установлено? Инструкция в README проекта.",
+    "fileImportLabel": "Или импортировать из скачанного JSON-файла",
+    "fileImportButton": "Выбрать JSON-файл",
+    "fileImportHint": "Если ты нажимал «Download JSON» в расширении — выбери тот файл здесь.",
+    "fileImportInvalid": "Это не похоже на файл Shadowing Space: {message}"
   },
   "HistoryClient": {
     "title": "Панель",

@@ -132,7 +132,11 @@
     "extensionErrorTitle": "扩展交接失败",
     "extensionErrorBody": "字幕已送达但保存失败：{message}",
     "extensionErrorRetry": "改用手动导入",
-    "extensionInstallHint": "还没装扩展？到项目 README 里下载 unpacked 版本。"
+    "extensionInstallHint": "还没装扩展？到项目 README 里下载 unpacked 版本。",
+    "fileImportLabel": "或者从下载的 JSON 文件导入",
+    "fileImportButton": "选择 JSON 文件",
+    "fileImportHint": "如果你使用了扩展的 “Download JSON” 选项，在这里选择那个文件。",
+    "fileImportInvalid": "这个文件不是 Shadowing Space 的字幕文件：{message}"
   },
   "HistoryClient": {
     "title": "仪表盘",

@@ -14,6 +14,7 @@ import {
   createImportBundleFromExtensionPayload,
   parseExtensionImportMessage,
 } from "@/features/import/extensionImport";
+import { parseExtensionPayloadFromText } from "@/features/import/fileImport";
 import {
   deriveImportMode,
   reduceExtensionHandoff,
@@ -136,6 +137,47 @@ function ErrorBlock({
   );
 }
 
+function FileImportBlock({
+  onPick,
+  disabled,
+  t,
+}: {
+  onPick: (file: File) => void;
+  disabled: boolean;
+  t: ReturnType<typeof useTranslations<"ImportClient">>;
+}): JSX.Element {
+  const inputRef = useRef<HTMLInputElement | null>(null);
+
+  return (
+    <div className="file-import">
+      <h3>{t("fileImportLabel")}</h3>
+      <p className="muted">{t("fileImportHint")}</p>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="application/json,.json"
+        className="file-import-input"
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          if (!file) return;
+          onPick(file);
+          event.target.value = "";
+        }}
+        disabled={disabled}
+        aria-label={t("fileImportButton")}
+      />
+      <button
+        type="button"
+        className="btn secondary"
+        disabled={disabled}
+        onClick={() => inputRef.current?.click()}
+      >
+        {t("fileImportButton")}
+      </button>
+    </div>
+  );
+}
+
 function ExtensionHandoffPanel({
   state,
   onSwitchToManual,
@@ -249,6 +291,27 @@ export function ImportClient(): JSX.Element {
   const switchToManual = useCallback(() => {
     setMode("manual");
   }, []);
+
+  const onImportFromFile = useCallback(
+    async (file: File) => {
+      setError(undefined);
+      setIsImporting(true);
+      try {
+        const text = await file.text();
+        const payload = parseExtensionPayloadFromText(text);
+        const bundle = createImportBundleFromExtensionPayload(payload);
+        const { effectiveTargetTrackId } = await saveImportBundle(bundle);
+        const practiceUrl = `/practice/${bundle.video.id}/${encodeURIComponent(effectiveTargetTrackId)}`;
+        router.push(practiceUrl);
+      } catch (fileError) {
+        const message = fileError instanceof Error ? fileError.message : String(fileError);
+        setError({ message: t("fileImportInvalid", { message }) });
+      } finally {
+        setIsImporting(false);
+      }
+    },
+    [router, t],
+  );
 
   // Extension-mode ticker: flips to timed_out once the grace period elapses.
   useEffect(() => {
@@ -450,6 +513,10 @@ export function ImportClient(): JSX.Element {
       <section className="card">
         <h2>{t("title")}</h2>
         <ExtensionHandoffPanel state={extensionState} onSwitchToManual={switchToManual} t={t} />
+        {extensionState.kind === "timed_out" || extensionState.kind === "error" ? (
+          <FileImportBlock onPick={onImportFromFile} disabled={isImporting} t={t} />
+        ) : null}
+        {error ? <ErrorBlock error={error} t={t} /> : null}
       </section>
     );
   }
@@ -546,6 +613,8 @@ export function ImportClient(): JSX.Element {
       ) : null}
 
       {error ? <ErrorBlock error={error} t={t} /> : null}
+
+      <FileImportBlock onPick={onImportFromFile} disabled={isImporting} t={t} />
     </section>
   );
 }

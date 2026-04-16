@@ -132,7 +132,11 @@
     "extensionErrorTitle": "擴充功能交接失敗",
     "extensionErrorBody": "字幕已送達但儲存失敗：{message}",
     "extensionErrorRetry": "改用手動匯入",
-    "extensionInstallHint": "還沒安裝擴充功能？到專案 README 下載 unpacked 版本。"
+    "extensionInstallHint": "還沒安裝擴充功能？到專案 README 下載 unpacked 版本。",
+    "fileImportLabel": "或者從下載的 JSON 檔案匯入",
+    "fileImportButton": "選擇 JSON 檔案",
+    "fileImportHint": "如果你使用了擴充功能的 “Download JSON” 選項，在這裡選擇該檔案。",
+    "fileImportInvalid": "這個檔案不是 Shadowing Space 的字幕檔：{message}"
   },
   "HistoryClient": {
     "title": "儀表板",
