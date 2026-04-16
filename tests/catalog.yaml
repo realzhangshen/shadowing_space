@@ -231,6 +231,86 @@ tests:
     reason: Sanitizes user-supplied URLs in the options page before persisting them.
     lastReviewedOn: 2026-04-16
     reviewBy: 2026-10-16
+  - file: tests/extension/playerResponse.test.ts
+    name: readPlayerResponse returns ytInitialPlayerResponse when present
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks the primary YouTube player-data extraction path for the extension.
+    lastReviewedOn: 2026-04-16
+    reviewBy: 2026-10-16
+  - file: tests/extension/playerResponse.test.ts
+    name: readPlayerResponse falls back to ytplayer.config.args.player_response JSON string
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Handles the JSON-string form YouTube emits when ytInitialPlayerResponse is missing.
+    lastReviewedOn: 2026-04-16
+    reviewBy: 2026-10-16
+  - file: tests/extension/playerResponse.test.ts
+    name: readPlayerResponse falls back to ytplayer.config.args.raw_player_response object
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Covers the already-parsed object variant used by certain YouTube rollouts.
+    lastReviewedOn: 2026-04-16
+    reviewBy: 2026-10-16
+  - file: tests/extension/playerResponse.test.ts
+    name: readPlayerResponse returns null when no known shape is present
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Prevents the extension from silently operating on unknown shapes.
+    lastReviewedOn: 2026-04-16
+    reviewBy: 2026-10-16
+  - file: tests/extension/playerResponse.test.ts
+    name: readPlayerResponse tolerates malformed JSON in player_response field
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Guards against YouTube rollouts that emit partially serialized payloads.
+    lastReviewedOn: 2026-04-16
+    reviewBy: 2026-10-16
+  - file: tests/extension/playerResponse.test.ts
+    name: hasUsableCaptionTracks detects at least one caption track
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Ensures the extension can distinguish video pages with and without captions.
+    lastReviewedOn: 2026-04-16
+    reviewBy: 2026-10-16
+  - file: tests/extension/playerResponse.test.ts
+    name: chooseCaptionTrack prefers manual English over auto English
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Keeps the default track selection aligned with manual creator transcripts for better quality.
+    lastReviewedOn: 2026-04-16
+    reviewBy: 2026-10-16
+  - file: tests/extension/playerResponse.test.ts
+    name: chooseCaptionTrack honors a preferred language when available
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Supports future localization of the default track picker.
+    lastReviewedOn: 2026-04-16
+    reviewBy: 2026-10-16
+  - file: tests/extension/playerResponse.test.ts
+    name: chooseCaptionTrack falls back to the first track when preferences are unmet
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Prevents the extension from returning null when no preferred language exists.
+    lastReviewedOn: 2026-04-16
+    reviewBy: 2026-10-16
+  - file: tests/extension/playerResponse.test.ts
+    name: chooseCaptionTrack returns null for empty input
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Provides a defined default when no tracks are available.
+    lastReviewedOn: 2026-04-16
+    reviewBy: 2026-10-16
   - file: tests/features/import/importMode.test.ts
     name: deriveImportMode returns 'manual' when source is absent
     category: unit
