@@ -27,3 +27,25 @@ export function nextListenIndex({
   if (next >= totalSegments) return null;
   return next;
 }
+
+export type ListenNavigationInput = {
+  repeatFlow: RepeatFlow;
+};
+
+export function shouldUseContinuousListenNavigation({
+  repeatFlow,
+}: ListenNavigationInput): boolean {
+  return repeatFlow === "listen";
+}
+
+export type ListenTransportLabelInput = {
+  listenSessionActive: boolean;
+  isPlaying: boolean;
+};
+
+export function listenTransportLabelKey({
+  listenSessionActive,
+  isPlaying,
+}: ListenTransportLabelInput): "play" | "pause" {
+  return listenSessionActive || isPlaying ? "pause" : "play";
+}

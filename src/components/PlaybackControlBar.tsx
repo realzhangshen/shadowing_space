@@ -2,6 +2,7 @@
 
 import { memo } from "react";
 import { useTranslations } from "next-intl";
+import { listenTransportLabelKey } from "@/features/practice/listenMode";
 import type { MicStatus } from "@/hooks/useRecorder";
 import type { RepeatFlow } from "@/store/practiceStore";
 
@@ -55,6 +56,10 @@ export const PlaybackControlBar = memo(function PlaybackControlBar({
   const showRecord = !isAuto && !isFree && !isListen;
   const showReplay = hasRecording && !isFree && !isListen;
   const showHeadphoneHint = isAuto || isFree || isListen;
+  const listenPlayLabel = listenTransportLabelKey({
+    listenSessionActive: Boolean(listenSessionActive),
+    isPlaying,
+  });
 
   const flows: { value: RepeatFlow; label: string }[] = [
     { value: "manual", label: t("manual") },
@@ -112,19 +117,37 @@ export const PlaybackControlBar = memo(function PlaybackControlBar({
           <MicStatusIndicator />
         </div>
       ) : isListen ? (
-        <div className="control-bar">
-          <button
-            type="button"
-            className={
-              listenSessionActive
-                ? "btn primary recording free-start-btn"
-                : "btn primary free-start-btn"
-            }
-            onClick={listenSessionActive ? onStopListen : onStartListen}
-          >
-            {listenSessionActive ? t("stopListen") : t("startListen")}
-          </button>
-          {listenSessionActive ? (
+        <>
+          <div className="control-bar">
+            <button
+              type="button"
+              className="btn secondary"
+              onClick={onPrev}
+              disabled={prevDisabled}
+            >
+              {t("prev")}
+            </button>
+
+            <button
+              type="button"
+              className="btn secondary"
+              title={listenPlayLabel === "pause" ? t("pauseTitle") : t("playTitle")}
+              onClick={listenSessionActive ? onStopListen : onStartListen}
+            >
+              {t(listenPlayLabel)}
+            </button>
+
+            <button
+              type="button"
+              className="btn secondary"
+              onClick={onNext}
+              disabled={nextDisabled}
+            >
+              {t("next")}
+            </button>
+          </div>
+
+          <div className="control-bar-secondary">
             <button
               type="button"
               className={isRecording ? "btn primary recording" : "btn secondary"}
@@ -134,19 +157,19 @@ export const PlaybackControlBar = memo(function PlaybackControlBar({
             >
               {isRecording ? t("stop") : t("shadowOne")}
             </button>
-          ) : null}
-          {!listenSessionActive && hasRecording ? (
-            <button
-              type="button"
-              className="btn secondary"
-              title={t("playRecordingTitle")}
-              onClick={onPlayRecording}
-            >
-              {t("replay")}
-            </button>
-          ) : null}
-          <MicStatusIndicator />
-        </div>
+            {hasRecording ? (
+              <button
+                type="button"
+                className="btn secondary"
+                title={t("playRecordingTitle")}
+                onClick={onPlayRecording}
+              >
+                {t("replay")}
+              </button>
+            ) : null}
+            <MicStatusIndicator />
+          </div>
+        </>
       ) : (
         <>
           <div className="control-bar">

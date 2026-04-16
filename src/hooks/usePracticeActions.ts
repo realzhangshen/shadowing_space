@@ -11,7 +11,11 @@ import {
   saveFreeRecording,
   saveLatestRecording,
 } from "@/features/storage/repository";
-import { nextListenIndex, nextRepeatFlow } from "@/features/practice/listenMode";
+import {
+  nextListenIndex,
+  nextRepeatFlow,
+  shouldUseContinuousListenNavigation,
+} from "@/features/practice/listenMode";
 import { usePracticeStore } from "@/store/practiceStore";
 import type { SegmentRecord } from "@/types/models";
 
@@ -187,6 +191,63 @@ export function usePracticeActions(deps: PracticeActionsDeps) {
     ],
   );
 
+  const playListenSegmentAtRef = useRef<(index: number) => void>(() => {});
+  const playListenSegmentAt = useCallback(
+    (index: number) => {
+      const state = usePracticeStore.getState();
+      if (!state.listenSessionActive) return;
+
+      const currentSegments = segmentsRef.current;
+      const seg = currentSegments[index];
+      if (!seg) {
+        setListenSessionActive(false);
+        setPlaybackMode("idle");
+        return;
+      }
+
+      audioFinishedRef.current = false;
+      setCurrentIndex(index);
+      setPlaybackMode("source");
+      playerRef.current?.playContinuous(seg.startMs, seg.endMs, state.playbackSpeed, () => {
+        if (!usePracticeStore.getState().listenSessionActive) {
+          setPlaybackMode("idle");
+          return false;
+        }
+
+        const recorder = recorderRef.current;
+        if (recorder?.isRecording) {
+          // Bind the in-flight recording to this finishing sentence and let it save normally.
+          manualStopRef.current = false;
+          void recorder.stop();
+        }
+
+        const next = nextListenIndex({
+          currentIndex: index,
+          totalSegments: segmentsRef.current.length,
+        });
+        if (next === null) {
+          setListenSessionActive(false);
+          setPlaybackMode("idle");
+          return false;
+        }
+
+        playListenSegmentAtRef.current(next);
+        return true;
+      });
+    },
+    [
+      segmentsRef,
+      recorderRef,
+      playerRef,
+      audioFinishedRef,
+      manualStopRef,
+      setCurrentIndex,
+      setPlaybackMode,
+      setListenSessionActive,
+    ],
+  );
+  playListenSegmentAtRef.current = playListenSegmentAt;
+
   const navigateToSegment = useCallback(
     async (index: number) => {
       const recorder = recorderRef.current;
@@ -194,24 +255,45 @@ export function usePracticeActions(deps: PracticeActionsDeps) {
         clearTimeout(autoAdvanceTimerRef.current);
         autoAdvanceTimerRef.current = null;
       }
-      if (usePracticeStore.getState().listenSessionActive) {
+
+      const state = usePracticeStore.getState();
+      const useContinuousListen = shouldUseContinuousListenNavigation({
+        repeatFlow: state.repeatFlow,
+      });
+
+      if (useContinuousListen) {
+        setListenSessionActive(true);
+      } else if (state.listenSessionActive) {
         setListenSessionActive(false);
       }
+
       if (recorder?.isRecording) {
-        manualStopRef.current = true;
+        manualStopRef.current = !useContinuousListen;
         await recorder.stop();
       }
+
       setCurrentIndex(index);
       const seg = segments[index];
-      if (!seg) return;
+      if (!seg) {
+        if (useContinuousListen) {
+          setListenSessionActive(false);
+          setPlaybackMode("idle");
+        }
+        return;
+      }
+
       recordingPlayback.stop();
       audioFinishedRef.current = false;
-      playerRef.current?.playSegment(seg.startMs, seg.endMs, playbackSpeed);
-      setPlaybackMode("source");
+      if (useContinuousListen) {
+        playListenSegmentAt(index);
+      } else {
+        playerRef.current?.playSegment(seg.startMs, seg.endMs, playbackSpeed);
+        setPlaybackMode("source");
+      }
     },
     [
       recorderRef,
-      recordingPlayback.stop,
+      recordingPlayback,
       playbackSpeed,
       segments,
       setCurrentIndex,
@@ -221,6 +303,7 @@ export function usePracticeActions(deps: PracticeActionsDeps) {
       manualStopRef,
       playerRef,
       audioFinishedRef,
+      playListenSegmentAt,
     ],
   );
 
@@ -251,7 +334,7 @@ export function usePracticeActions(deps: PracticeActionsDeps) {
     setPlaybackMode("source");
   }, [
     recorderRef,
-    recordingPlayback.stop,
+    recordingPlayback,
     segments,
     currentIndex,
     playbackSpeed,
@@ -275,7 +358,7 @@ export function usePracticeActions(deps: PracticeActionsDeps) {
     await recorder?.start();
   }, [
     recorderRef,
-    recordingPlayback.stop,
+    recordingPlayback,
     currentIndex,
     segments,
     playbackSpeed,
@@ -340,7 +423,7 @@ export function usePracticeActions(deps: PracticeActionsDeps) {
     setPlaybackMode("source");
   }, [
     recorderRef,
-    recordingPlayback.stop,
+    recordingPlayback,
     segments,
     currentIndex,
     isPlaying,
@@ -529,54 +612,15 @@ export function usePracticeActions(deps: PracticeActionsDeps) {
     const startIdx = Math.min(usePracticeStore.getState().currentIndex, segs.length - 1);
     setCurrentIndex(startIdx);
     setListenSessionActive(true);
-
-    const playSegmentAt = (index: number) => {
-      const state = usePracticeStore.getState();
-      if (!state.listenSessionActive) return;
-      const segments = segmentsRef.current;
-      const seg = segments[index];
-      if (!seg) {
-        setListenSessionActive(false);
-        setPlaybackMode("idle");
-        return;
-      }
-      audioFinishedRef.current = false;
-      setCurrentIndex(index);
-      setPlaybackMode("source");
-      playerRef.current?.playContinuous(seg.startMs, seg.endMs, state.playbackSpeed, () => {
-        if (!usePracticeStore.getState().listenSessionActive) return;
-        const recorder = recorderRef.current;
-        if (recorder?.isRecording) {
-          // Bind the in-flight recording to this finishing sentence and let it save normally.
-          manualStopRef.current = false;
-          void recorder.stop();
-        }
-        const next = nextListenIndex({
-          currentIndex: index,
-          totalSegments: segmentsRef.current.length,
-        });
-        if (next === null) {
-          setListenSessionActive(false);
-          setPlaybackMode("idle");
-          return;
-        }
-        playSegmentAt(next);
-      });
-    };
-
-    playSegmentAt(startIdx);
+    playListenSegmentAt(startIdx);
   }, [
     hasSession,
     segmentsRef,
-    recorderRef,
-    playerRef,
-    audioFinishedRef,
-    manualStopRef,
     recordingPlayback,
     setMicrophoneError,
     setCurrentIndex,
-    setPlaybackMode,
     setListenSessionActive,
+    playListenSegmentAt,
   ]);
 
   const toggleListenSession = useCallback(() => {

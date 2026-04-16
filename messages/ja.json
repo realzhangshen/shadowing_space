@@ -196,7 +196,7 @@
     "resumeMessage": "文 #{number} から再開しました",
     "shortcutsHint": "Space：再生/一時停止 · R：録音 · A：再生 · B：再生 · M：モード切替 · T：テキスト切替 · ←/→：前/次",
     "shortcutsHintFree": "F：自由シャドーイング開始/停止 · M：モード切替 · T：テキスト切替",
-    "shortcutsHintListen": "F：リスニング開始/停止 · R：現在の文をシャドー · M：モード切替 · T：テキスト切替",
+    "shortcutsHintListen": "F：リスニング再生/一時停止 · R：現在の文をシャドー · M：モード切替 · T：テキスト切替",
     "waveformUnavailable": "録音中、波形は利用不可",
     "errorNoSession": "ローカルセッションが見つかりません。動画を再インポートしてください。",
     "errorNoSentence": "字幕トラックに再生可能な文がありません。",

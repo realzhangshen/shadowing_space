@@ -196,7 +196,7 @@
     "resumeMessage": "已從第 {number} 句恢復",
     "shortcutsHint": "Space：播放/暫停 · R：錄音 · A：重播 · B：回放 · M：切換模式 · T：切換文字 · ←/→：上/下一句",
     "shortcutsHintFree": "F：開始/停止自由跟讀 · M：切換模式 · T：切換文字",
-    "shortcutsHintListen": "F：開始/停止聆聽 · R：跟讀目前句 · M：切換模式 · T：切換文字",
+    "shortcutsHintListen": "F：播放/暫停聆聽 · R：跟讀目前句 · M：切換模式 · T：切換文字",
     "waveformUnavailable": "錄音正常，波形暫不可用",
     "errorNoSession": "未找到本地工作階段。請重新匯入影片。",
     "errorNoSentence": "字幕軌道沒有可播放的句子。",

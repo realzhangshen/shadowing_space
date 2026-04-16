@@ -136,6 +136,22 @@ tests:
     lastReviewedOn: 2026-04-16
     reviewBy: 2026-10-16
   - file: tests/features/practice/listenMode.test.ts
+    name: shouldUseContinuousListenNavigation keeps previous and next jumps in continuous listen playback
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Ensures previous and next controls stay in continuous listen playback instead of falling back to one-shot playback.
+    lastReviewedOn: 2026-04-16
+    reviewBy: 2026-10-16
+  - file: tests/features/practice/listenMode.test.ts
+    name: listenTransportLabelKey presents active listening as pause instead of stop
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Prevents the listen transport button from looking like a recording stop control while listening is active.
+    lastReviewedOn: 2026-04-16
+    reviewBy: 2026-10-16
+  - file: tests/features/practice/listenMode.test.ts
     name: nextRepeatFlow rotates manual → auto → free → listen → manual
     category: unit
     validity: reasonable

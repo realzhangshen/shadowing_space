@@ -196,7 +196,7 @@
     "resumeMessage": "Resumed from sentence #{number}",
     "shortcutsHint": "Space: play/pause \u00b7 R: record \u00b7 A: replay \u00b7 B: playback \u00b7 M: mode \u00b7 T: toggle text \u00b7 \u2190/\u2192: prev/next",
     "shortcutsHintFree": "F: start/stop free shadowing \u00b7 M: mode \u00b7 T: toggle text",
-    "shortcutsHintListen": "F: start/stop listening \u00b7 R: shadow current sentence \u00b7 M: mode \u00b7 T: toggle text",
+    "shortcutsHintListen": "F: play/pause listening \u00b7 R: shadow current sentence \u00b7 M: mode \u00b7 T: toggle text",
     "waveformUnavailable": "Recording active, waveform unavailable",
     "errorNoSession": "No local session found. Please import the video again.",
     "errorNoSentence": "Caption track has no playable sentence.",

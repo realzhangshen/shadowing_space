@@ -89,7 +89,12 @@ function loadYouTubeApi(): Promise<void> {
 export type YouTubeSegmentPlayerHandle = {
   playSegment: (startMs: number, endMs: number, speed: PlaybackSpeed) => void;
   toggleSegment: (startMs: number, endMs: number, speed: PlaybackSpeed) => void;
-  playContinuous: (startMs: number, endMs: number, speed: PlaybackSpeed, onEnd: () => void) => void;
+  playContinuous: (
+    startMs: number,
+    endMs: number,
+    speed: PlaybackSpeed,
+    onEnd: () => boolean | void,
+  ) => void;
   playFreeRange: (
     startMs: number,
     endMs: number,
@@ -263,13 +268,19 @@ export const YouTubeSegmentPlayer = forwardRef<
         playerRef.current.seekTo(startSeconds, true);
         playerRef.current.playVideo();
 
-        endTimerRef.current = window.setTimeout(
+        const timer = window.setTimeout(
           () => {
-            playerRef.current?.pauseVideo();
-            onEnd();
+            if (endTimerRef.current === timer) {
+              endTimerRef.current = null;
+            }
+            const shouldContinue = onEnd() === true;
+            if (!shouldContinue) {
+              playerRef.current?.pauseVideo();
+            }
           },
           (durationSeconds * 1_000) / appliedSpeed,
         );
+        endTimerRef.current = timer;
       },
       playFreeRange: (startMs, endMs, speed, onTimeUpdate, onEnd) => {
         if (!isReady || !playerRef.current) return;
