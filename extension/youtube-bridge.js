@@ -26,7 +26,9 @@ function waitForResponse(expectedType) {
       if (data.ok) {
         resolve(data);
       } else {
-        reject(new Error(data.error || "Unknown main-world failure."));
+        const err = new Error(data.error || "Unknown main-world failure.");
+        if (data.debug) err.debug = data.debug;
+        reject(err);
       }
     };
 
@@ -58,9 +60,13 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         const pending = waitForResponse(EXTRACT_RESULT_TYPE);
         window.dispatchEvent(new CustomEvent(EXTRACT_REQUEST_EVENT, { detail: { trackIndex } }));
         const data = await pending;
-        sendResponse({ ok: true, payload: data.payload });
+        sendResponse({ ok: true, payload: data.payload, debug: data.debug });
       } catch (error) {
-        sendResponse({ ok: false, error: error instanceof Error ? error.message : String(error) });
+        sendResponse({
+          ok: false,
+          error: error instanceof Error ? error.message : String(error),
+          debug: error?.debug,
+        });
       }
     })();
     return true;

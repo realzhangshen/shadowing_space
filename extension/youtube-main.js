@@ -165,51 +165,106 @@
       );
   }
 
-  async function fetchTrackSegments(baseUrl) {
+  function buildCandidateUrls(baseUrl, track) {
     const url = new URL(baseUrl);
+    const seen = new Set();
     const candidates = [];
 
-    const noFmt = new URL(url);
-    noFmt.searchParams.delete("fmt");
-    candidates.push(noFmt.toString());
+    function push(variant, transform) {
+      const next = new URL(url);
+      transform(next);
+      const str = next.toString();
+      if (seen.has(str)) return;
+      seen.add(str);
+      candidates.push({ variant, url: str });
+    }
 
-    const json3 = new URL(url);
-    json3.searchParams.set("fmt", "json3");
-    candidates.push(json3.toString());
+    // 1. Default (no fmt) — YouTube returns classic XML.
+    push("xml-default", (u) => {
+      u.searchParams.delete("fmt");
+    });
+    // 2. json3 — what YouTube's own player uses.
+    push("json3", (u) => u.searchParams.set("fmt", "json3"));
+    // 3. srv3 — legacy XML variant, sometimes bypasses newer silent-reject paths.
+    push("srv3", (u) => u.searchParams.set("fmt", "srv3"));
+    // 4. srv1 — oldest XML variant.
+    push("srv1", (u) => u.searchParams.set("fmt", "srv1"));
+    // 5. vtt — WebVTT format.
+    push("vtt", (u) => u.searchParams.set("fmt", "vtt"));
 
-    const original = url.toString();
-    if (!candidates.includes(original)) candidates.push(original);
+    // For ASR tracks, make sure kind=asr is present on the URL (some endpoints
+    // silent-reject ASR tracks if kind is missing).
+    if (track?.kind === "asr") {
+      push("json3+kind=asr", (u) => {
+        u.searchParams.set("fmt", "json3");
+        if (!u.searchParams.has("kind")) u.searchParams.set("kind", "asr");
+      });
+    }
 
-    let lastErrorMessage = "No usable caption payload was returned by YouTube.";
+    // 6. Original URL as-is.
+    push("original", () => {});
 
-    for (const candidateUrl of candidates) {
-      const response = await fetch(candidateUrl, { credentials: "include" });
+    return candidates;
+  }
 
-      if (!response.ok) {
-        lastErrorMessage = `Caption request failed with HTTP ${response.status}.`;
+  async function fetchTrackSegments(baseUrl, track) {
+    const candidates = buildCandidateUrls(baseUrl, track);
+    const attempts = [];
+
+    for (const { variant, url: candidateUrl } of candidates) {
+      const attempt = { variant, status: null, contentType: "", length: 0, preview: "" };
+      attempts.push(attempt);
+
+      let response;
+      try {
+        response = await fetch(candidateUrl, { credentials: "include" });
+      } catch (error) {
+        attempt.error = error instanceof Error ? error.message : String(error);
         continue;
       }
+      attempt.status = response.status;
+      attempt.contentType = response.headers.get("content-type") || "";
+
+      if (!response.ok) continue;
 
       const payloadText = await response.text();
-      if (!payloadText.trim()) {
-        lastErrorMessage = "Caption payload was empty.";
-        continue;
-      }
+      attempt.length = payloadText.length;
+      attempt.preview = payloadText.slice(0, 100).replace(/\s+/g, " ");
+
+      if (!payloadText.trim()) continue;
 
       try {
         const jsonSegments = parseJson3Segments(payloadText);
-        if (jsonSegments.length > 0) return jsonSegments;
+        if (jsonSegments.length > 0) {
+          attempt.parsed = `json3:${jsonSegments.length}`;
+          return { segments: jsonSegments, attempts };
+        }
       } catch {
         // Fall through to XML parsing.
       }
 
       const xmlSegments = parseXmlSegments(payloadText);
-      if (xmlSegments.length > 0) return xmlSegments;
+      if (xmlSegments.length > 0) {
+        attempt.parsed = `xml:${xmlSegments.length}`;
+        return { segments: xmlSegments, attempts };
+      }
 
-      lastErrorMessage = "Caption payload could not be parsed.";
+      attempt.parsed = "unrecognized";
     }
 
-    throw new Error(lastErrorMessage);
+    // Summarize what we saw into a short human-readable error.
+    const summary = attempts
+      .map((a) => {
+        if (a.error) return `${a.variant}=ERR(${a.error})`;
+        return `${a.variant}=HTTP${a.status} ${a.length}b${a.parsed ? "/" + a.parsed : ""}`;
+      })
+      .join(", ");
+
+    const err = new Error(
+      `YouTube returned no usable captions across ${attempts.length} attempts. ${summary}`,
+    );
+    err.attempts = attempts;
+    throw err;
   }
 
   function resolvePlayerAndVideoId() {
@@ -257,24 +312,27 @@
       throw new Error("The selected caption track is missing required metadata.");
     }
 
-    const segments = await fetchTrackSegments(track.baseUrl);
+    const { segments, attempts } = await fetchTrackSegments(track.baseUrl, track);
 
     return {
-      version: 1,
-      source: "shadowing-space-extension",
-      exportedAt: new Date().toISOString(),
-      video: {
-        videoId,
-        title: videoDetails?.title || document.title.replace(/\s*-\s*YouTube$/, ""),
-        thumbnailUrl: getThumbnailUrl(videoDetails),
+      payload: {
+        version: 1,
+        source: "shadowing-space-extension",
+        exportedAt: new Date().toISOString(),
+        video: {
+          videoId,
+          title: videoDetails?.title || document.title.replace(/\s*-\s*YouTube$/, ""),
+          thumbnailUrl: getThumbnailUrl(videoDetails),
+        },
+        track: {
+          languageCode: track.languageCode,
+          label: labelFromName(track.name, track.languageCode),
+          isAutoGenerated: track.kind === "asr",
+          originTrackId: track.vssId || track.languageCode,
+        },
+        segments,
       },
-      track: {
-        languageCode: track.languageCode,
-        label: labelFromName(track.name, track.languageCode),
-        isAutoGenerated: track.kind === "asr",
-        originTrackId: track.vssId || track.languageCode,
-      },
-      segments,
+      debug: { attempts },
     };
   }
 
@@ -300,11 +358,19 @@
 
     void (async () => {
       try {
-        const payload = await extractPayload(trackIndex);
-        post(EXTRACT_RESULT_TYPE, true, { payload });
+        const result = await extractPayload(trackIndex);
+        post(EXTRACT_RESULT_TYPE, true, {
+          payload: result.payload,
+          debug: result.debug,
+        });
       } catch (error) {
+        const debug =
+          error && typeof error === "object" && "attempts" in error
+            ? { attempts: /** @type {any} */ (error).attempts }
+            : undefined;
         post(EXTRACT_RESULT_TYPE, false, {
           error: error instanceof Error ? error.message : String(error),
+          debug,
         });
       }
     })();

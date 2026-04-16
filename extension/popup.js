@@ -161,6 +161,15 @@ async function extractSelectedTrack(tabId) {
     type: MESSAGE_EXTRACT_TRACK,
     trackIndex,
   });
+  if (response?.debug?.attempts) {
+    response.debug.attempts.forEach((attempt) => {
+      appendLog(
+        attempt.parsed?.startsWith("json3") || attempt.parsed?.startsWith("xml") ? "info" : "warn",
+        `fetch ${attempt.variant}`,
+        attempt,
+      );
+    });
+  }
   if (!response?.ok || !response.payload) {
     throw new Error(response?.error || "Extraction failed without a reason.");
   }
