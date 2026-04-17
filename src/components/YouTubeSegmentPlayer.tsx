@@ -15,6 +15,7 @@ import {
   normalizePlaybackSpeed,
   snapToSupportedPlaybackRate,
 } from "@/features/practice/playbackSpeed";
+import { startSegmentWatcher, type SegmentWatcher } from "@/features/practice/segmentWatcher";
 import type { PlaybackSpeed } from "@/store/practiceStore";
 
 const SCRIPT_ID = "youtube-iframe-api-script";
@@ -125,14 +126,19 @@ export const YouTubeSegmentPlayer = forwardRef<
 ) {
   const elementId = useId().replace(/[:]/g, "");
   const playerRef = useRef<YT.Player | null>(null);
-  const endTimerRef = useRef<number | null>(null);
+  const segmentWatcherRef = useRef<SegmentWatcher | null>(null);
   const pollIntervalRef = useRef<number | null>(null);
   const [isReady, setIsReady] = useState(false);
 
+  const getCurrentMs = useCallback(() => {
+    const player = playerRef.current as (YT.Player & { getCurrentTime?: () => number }) | null;
+    return (player?.getCurrentTime?.() ?? 0) * 1_000;
+  }, []);
+
   const clearTimers = () => {
-    if (endTimerRef.current) {
-      window.clearTimeout(endTimerRef.current);
-      endTimerRef.current = null;
+    if (segmentWatcherRef.current) {
+      segmentWatcherRef.current.cancel();
+      segmentWatcherRef.current = null;
     }
     if (pollIntervalRef.current) {
       window.clearInterval(pollIntervalRef.current);
@@ -224,20 +230,21 @@ export const YouTubeSegmentPlayer = forwardRef<
     (startMs: number, endMs: number, speed: PlaybackSpeed) => {
       clearTimers();
       const startSeconds = Math.max(0, startMs / 1_000);
-      const durationSeconds = Math.max(0.2, (endMs - startMs) / 1_000);
 
-      const appliedSpeed = applyPlaybackSpeed(speed);
+      applyPlaybackSpeed(speed);
       playerRef.current!.seekTo(startSeconds, true);
       playerRef.current!.playVideo();
 
-      endTimerRef.current = window.setTimeout(
-        () => {
+      segmentWatcherRef.current = startSegmentWatcher({
+        getCurrentMs,
+        endMs,
+        onReached: () => {
+          segmentWatcherRef.current = null;
           playerRef.current?.pauseVideo();
         },
-        (durationSeconds * 1_000) / appliedSpeed,
-      );
+      });
     },
-    [applyPlaybackSpeed],
+    [applyPlaybackSpeed, getCurrentMs],
   );
 
   useImperativeHandle(
@@ -262,31 +269,27 @@ export const YouTubeSegmentPlayer = forwardRef<
         if (!isReady || !playerRef.current) return;
         clearTimers();
         const startSeconds = Math.max(0, startMs / 1_000);
-        const durationSeconds = Math.max(0.2, (endMs - startMs) / 1_000);
 
-        const appliedSpeed = applyPlaybackSpeed(speed);
+        applyPlaybackSpeed(speed);
         playerRef.current.seekTo(startSeconds, true);
         playerRef.current.playVideo();
 
-        const timer = window.setTimeout(
-          () => {
-            if (endTimerRef.current === timer) {
-              endTimerRef.current = null;
-            }
+        segmentWatcherRef.current = startSegmentWatcher({
+          getCurrentMs,
+          endMs,
+          onReached: () => {
+            segmentWatcherRef.current = null;
             const shouldContinue = onEnd() === true;
             if (!shouldContinue) {
               playerRef.current?.pauseVideo();
             }
           },
-          (durationSeconds * 1_000) / appliedSpeed,
-        );
-        endTimerRef.current = timer;
+        });
       },
       playFreeRange: (startMs, endMs, speed, onTimeUpdate, onEnd) => {
         if (!isReady || !playerRef.current) return;
         clearTimers();
         const startSeconds = Math.max(0, startMs / 1_000);
-        const endSeconds = endMs / 1_000;
 
         applyPlaybackSpeed(speed);
         playerRef.current.seekTo(startSeconds, true);
@@ -294,11 +297,10 @@ export const YouTubeSegmentPlayer = forwardRef<
 
         pollIntervalRef.current = window.setInterval(() => {
           if (!playerRef.current) return;
-          const player = playerRef.current as YT.Player & { getCurrentTime?: () => number };
-          const currentMs = (player.getCurrentTime?.() ?? 0) * 1_000;
+          const currentMs = getCurrentMs();
           onTimeUpdate(currentMs);
 
-          if (currentMs / 1_000 >= endSeconds) {
+          if (currentMs >= endMs) {
             clearTimers();
             playerRef.current?.pauseVideo();
             onEnd();
@@ -309,11 +311,7 @@ export const YouTubeSegmentPlayer = forwardRef<
         clearTimers();
         playerRef.current?.pauseVideo();
       },
-      getCurrentTimeMs: () => {
-        if (!playerRef.current) return 0;
-        const player = playerRef.current as YT.Player & { getCurrentTime?: () => number };
-        return (player.getCurrentTime?.() ?? 0) * 1_000;
-      },
+      getCurrentTimeMs: () => getCurrentMs(),
       getPlaybackSpeed: () => {
         if (!playerRef.current) {
           return DEFAULT_PLAYBACK_SPEED;
@@ -328,7 +326,7 @@ export const YouTubeSegmentPlayer = forwardRef<
         return applyPlaybackSpeed(speed);
       },
     }),
-    [applyPlaybackSpeed, isReady, seekAndPlay],
+    [applyPlaybackSpeed, getCurrentMs, isReady, seekAndPlay],
   );
 
   return (

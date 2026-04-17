@@ -1087,6 +1087,46 @@ tests:
     reason: Manual troubleshooting aid, intentionally skipped by default.
     lastReviewedOn: 2026-03-01
     reviewBy: 2026-03-31
+  - file: tests/features/practice/segmentWatcher.test.ts
+    name: hasReachedSegmentEnd returns true once current time meets the end
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Pins the boundary predicate used for segment-end polling.
+    lastReviewedOn: 2026-04-17
+    reviewBy: 2026-10-17
+  - file: tests/features/practice/segmentWatcher.test.ts
+    name: hasReachedSegmentEnd accepts tolerance so near-misses still count as reached
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Prevents regressions where tiny timing slop would miss the boundary.
+    lastReviewedOn: 2026-04-17
+    reviewBy: 2026-10-17
+  - file: tests/features/practice/segmentWatcher.test.ts
+    name: hasReachedSegmentEnd honors a custom tolerance
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks the custom-tolerance override so callers can tune precision.
+    lastReviewedOn: 2026-04-17
+    reviewBy: 2026-10-17
+  - file: tests/features/practice/segmentWatcher.test.ts
+    name: startSegmentWatcher fires onReached exactly once when current time crosses end
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Ensures the watcher does not double-fire when the player stalls past the boundary.
+    lastReviewedOn: 2026-04-17
+    reviewBy: 2026-10-17
+  - file: tests/features/practice/segmentWatcher.test.ts
+    name: startSegmentWatcher cancel stops polling and suppresses onReached
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Guarantees clean teardown on navigation/pause so no stray timers linger.
+    lastReviewedOn: 2026-04-17
+    reviewBy: 2026-10-17
   - file: tests/lib/growableFloat32Buffer.test.ts
     name: push appends and snapshot length tracks writes
     category: unit
