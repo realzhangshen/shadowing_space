@@ -8,14 +8,24 @@ A free, open-source YouTube-based **shadowing practice** tool. Listen to native 
 
 ## Features
 
-- Import any YouTube video URL and fetch available caption tracks
-- Sentence-by-sentence shadowing with manual controls (play/pause, prev/next)
-- Browser-based recording with A/B replay (Original vs My Recording)
-- Speed controls: presets plus custom numeric input that syncs to the nearest player-supported speed
-- Local history and session resume (IndexedDB via Dexie)
-- Structured JSON server logs with request tracing
+- Import any YouTube video URL and fetch available caption tracks (server-side fetch or via the browser extension)
+- Four practice modes on the same segment list:
+  - **Manual** — press record per sentence, then review
+  - **Auto** — play → record → auto-advance, hands-free shadowing
+  - **Free** — record a continuous range of sentences as one take
+  - **Listen** — play segments back-to-back with optional mid-stream "Shadow this one" capture
+- Browser-based recording with A/B replay (Original vs My Recording) and a live scrolling waveform
+- Speed controls: presets (0.5×–1.5×) plus a custom numeric input that snaps to the nearest player-supported rate
+- Vocabulary capture — select a word in the transcript, save it with sentence context, browse per-video
+- Study-time tracking — active foreground minutes roll up into a dashboard summary per video and per day
+- Local-first storage: session resume, history, recordings, and vocabulary all live in IndexedDB via Dexie
+- Keyboard shortcuts for every transport action (see [Shortcuts](#keyboard-shortcuts))
+- Virtualized sentence list stays smooth on long (1000+ segment) lectures
+- Structured JSON server logs with end-to-end `x-request-id` tracing
+- Segment-level React error boundaries keep one broken panel from blanking the whole page
 - PWA — installable on mobile and desktop
-- Multi-language UI (English, 简体中文, 繁體中文, 日本語, Русский)
+- Multi-language UI (English, 简体中文, 繁體中文, 日本語, Русский) with a CI gate that fails the build on missing/extra keys
+- Companion Chrome extension for pages where server-side fetch is blocked (see [`extension/README.md`](extension/README.md))
 
 ## Tech Stack
 
@@ -79,11 +89,67 @@ Set all required environment variables (especially `TRACK_TOKEN_SECRET`) before 
 ```bash
 npm run dev          # Start dev server
 npm run typecheck    # TypeScript check
+npm run lint         # ESLint
+npm run lint:fix     # ESLint with autofix
+npm run format       # Prettier write
+npm run format:check # Prettier check (read-only)
+npm run i18n:check   # Diff locale key sets against en.json
 npm run test         # Run main test suite
 npm run test:all     # Main + diagnostic tests
 npm run test:catalog # Catalog coverage check
+npm run ci:local     # typecheck + lint + format:check + i18n:check + test + build
 npm run build        # Production build
 ```
+
+Before opening a PR, `npm run ci:local` is the single command that must pass.
+
+## Architecture
+
+```
+app/                     Next.js App Router
+├── [locale]/            Localized routes (home, import, practice, dashboard, guide)
+├── api/                 Route handlers (proxy-health + transcript fetch/segments)
+└── globals.css          Global styles
+
+src/
+├── components/          Reusable UI (PlaybackControlBar, SegmentNavigator, WaveformCanvas, ErrorBoundary, …)
+├── features/
+│   ├── practice/        PracticeClient + mode capabilities, listen/free helpers, segment watcher
+│   ├── import/          Import flow (URL + extension handoff + JSON upload)
+│   ├── history/         Dashboard + summaries (practice / study sessions)
+│   ├── storage/         Dexie db + split repository modules (ids / recordings / vocabulary / studySessions / videos)
+│   └── vocabulary/      Word cleaning + normalization helpers
+├── hooks/               Shared React hooks (recorder, live waveform, practice actions, shortcuts, …)
+├── i18n/                next-intl navigation + request config
+├── lib/                 Framework-agnostic utilities
+├── server/              Server-only code (logger, rate limit, errors, YouTube scraping)
+├── store/               Zustand practice store
+└── types/               Shared TypeScript types
+
+extension/               MV3 Chrome extension (optional transcript importer)
+messages/                Per-locale JSON (en, ja, ru, zh-Hans, zh-Hant)
+scripts/
+├── i18n/                check.ts (locale drift gate)
+└── tests/               status.ts (catalog-driven test runner)
+tests/                   Mirrors src/, plus catalog.yaml for governance
+```
+
+Storage is local-first: every recording, vocabulary entry, and study session lives in the user's browser (Dexie schema versioned v1 → v5). The server only mediates YouTube transcript fetches.
+
+## Keyboard Shortcuts
+
+All shortcuts are active on the practice page while focus is outside inputs.
+
+| Key       | Action                                                  |
+| --------- | ------------------------------------------------------- |
+| `Space`   | Play / pause source (in Auto mode: start shadow take)   |
+| `R`       | Start / stop recording (in Listen mode: shadow current) |
+| `A`       | Play original segment                                   |
+| `B`       | Play latest recording                                   |
+| `←` / `→` | Previous / next segment                                 |
+| `T`       | Toggle transcript visibility                            |
+| `M`       | Cycle practice flow (Manual → Auto → Free → Listen)     |
+| `F`       | Start / stop a Free or Listen session                   |
 
 ## API Endpoints
 
