@@ -25,7 +25,8 @@
     "lint:fix": "eslint app/ src/ middleware.ts --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "ci:local": "npm run typecheck && npm run lint && npm run format:check && npm run test && TRACK_TOKEN_SECRET=local-ci-dummy npm run build",
+    "i18n:check": "node --import tsx scripts/i18n/check.ts",
+    "ci:local": "npm run typecheck && npm run lint && npm run format:check && npm run i18n:check && npm run test && TRACK_TOKEN_SECRET=local-ci-dummy npm run build",
     "prepare": "git config core.hooksPath .hooks"
   },
   "dependencies": {

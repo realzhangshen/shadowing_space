@@ -1087,6 +1087,38 @@ tests:
     reason: Manual troubleshooting aid, intentionally skipped by default.
     lastReviewedOn: 2026-03-01
     reviewBy: 2026-03-31
+  - file: tests/scripts/compareKeys.test.ts
+    name: flattenKeys produces dot-separated leaf paths
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks the flatten contract used by i18n:check to compare locale key sets.
+    lastReviewedOn: 2026-04-17
+    reviewBy: 2026-10-17
+  - file: tests/scripts/compareKeys.test.ts
+    name: flattenKeys records an empty object as a leaf so locale drift stays visible
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Guards against accidental empty namespaces hiding missing translations.
+    lastReviewedOn: 2026-04-17
+    reviewBy: 2026-10-17
+  - file: tests/scripts/compareKeys.test.ts
+    name: diffKeySets reports keys missing from candidate and extras that do not exist in reference
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Ensures i18n drift reports name both kinds of divergence clearly.
+    lastReviewedOn: 2026-04-17
+    reviewBy: 2026-10-17
+  - file: tests/scripts/compareKeys.test.ts
+    name: diffKeySets returns empty arrays when the two sets match
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Prevents the ci:local gate from flagging clean locales.
+    lastReviewedOn: 2026-04-17
+    reviewBy: 2026-10-17
   - file: tests/features/practice/segmentWatcher.test.ts
     name: hasReachedSegmentEnd returns true once current time meets the end
     category: unit
