@@ -1087,6 +1087,22 @@ tests:
     reason: Manual troubleshooting aid, intentionally skipped by default.
     lastReviewedOn: 2026-03-01
     reviewBy: 2026-03-31
+  - file: tests/components/errorBoundary.test.ts
+    name: ErrorBoundary.getDerivedStateFromError stores the thrown error in state
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Pins the React error-to-state derivation for the feature-level boundary.
+    lastReviewedOn: 2026-04-17
+    reviewBy: 2026-10-17
+  - file: tests/components/errorBoundary.test.ts
+    name: ErrorBoundary.getDerivedStateFromError returns a fresh state object each call
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Guards against reusing the same state reference, which would break React reconciliation.
+    lastReviewedOn: 2026-04-17
+    reviewBy: 2026-10-17
   - file: tests/features/practice/modeCapabilities.test.ts
     name: manual mode pauses playback on record and ends in attempt review
     category: unit

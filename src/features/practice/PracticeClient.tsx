@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { PlaybackControlBar, type SessionControls } from "@/components/PlaybackControlBar";
 import { SegmentNavigator } from "@/components/SegmentNavigator";
 import { WaveformCanvas } from "@/components/WaveformCanvas";
@@ -602,15 +603,17 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
 
         <PlaybackSpeedInput playbackSpeed={playbackSpeed} onChange={setPlaybackSpeedInStore} />
 
-        <VocabularyPanel
-          items={vocabularyItems}
-          wordDraft={wordDraft}
-          onWordDraftChange={setWordDraft}
-          onSave={() => void handleSaveWord()}
-          onDelete={(id) => void handleDeleteWord(id)}
-          feedback={wordFeedback}
-          canSave={Boolean(cleanedWordDraft)}
-        />
+        <ErrorBoundary>
+          <VocabularyPanel
+            items={vocabularyItems}
+            wordDraft={wordDraft}
+            onWordDraftChange={setWordDraft}
+            onSave={() => void handleSaveWord()}
+            onDelete={(id) => void handleDeleteWord(id)}
+            feedback={wordFeedback}
+            canSave={Boolean(cleanedWordDraft)}
+          />
+        </ErrorBoundary>
 
         {resumeMessage ? <p className="resume-indicator">{resumeMessage}</p> : null}
 
@@ -631,19 +634,21 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
 
       {/* Right panel: sentence list only */}
       <section className="card main-practice">
-        <SegmentNavigator
-          segments={segments}
-          currentIndex={currentIndex}
-          onSelectSegment={actions.selectSegment}
-          recordingReadySet={recordingReadySet}
-          transcriptHidden={transcriptHidden}
-          onToggleTranscriptHidden={toggleTranscriptHidden}
-          freeMode={repeatFlow === "free"}
-          freeRange={freeRange}
-          freeHighlightIndex={freeHighlightIndex}
-          freeSessionActive={freeSessionActive}
-          onSetFreeRange={setFreeRange}
-        />
+        <ErrorBoundary>
+          <SegmentNavigator
+            segments={segments}
+            currentIndex={currentIndex}
+            onSelectSegment={actions.selectSegment}
+            recordingReadySet={recordingReadySet}
+            transcriptHidden={transcriptHidden}
+            onToggleTranscriptHidden={toggleTranscriptHidden}
+            freeMode={repeatFlow === "free"}
+            freeRange={freeRange}
+            freeHighlightIndex={freeHighlightIndex}
+            freeSessionActive={freeSessionActive}
+            onSetFreeRange={setFreeRange}
+          />
+        </ErrorBoundary>
       </section>
     </div>
   );
