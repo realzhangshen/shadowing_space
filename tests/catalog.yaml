@@ -1087,6 +1087,54 @@ tests:
     reason: Manual troubleshooting aid, intentionally skipped by default.
     lastReviewedOn: 2026-03-01
     reviewBy: 2026-03-31
+  - file: tests/components/virtualWindow.test.ts
+    name: computeVisibleWindow returns overscanned window around the scrolled-to row
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Pins the first/last visible index math that drives SegmentNavigator virtualization.
+    lastReviewedOn: 2026-04-17
+    reviewBy: 2026-10-17
+  - file: tests/components/virtualWindow.test.ts
+    name: computeVisibleWindow clamps to list bounds
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Ensures short lists render fully without negative indices or overflow.
+    lastReviewedOn: 2026-04-17
+    reviewBy: 2026-10-17
+  - file: tests/components/virtualWindow.test.ts
+    name: computeVisibleWindow falls back to full range when inputs are degenerate
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Prevents empty / zero-height containers from hiding the entire list.
+    lastReviewedOn: 2026-04-17
+    reviewBy: 2026-10-17
+  - file: tests/components/virtualWindow.test.ts
+    name: isIndexInWindow inclusive on both bounds
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks the "should we scroll" decision rule for active segments.
+    lastReviewedOn: 2026-04-17
+    reviewBy: 2026-10-17
+  - file: tests/components/virtualWindow.test.ts
+    name: scrollOffsetForIndex centers the target row within the viewport
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Pins centering math so scrolling into view lands predictably.
+    lastReviewedOn: 2026-04-17
+    reviewBy: 2026-10-17
+  - file: tests/components/virtualWindow.test.ts
+    name: scrollOffsetForIndex clamps to the top and bottom of the list
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Prevents scroll beyond scrollable area on edge indices.
+    lastReviewedOn: 2026-04-17
+    reviewBy: 2026-10-17
   - file: tests/components/errorBoundary.test.ts
     name: ErrorBoundary.getDerivedStateFromError stores the thrown error in state
     category: unit
