@@ -1087,6 +1087,46 @@ tests:
     reason: Manual troubleshooting aid, intentionally skipped by default.
     lastReviewedOn: 2026-03-01
     reviewBy: 2026-03-31
+  - file: tests/features/practice/modeCapabilities.test.ts
+    name: manual mode pauses playback on record and ends in attempt review
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Pins the manual-mode capability row so behavior remains table-driven.
+    lastReviewedOn: 2026-04-17
+    reviewBy: 2026-10-17
+  - file: tests/features/practice/modeCapabilities.test.ts
+    name: auto mode auto-advances after a take and does not pause playback on record
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks auto-mode auto-advance contract.
+    lastReviewedOn: 2026-04-17
+    reviewBy: 2026-10-17
+  - file: tests/features/practice/modeCapabilities.test.ts
+    name: free mode plays a range and owns its own recording storage
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks free-mode capability row including continuity=range.
+    lastReviewedOn: 2026-04-17
+    reviewBy: 2026-10-17
+  - file: tests/features/practice/modeCapabilities.test.ts
+    name: listen mode plays segments sequentially and keeps the session alive after a take
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks listen-mode opportunistic-shadow contract.
+    lastReviewedOn: 2026-04-17
+    reviewBy: 2026-10-17
+  - file: tests/features/practice/modeCapabilities.test.ts
+    name: MODE_CAPABILITIES covers every repeat flow exactly once
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Fails fast when a new RepeatFlow is introduced without a capability row.
+    lastReviewedOn: 2026-04-17
+    reviewBy: 2026-10-17
   - file: tests/scripts/compareKeys.test.ts
     name: flattenKeys produces dot-separated leaf paths
     category: unit

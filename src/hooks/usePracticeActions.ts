@@ -16,6 +16,7 @@ import {
   nextRepeatFlow,
   shouldUseContinuousListenNavigation,
 } from "@/features/practice/listenMode";
+import { capabilitiesFor } from "@/features/practice/modeCapabilities";
 import { usePracticeStore } from "@/store/practiceStore";
 import type { SegmentRecord } from "@/types/models";
 
@@ -89,8 +90,9 @@ export function usePracticeActions(deps: PracticeActionsDeps) {
       const state = usePracticeStore.getState();
       const { segments: segs } = depsRef.current;
       const recorder = recorderRef.current;
+      const caps = capabilitiesFor(state.repeatFlow);
 
-      if (state.repeatFlow === "free") {
+      if (caps.recordingStorage === "free") {
         freeRecordingBlobRef.current = blob;
         setWaveformBlob(blob);
         setFreeRecordingReady(true);
@@ -137,37 +139,39 @@ export function usePracticeActions(deps: PracticeActionsDeps) {
         return;
       }
 
-      if (state.repeatFlow === "listen") {
-        // Listen session keeps driving playback; do not switch into "attempt" review mode.
-        return;
-      }
+      switch (caps.postRecord) {
+        case "continueSession":
+          // Session keeps driving playback; do not switch into "attempt" review.
+          return;
+        case "autoAdvance": {
+          setPlaybackMode("idle");
+          autoAdvanceTimerRef.current = setTimeout(() => {
+            autoAdvanceTimerRef.current = null;
+            const s = usePracticeStore.getState();
+            const currentSegments = segmentsRef.current;
+            const nextIdx = Math.min(currentSegments.length - 1, s.currentIndex + 1);
+            if (nextIdx === s.currentIndex) return;
 
-      if (state.repeatFlow === "auto") {
-        setPlaybackMode("idle");
-      } else {
-        setPlaybackMode("attempt");
-      }
+            setCurrentIndex(nextIdx);
+            const nextSeg = currentSegments[nextIdx];
+            if (!nextSeg) return;
 
-      if (state.repeatFlow === "auto") {
-        autoAdvanceTimerRef.current = setTimeout(() => {
-          autoAdvanceTimerRef.current = null;
-          const s = usePracticeStore.getState();
-          const currentSegments = segmentsRef.current;
-          const nextIdx = Math.min(currentSegments.length - 1, s.currentIndex + 1);
-          if (nextIdx === s.currentIndex) return;
+            recordingPlayback.stop();
+            audioFinishedRef.current = false;
+            playerRef.current?.playSegment(nextSeg.startMs, nextSeg.endMs, s.playbackSpeed);
+            setPlaybackMode("source");
 
-          setCurrentIndex(nextIdx);
-          const nextSeg = currentSegments[nextIdx];
-          if (!nextSeg) return;
-
-          recordingPlayback.stop();
-          audioFinishedRef.current = false;
-          playerRef.current?.playSegment(nextSeg.startMs, nextSeg.endMs, s.playbackSpeed);
-          setPlaybackMode("source");
-
-          recordingTargetRef.current = nextIdx;
-          void recorder?.start();
-        }, autoAdvanceDelayMs);
+            recordingTargetRef.current = nextIdx;
+            void recorder?.start();
+          }, autoAdvanceDelayMs);
+          return;
+        }
+        case "attempt":
+          setPlaybackMode("attempt");
+          return;
+        case "idle":
+          setPlaybackMode("idle");
+          return;
       }
     },
     [
@@ -374,15 +378,16 @@ export function usePracticeActions(deps: PracticeActionsDeps) {
     setMicrophoneError(undefined);
 
     const state = usePracticeStore.getState();
-    const inLiveListenSession = state.repeatFlow === "listen" && state.listenSessionActive;
+    const caps = capabilitiesFor(state.repeatFlow);
+    const inLiveSession = caps.hasSession && state.listenSessionActive;
 
     if (recorder?.isRecording) {
-      if (state.repeatFlow === "manual") {
+      if (caps.pausesPlaybackOnRecord) {
         playerRef.current?.pause();
       }
       await recorder.stop();
     } else {
-      if (!inLiveListenSession) {
+      if (!inLiveSession) {
         playerRef.current?.pause();
       }
       recordingPlayback.stop();
@@ -412,7 +417,7 @@ export function usePracticeActions(deps: PracticeActionsDeps) {
 
     const state = usePracticeStore.getState();
 
-    if (state.repeatFlow === "auto") {
+    if (capabilitiesFor(state.repeatFlow).postRecord === "autoAdvance") {
       void startShadowing();
       return;
     }

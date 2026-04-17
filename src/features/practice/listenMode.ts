@@ -1,3 +1,4 @@
+import { capabilitiesFor } from "@/features/practice/modeCapabilities";
 import type { RepeatFlow } from "@/store/practiceStore";
 
 export const REPEAT_FLOW_ORDER = [
@@ -35,7 +36,7 @@ export type ListenNavigationInput = {
 export function shouldUseContinuousListenNavigation({
   repeatFlow,
 }: ListenNavigationInput): boolean {
-  return repeatFlow === "listen";
+  return capabilitiesFor(repeatFlow).continuity === "sequential";
 }
 
 export type ListenTransportLabelInput = {
