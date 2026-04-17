@@ -1087,3 +1087,43 @@ tests:
     reason: Manual troubleshooting aid, intentionally skipped by default.
     lastReviewedOn: 2026-03-01
     reviewBy: 2026-03-31
+  - file: tests/lib/growableFloat32Buffer.test.ts
+    name: push appends and snapshot length tracks writes
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks the push/length/snapshot contract for the live waveform buffer.
+    lastReviewedOn: 2026-04-17
+    reviewBy: 2026-10-17
+  - file: tests/lib/growableFloat32Buffer.test.ts
+    name: snapshot returns a view over the same underlying storage when no growth
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Prevents regression back to per-frame Float32Array allocation.
+    lastReviewedOn: 2026-04-17
+    reviewBy: 2026-10-17
+  - file: tests/lib/growableFloat32Buffer.test.ts
+    name: capacity grows geometrically on overflow and preserves existing values
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Guarantees amortized O(1) push so long recordings remain smooth.
+    lastReviewedOn: 2026-04-17
+    reviewBy: 2026-10-17
+  - file: tests/lib/growableFloat32Buffer.test.ts
+    name: reset zeros length without releasing capacity
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Ensures the buffer is reusable across consecutive recordings without reallocation.
+    lastReviewedOn: 2026-04-17
+    reviewBy: 2026-10-17
+  - file: tests/lib/growableFloat32Buffer.test.ts
+    name: freeze returns an independent copy whose buffer is detached from storage
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Confirms the stopped-recording snapshot is safe to retain across further pushes.
+    lastReviewedOn: 2026-04-17
+    reviewBy: 2026-10-17

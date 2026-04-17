@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { GrowableFloat32Buffer } from "@/lib/growableFloat32Buffer";
 
 type LiveWaveformStatus = "idle" | "live" | "degraded";
 
@@ -32,7 +33,7 @@ export function useLiveWaveform(
   // Derive isLive from current status so degraded mode does not look "active".
   const isLive = status === "live";
 
-  const peaksBufferRef = useRef<number[]>([]);
+  const peaksBufferRef = useRef<GrowableFloat32Buffer>(new GrowableFloat32Buffer());
   const rafRef = useRef<number>(0);
   const livePeaksRef = useRef<Float32Array | null>(null);
   const subscribersRef = useRef(new Set<() => void>());
@@ -87,7 +88,7 @@ export function useLiveWaveform(
     if (wasRecordingRef.current && !isRecording) {
       // Just stopped: freeze current buffer into React state
       if (peaksBufferRef.current.length > 0) {
-        setPeaks(new Float32Array(peaksBufferRef.current));
+        setPeaks(peaksBufferRef.current.freeze());
       }
       livePeaksRef.current = null;
     }
@@ -103,7 +104,7 @@ export function useLiveWaveform(
       return;
     }
 
-    peaksBufferRef.current = [];
+    peaksBufferRef.current.reset();
     livePeaksRef.current = null;
     setPeaks(null);
 
@@ -190,8 +191,9 @@ export function useLiveWaveform(
         const buffer = peaksBufferRef.current;
         buffer.push(peak);
 
-        // Write to ref + notify subscribers (bypasses React)
-        livePeaksRef.current = new Float32Array(buffer);
+        // Write to ref + notify subscribers (bypasses React). `snapshot()` is a
+        // zero-copy view onto the growable buffer; consumers re-read per frame.
+        livePeaksRef.current = buffer.snapshot();
         for (const cb of subscribersRef.current) cb();
 
         rafRef.current = requestAnimationFrame(tick);
