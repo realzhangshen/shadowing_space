@@ -6,6 +6,10 @@ import { listenTransportLabelKey } from "@/features/practice/listenMode";
 import type { MicStatus } from "@/hooks/useRecorder";
 import type { RepeatFlow } from "@/store/practiceStore";
 
+export type SessionControls =
+  | { mode: "free"; active: boolean; onStart: () => void; onStop: () => void }
+  | { mode: "listen"; active: boolean; onStart: () => void; onStop: () => void };
+
 type PlaybackControlBarProps = {
   isPlaying: boolean;
   isRecording: boolean;
@@ -20,12 +24,7 @@ type PlaybackControlBarProps = {
   onNext: () => void;
   prevDisabled: boolean;
   nextDisabled: boolean;
-  freeSessionActive?: boolean;
-  onStartFree?: () => void;
-  onStopFree?: () => void;
-  listenSessionActive?: boolean;
-  onStartListen?: () => void;
-  onStopListen?: () => void;
+  session: SessionControls | null;
 };
 
 export const PlaybackControlBar = memo(function PlaybackControlBar({
@@ -42,22 +41,18 @@ export const PlaybackControlBar = memo(function PlaybackControlBar({
   onNext,
   prevDisabled,
   nextDisabled,
-  freeSessionActive,
-  onStartFree,
-  onStopFree,
-  listenSessionActive,
-  onStartListen,
-  onStopListen,
+  session,
 }: PlaybackControlBarProps): JSX.Element {
   const t = useTranslations("PlaybackControlBar");
   const isAuto = repeatFlow === "auto";
-  const isFree = repeatFlow === "free";
-  const isListen = repeatFlow === "listen";
+  const isFree = session?.mode === "free";
+  const isListen = session?.mode === "listen";
   const showRecord = !isAuto && !isFree && !isListen;
   const showReplay = hasRecording && !isFree && !isListen;
   const showHeadphoneHint = isAuto || isFree || isListen;
+  const sessionActive = session?.active ?? false;
   const listenPlayLabel = listenTransportLabelKey({
-    listenSessionActive: Boolean(listenSessionActive),
+    listenSessionActive: isListen && sessionActive,
     isPlaying,
   });
 
@@ -91,20 +86,18 @@ export const PlaybackControlBar = memo(function PlaybackControlBar({
 
   return (
     <div className="control-bar-wrap">
-      {isFree ? (
+      {session?.mode === "free" ? (
         <div className="control-bar">
           <button
             type="button"
             className={
-              freeSessionActive
-                ? "btn primary recording free-start-btn"
-                : "btn primary free-start-btn"
+              session.active ? "btn primary recording free-start-btn" : "btn primary free-start-btn"
             }
-            onClick={freeSessionActive ? onStopFree : onStartFree}
+            onClick={session.active ? session.onStop : session.onStart}
           >
-            {freeSessionActive ? t("stopFree") : t("startFree")}
+            {session.active ? t("stopFree") : t("startFree")}
           </button>
-          {!freeSessionActive && hasRecording ? (
+          {!session.active && hasRecording ? (
             <button
               type="button"
               className="btn secondary"
@@ -116,7 +109,7 @@ export const PlaybackControlBar = memo(function PlaybackControlBar({
           ) : null}
           <MicStatusIndicator />
         </div>
-      ) : isListen ? (
+      ) : session?.mode === "listen" ? (
         <>
           <div className="control-bar">
             <button
@@ -132,7 +125,7 @@ export const PlaybackControlBar = memo(function PlaybackControlBar({
               type="button"
               className="btn secondary"
               title={listenPlayLabel === "pause" ? t("pauseTitle") : t("playTitle")}
-              onClick={listenSessionActive ? onStopListen : onStartListen}
+              onClick={session.active ? session.onStop : session.onStart}
             >
               {t(listenPlayLabel)}
             </button>
@@ -239,7 +232,7 @@ export const PlaybackControlBar = memo(function PlaybackControlBar({
               role="radio"
               aria-checked={repeatFlow === f.value}
               className={repeatFlow === f.value ? "scope-option active" : "scope-option"}
-              disabled={freeSessionActive || listenSessionActive}
+              disabled={sessionActive}
               onClick={() => onSetRepeatFlow(f.value)}
             >
               {f.label}

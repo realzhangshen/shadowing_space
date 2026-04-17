@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
-import { PlaybackControlBar } from "@/components/PlaybackControlBar";
+import { PlaybackControlBar, type SessionControls } from "@/components/PlaybackControlBar";
 import { SegmentNavigator } from "@/components/SegmentNavigator";
 import { WaveformCanvas } from "@/components/WaveformCanvas";
 import {
@@ -58,6 +58,34 @@ const RESUME_MESSAGE_TIMEOUT_MS = 3_000;
 const AUTO_ADVANCE_DELAY_MS = 400;
 const WAVEFORM_DEGRADE_HINT_DELAY_MS = 800;
 const VOCAB_SOURCE_SELECTOR = "[data-vocabulary-source]";
+
+function buildSessionControls(input: {
+  repeatFlow: string;
+  freeSessionActive: boolean;
+  listenSessionActive: boolean;
+  onStartFree: () => Promise<void> | void;
+  onStopFree: () => Promise<void> | void;
+  onStartListen: () => Promise<void> | void;
+  onStopListen: () => Promise<void> | void;
+}): SessionControls | null {
+  if (input.repeatFlow === "free") {
+    return {
+      mode: "free",
+      active: input.freeSessionActive,
+      onStart: () => void input.onStartFree(),
+      onStop: () => void input.onStopFree(),
+    };
+  }
+  if (input.repeatFlow === "listen") {
+    return {
+      mode: "listen",
+      active: input.listenSessionActive,
+      onStart: () => void input.onStartListen(),
+      onStop: () => void input.onStopListen(),
+    };
+  }
+  return null;
+}
 
 function nodeToElement(node: Node | null): HTMLElement | null {
   if (!node) {
@@ -601,12 +629,15 @@ export function PracticeClient({ videoId, trackId }: PracticeClientProps): JSX.E
           onNext={actions.goNext}
           prevDisabled={currentIndex <= 0}
           nextDisabled={currentIndex >= segments.length - 1}
-          freeSessionActive={freeSessionActive}
-          onStartFree={() => void actions.startFreeShadowing()}
-          onStopFree={() => void actions.stopFreeShadowing()}
-          listenSessionActive={listenSessionActive}
-          onStartListen={() => void actions.startListenSession()}
-          onStopListen={() => void actions.stopListenSession()}
+          session={buildSessionControls({
+            repeatFlow,
+            freeSessionActive,
+            listenSessionActive,
+            onStartFree: actions.startFreeShadowing,
+            onStopFree: actions.stopFreeShadowing,
+            onStartListen: actions.startListenSession,
+            onStopListen: actions.stopListenSession,
+          })}
         />
 
         <div className="actions-row speed-row">
