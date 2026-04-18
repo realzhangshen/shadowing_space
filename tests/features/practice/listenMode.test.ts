@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   REPEAT_FLOW_ORDER,
+  buildContinuousListenWindow,
+  findListenSegmentIndex,
   listenTransportLabelKey,
   nextListenIndex,
   nextRepeatFlow,
@@ -19,6 +21,40 @@ test("nextListenIndex returns null when the current segment is the last one", ()
 
 test("nextListenIndex returns null when there are no segments", () => {
   assert.equal(nextListenIndex({ currentIndex: 0, totalSegments: 0 }), null);
+});
+
+test("buildContinuousListenWindow plays from the selected sentence through the end", () => {
+  const result = buildContinuousListenWindow(
+    [
+      { startMs: 1_000, endMs: 2_200 },
+      { startMs: 2_600, endMs: 4_100 },
+      { startMs: 4_300, endMs: 5_900 },
+    ],
+    1,
+  );
+
+  assert.deepEqual(result, {
+    startIndex: 1,
+    endIndex: 2,
+    startMs: 2_600,
+    endMs: 5_900,
+  });
+});
+
+test("findListenSegmentIndex follows playback time so subtitles switch without restarting playback", () => {
+  const segments = [
+    { startMs: 1_000, endMs: 2_200 },
+    { startMs: 2_600, endMs: 4_100 },
+    { startMs: 4_300, endMs: 5_900 },
+  ];
+  const window = buildContinuousListenWindow(segments, 0);
+
+  assert.ok(window);
+  assert.equal(findListenSegmentIndex({ segments, window, currentMs: 1_000 }), 0);
+  assert.equal(findListenSegmentIndex({ segments, window, currentMs: 2_599 }), 0);
+  assert.equal(findListenSegmentIndex({ segments, window, currentMs: 2_600 }), 1);
+  assert.equal(findListenSegmentIndex({ segments, window, currentMs: 4_299 }), 1);
+  assert.equal(findListenSegmentIndex({ segments, window, currentMs: 4_300 }), 2);
 });
 
 test("shouldUseContinuousListenNavigation keeps previous and next jumps in continuous listen playback", () => {

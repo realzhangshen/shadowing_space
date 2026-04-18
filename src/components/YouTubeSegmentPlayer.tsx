@@ -21,6 +21,7 @@ import type { PlaybackSpeed } from "@/store/practiceStore";
 const SCRIPT_ID = "youtube-iframe-api-script";
 const API_POLL_INTERVAL_MS = 50;
 const API_LOAD_TIMEOUT_MS = 10_000;
+const CONTINUOUS_PLAYBACK_TICK_MS = 100;
 let apiReadyPromise: Promise<void> | null = null;
 type PlaybackRatePlayer = YT.Player & {
   getPlaybackRate?: () => number;
@@ -94,7 +95,8 @@ export type YouTubeSegmentPlayerHandle = {
     startMs: number,
     endMs: number,
     speed: PlaybackSpeed,
-    onEnd: () => boolean | void,
+    onTimeUpdate: (currentMs: number) => void,
+    onEnd: () => void,
   ) => void;
   playFreeRange: (
     startMs: number,
@@ -265,7 +267,7 @@ export const YouTubeSegmentPlayer = forwardRef<
 
         seekAndPlay(startMs, endMs, speed);
       },
-      playContinuous: (startMs, endMs, speed, onEnd) => {
+      playContinuous: (startMs, endMs, speed, onTimeUpdate, onEnd) => {
         if (!isReady || !playerRef.current) return;
         clearTimers();
         const startSeconds = Math.max(0, startMs / 1_000);
@@ -274,17 +276,17 @@ export const YouTubeSegmentPlayer = forwardRef<
         playerRef.current.seekTo(startSeconds, true);
         playerRef.current.playVideo();
 
-        segmentWatcherRef.current = startSegmentWatcher({
-          getCurrentMs,
-          endMs,
-          onReached: () => {
-            segmentWatcherRef.current = null;
-            const shouldContinue = onEnd() === true;
-            if (!shouldContinue) {
-              playerRef.current?.pauseVideo();
-            }
-          },
-        });
+        pollIntervalRef.current = window.setInterval(() => {
+          if (!playerRef.current) return;
+          const currentMs = getCurrentMs();
+          onTimeUpdate(currentMs);
+
+          if (currentMs >= endMs) {
+            clearTimers();
+            playerRef.current?.pauseVideo();
+            onEnd();
+          }
+        }, CONTINUOUS_PLAYBACK_TICK_MS);
       },
       playFreeRange: (startMs, endMs, speed, onTimeUpdate, onEnd) => {
         if (!isReady || !playerRef.current) return;

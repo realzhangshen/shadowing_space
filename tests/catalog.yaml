@@ -136,6 +136,22 @@ tests:
     lastReviewedOn: 2026-04-16
     reviewBy: 2026-10-16
   - file: tests/features/practice/listenMode.test.ts
+    name: buildContinuousListenWindow plays from the selected sentence through the end
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Ensures listen mode starts once and keeps the video rolling until the remaining transcript is finished.
+    lastReviewedOn: 2026-04-18
+    reviewBy: 2026-10-18
+  - file: tests/features/practice/listenMode.test.ts
+    name: findListenSegmentIndex follows playback time so subtitles switch without restarting playback
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks subtitle switching to current playback time instead of per-sentence restart boundaries.
+    lastReviewedOn: 2026-04-18
+    reviewBy: 2026-10-18
+  - file: tests/features/practice/listenMode.test.ts
     name: shouldUseContinuousListenNavigation keeps previous and next jumps in continuous listen playback
     category: unit
     validity: reasonable
