@@ -25,6 +25,15 @@ test("readStartMsFromRow falls back to cueGroupStartOffsetMs", () => {
   assert.equal(readStartMsFromRow(row), 12_345);
 });
 
+test("readStartMsFromRow reads modern transcript segment target-id timing", () => {
+  const row = {
+    getAttribute(name: string) {
+      return name === "target-id" ? "engagement-panel-searchable-transcript.82723.85500" : null;
+    },
+  };
+  assert.equal(readStartMsFromRow(row), 82_723);
+});
+
 test("readStartMsFromRow returns null when no known data path is available", () => {
   assert.equal(readStartMsFromRow(null), null);
   assert.equal(readStartMsFromRow({}), null);
@@ -40,6 +49,11 @@ test("readEndMsFromRow derives endMs from startMs + durationMs when endMs missin
   const row = {
     data: { transcriptSegmentRenderer: { startMs: "82000", durationMs: "3500" } },
   };
+  assert.equal(readEndMsFromRow(row), 85_500);
+});
+
+test("readEndMsFromRow reads modern transcript segment target-id timing", () => {
+  const row = { __data: { data: { targetId: "transcript-segment.82000.85500" } } };
   assert.equal(readEndMsFromRow(row), 85_500);
 });
 

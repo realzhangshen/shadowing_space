@@ -134,13 +134,41 @@ function safeFilenamePart(value, fallback) {
 
 function readRowData(row) {
   if (!row || typeof row !== "object") return null;
-  return row.data ?? row.__data ?? row._data ?? null;
+  return row.data ?? row.__data?.data ?? row.__data ?? row._data ?? null;
 }
 
 function toFiniteNumber(value) {
   if (value == null) return null;
   const n = typeof value === "number" ? value : Number.parseInt(String(value), 10);
   return Number.isFinite(n) ? n : null;
+}
+
+function readTargetIdFromRow(row) {
+  const fromAttribute =
+    typeof row?.getAttribute === "function" ? row.getAttribute("target-id") : null;
+  if (typeof fromAttribute === "string" && fromAttribute) return fromAttribute;
+
+  const data = readRowData(row);
+  if (!data) return null;
+  const nested = data.transcriptSegmentRenderer;
+  const targetId = data.targetId ?? nested?.targetId;
+  return typeof targetId === "string" && targetId ? targetId : null;
+}
+
+function readTargetIdTiming(row) {
+  const targetId = readTargetIdFromRow(row);
+  if (!targetId) return null;
+
+  const numbers = targetId
+    .match(/\d+/g)
+    ?.map((value) => Number.parseInt(value, 10))
+    .filter(Number.isFinite);
+
+  if (!numbers || numbers.length < 2) return null;
+  const startMs = numbers[numbers.length - 2];
+  const endMs = numbers[numbers.length - 1];
+  if (endMs <= startMs) return null;
+  return { startMs, endMs };
 }
 
 /**
@@ -151,20 +179,20 @@ function toFiniteNumber(value) {
  */
 export function readStartMsFromRow(row) {
   const data = readRowData(row);
-  if (!data) return null;
-
-  const nested = data.transcriptSegmentRenderer;
-  const candidates = [
-    data.startMs,
-    nested?.startMs,
-    data.cueGroupStartOffsetMs,
-    nested?.cueGroupStartOffsetMs,
-  ];
-  for (const value of candidates) {
-    const ms = toFiniteNumber(value);
-    if (ms !== null) return ms;
+  if (data) {
+    const nested = data.transcriptSegmentRenderer;
+    const candidates = [
+      data.startMs,
+      nested?.startMs,
+      data.cueGroupStartOffsetMs,
+      nested?.cueGroupStartOffsetMs,
+    ];
+    for (const value of candidates) {
+      const ms = toFiniteNumber(value);
+      if (ms !== null) return ms;
+    }
   }
-  return null;
+  return readTargetIdTiming(row)?.startMs ?? null;
 }
 
 /**
@@ -173,18 +201,18 @@ export function readStartMsFromRow(row) {
  */
 export function readEndMsFromRow(row) {
   const data = readRowData(row);
-  if (!data) return null;
+  if (data) {
+    const nested = data.transcriptSegmentRenderer;
+    const directEnd = toFiniteNumber(data.endMs ?? nested?.endMs);
+    if (directEnd !== null) return directEnd;
 
-  const nested = data.transcriptSegmentRenderer;
-  const directEnd = toFiniteNumber(data.endMs ?? nested?.endMs);
-  if (directEnd !== null) return directEnd;
-
-  const startMs = toFiniteNumber(data.startMs ?? nested?.startMs);
-  const durationMs = toFiniteNumber(data.durationMs ?? nested?.durationMs);
-  if (startMs !== null && durationMs !== null) {
-    return startMs + durationMs;
+    const startMs = toFiniteNumber(data.startMs ?? nested?.startMs);
+    const durationMs = toFiniteNumber(data.durationMs ?? nested?.durationMs);
+    if (startMs !== null && durationMs !== null) {
+      return startMs + durationMs;
+    }
   }
-  return null;
+  return readTargetIdTiming(row)?.endMs ?? null;
 }
 
 export function parseTimestampToMs(value) {

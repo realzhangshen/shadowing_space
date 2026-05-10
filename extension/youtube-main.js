@@ -145,7 +145,7 @@
 
   function readRowData(row) {
     if (!row || typeof row !== "object") return null;
-    return row.data ?? row.__data ?? row._data ?? null;
+    return row.data ?? row.__data?.data ?? row.__data ?? row._data ?? null;
   }
 
   function toFiniteNumber(value) {
@@ -154,33 +154,63 @@
     return Number.isFinite(n) ? n : null;
   }
 
-  function readStartMsFromRow(row) {
+  function readTargetIdFromRow(row) {
+    const fromAttribute =
+      typeof row?.getAttribute === "function" ? row.getAttribute("target-id") : null;
+    if (typeof fromAttribute === "string" && fromAttribute) return fromAttribute;
+
     const data = readRowData(row);
     if (!data) return null;
     const nested = data.transcriptSegmentRenderer;
-    const candidates = [
-      data.startMs,
-      nested?.startMs,
-      data.cueGroupStartOffsetMs,
-      nested?.cueGroupStartOffsetMs,
-    ];
-    for (const value of candidates) {
-      const ms = toFiniteNumber(value);
-      if (ms !== null) return ms;
+    const targetId = data.targetId ?? nested?.targetId;
+    return typeof targetId === "string" && targetId ? targetId : null;
+  }
+
+  function readTargetIdTiming(row) {
+    const targetId = readTargetIdFromRow(row);
+    if (!targetId) return null;
+
+    const numbers = targetId
+      .match(/\d+/g)
+      ?.map((value) => Number.parseInt(value, 10))
+      .filter(Number.isFinite);
+
+    if (!numbers || numbers.length < 2) return null;
+    const startMs = numbers[numbers.length - 2];
+    const endMs = numbers[numbers.length - 1];
+    if (endMs <= startMs) return null;
+    return { startMs, endMs };
+  }
+
+  function readStartMsFromRow(row) {
+    const data = readRowData(row);
+    if (data) {
+      const nested = data.transcriptSegmentRenderer;
+      const candidates = [
+        data.startMs,
+        nested?.startMs,
+        data.cueGroupStartOffsetMs,
+        nested?.cueGroupStartOffsetMs,
+      ];
+      for (const value of candidates) {
+        const ms = toFiniteNumber(value);
+        if (ms !== null) return ms;
+      }
     }
-    return null;
+    return readTargetIdTiming(row)?.startMs ?? null;
   }
 
   function readEndMsFromRow(row) {
     const data = readRowData(row);
-    if (!data) return null;
-    const nested = data.transcriptSegmentRenderer;
-    const directEnd = toFiniteNumber(data.endMs ?? nested?.endMs);
-    if (directEnd !== null) return directEnd;
-    const startMs = toFiniteNumber(data.startMs ?? nested?.startMs);
-    const durationMs = toFiniteNumber(data.durationMs ?? nested?.durationMs);
-    if (startMs !== null && durationMs !== null) return startMs + durationMs;
-    return null;
+    if (data) {
+      const nested = data.transcriptSegmentRenderer;
+      const directEnd = toFiniteNumber(data.endMs ?? nested?.endMs);
+      if (directEnd !== null) return directEnd;
+      const startMs = toFiniteNumber(data.startMs ?? nested?.startMs);
+      const durationMs = toFiniteNumber(data.durationMs ?? nested?.durationMs);
+      if (startMs !== null && durationMs !== null) return startMs + durationMs;
+    }
+    return readTargetIdTiming(row)?.endMs ?? null;
   }
 
   function parseTimestampToMs(value) {
@@ -268,8 +298,48 @@
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
+  const TRANSCRIPT_ROW_SELECTOR = "ytd-transcript-segment-renderer";
+  const TRANSCRIPT_PANEL_SELECTOR = [
+    "ytd-transcript-segment-list-renderer",
+    'ytd-engagement-panel-section-list-renderer[target-id="engagement-panel-searchable-transcript"]',
+    'ytd-engagement-panel-section-list-renderer[target-id="PAmodern_transcript_view"]',
+    "ytd-transcript-search-panel-renderer",
+    ".ytd-transcript-search-panel-renderer #segments-container",
+    "#segments-container",
+  ].join(",");
+  const TRANSCRIPT_TEXT_SELECTORS = [
+    ".segment-text yt-formatted-string",
+    ".segment-text",
+    "yt-formatted-string.segment-text",
+    '[class*="segment-text"]',
+  ];
+
+  function findTranscriptRows(root) {
+    const rows = [];
+    if (root?.matches?.(TRANSCRIPT_ROW_SELECTOR)) rows.push(root);
+    rows.push(...Array.from(root?.querySelectorAll?.(TRANSCRIPT_ROW_SELECTOR) ?? []));
+    return [...new Set(rows)];
+  }
+
+  function hasTranscriptContent(root) {
+    if (!root) return false;
+    return findTranscriptRows(root).length > 0 || Boolean(root.querySelector?.(".segment-text"));
+  }
+
   function findTranscriptList() {
-    return document.querySelector("ytd-transcript-segment-list-renderer");
+    const roots = Array.from(document.querySelectorAll(TRANSCRIPT_PANEL_SELECTOR));
+    for (const root of roots) {
+      if (hasTranscriptContent(root)) return root;
+    }
+
+    const row = document.querySelector(TRANSCRIPT_ROW_SELECTOR);
+    return (
+      row?.closest?.(
+        "ytd-engagement-panel-section-list-renderer[target-id], ytd-transcript-search-panel-renderer, ytd-transcript-segment-list-renderer, #segments-container",
+      ) ??
+      row?.parentElement ??
+      null
+    );
   }
 
   const CLICKABLE_CONTROL_SELECTOR = [
@@ -357,18 +427,41 @@
     const started = performance.now();
     while (performance.now() - started < maxWaitMs) {
       const list = findTranscriptList();
-      const rows = list?.querySelectorAll("ytd-transcript-segment-renderer");
-      if (rows && rows.length > 0) return true;
+      const rows = list ? findTranscriptRows(list) : [];
+      if (rows.length > 0) return true;
       await sleep(200);
     }
     return false;
+  }
+
+  function readTextFromRow(row) {
+    for (const selector of TRANSCRIPT_TEXT_SELECTORS) {
+      const value = normalizeText(row.querySelector?.(selector)?.textContent ?? "");
+      if (value) return value;
+    }
+    return "";
+  }
+
+  function collectTranscriptDomDebug() {
+    return {
+      panelCount: document.querySelectorAll(TRANSCRIPT_PANEL_SELECTOR).length,
+      rowCount: document.querySelectorAll(TRANSCRIPT_ROW_SELECTOR).length,
+      segmentTextCount: document.querySelectorAll(".segment-text").length,
+      engagementPanelTargets: Array.from(
+        document.querySelectorAll("ytd-engagement-panel-section-list-renderer[target-id]"),
+      )
+        .map((panel) => panel.getAttribute("target-id"))
+        .filter(Boolean)
+        .slice(0, 8),
+      hasTranscriptRoot: Boolean(findTranscriptList()),
+    };
   }
 
   function readTranscriptFromDom() {
     const list = findTranscriptList();
     if (!list) return null;
 
-    const rows = list.querySelectorAll("ytd-transcript-segment-renderer");
+    const rows = findTranscriptRows(list);
     if (rows.length === 0) return null;
 
     // Track which timing source was used so the popup can log it:
@@ -405,11 +498,7 @@
         }
       }
 
-      const textEl =
-        row.querySelector(".segment-text yt-formatted-string") ??
-        row.querySelector(".segment-text") ??
-        row.querySelector("yt-formatted-string.segment-text");
-      const text = normalizeText(textEl?.textContent ?? "");
+      const text = readTextFromRow(row);
 
       if (startMs !== null && text) {
         precisionCounts[precision] += 1;
@@ -650,6 +739,7 @@
             'On YouTube, click "…more" under the video → "Show transcript", then retry.',
         );
         err.attempts = attempts;
+        err.domDebug = collectTranscriptDomDebug();
         throw err;
       }
 
@@ -661,6 +751,7 @@
           "Transcript panel is open but contains no readable segments. It may still be loading — wait a moment and retry.",
         );
         err.attempts = attempts;
+        err.domDebug = collectTranscriptDomDebug();
         throw err;
       }
       segments = domResult.segments;
@@ -722,13 +813,16 @@
           debug: result.debug,
         });
       } catch (error) {
-        const debug =
-          error && typeof error === "object" && "attempts" in error
-            ? { attempts: /** @type {any} */ (error).attempts }
-            : undefined;
+        const debug = {};
+        if (error && typeof error === "object" && "attempts" in error) {
+          debug.attempts = /** @type {any} */ (error).attempts;
+        }
+        if (error && typeof error === "object" && "domDebug" in error) {
+          debug.domDebug = /** @type {any} */ (error).domDebug;
+        }
         post(EXTRACT_RESULT_TYPE, false, {
           error: error instanceof Error ? error.message : String(error),
-          debug,
+          debug: Object.keys(debug).length > 0 ? debug : undefined,
         });
       }
     })();

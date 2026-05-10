@@ -246,6 +246,9 @@ async function extractSelectedTrack(tabId) {
       );
     });
   }
+  if (response?.debug?.domDebug) {
+    appendLog("warn", "Transcript DOM fallback state", response.debug.domDebug);
+  }
   if (!response?.ok || !response.payload) {
     throw new Error(response?.error || "Extraction failed without a reason.");
   }

@@ -416,6 +416,14 @@ tests:
     lastReviewedOn: 2026-04-16
     reviewBy: 2026-10-16
   - file: tests/extension/transcriptRowTiming.test.ts
+    name: readStartMsFromRow reads modern transcript segment target-id timing
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Keeps DOM transcript fallback working when YouTube stores segment timing in target-id instead of Polymer startMs.
+    lastReviewedOn: 2026-05-10
+    reviewBy: 2026-11-10
+  - file: tests/extension/transcriptRowTiming.test.ts
     name: readStartMsFromRow returns null when no known data path is available
     category: unit
     validity: reasonable
@@ -439,6 +447,14 @@ tests:
     reason: Recovers precise end time from duration on YouTube builds that omit explicit endMs.
     lastReviewedOn: 2026-04-16
     reviewBy: 2026-10-16
+  - file: tests/extension/transcriptRowTiming.test.ts
+    name: readEndMsFromRow reads modern transcript segment target-id timing
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Preserves end timing for modern transcript rows whose renderer data exposes only targetId.
+    lastReviewedOn: 2026-05-10
+    reviewBy: 2026-11-10
   - file: tests/extension/transcriptRowTiming.test.ts
     name: readEndMsFromRow returns null when neither endMs nor durationMs is available
     category: unit
