@@ -46,3 +46,5 @@ export declare function buildDownloadFilename(input: {
 export declare function parseTimestampToMs(value: unknown): number;
 export declare function readStartMsFromRow(row: unknown): number | null;
 export declare function readEndMsFromRow(row: unknown): number | null;
+export declare function isTranscriptOpenControl(control: unknown): boolean;
+export declare function isDescriptionExpandControl(control: unknown): boolean;

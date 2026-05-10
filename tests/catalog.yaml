@@ -607,6 +607,38 @@ tests:
     reason: Provides a defined default when no tracks are available.
     lastReviewedOn: 2026-04-16
     reviewBy: 2026-10-16
+  - file: tests/extension/youtubeDomControls.test.ts
+    name: isTranscriptOpenControl matches visible Show transcript text without aria-label
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Keeps the extension able to open YouTube transcript controls that expose only visible button text.
+    lastReviewedOn: 2026-05-10
+    reviewBy: 2026-11-10
+  - file: tests/extension/youtubeDomControls.test.ts
+    name: isTranscriptOpenControl matches transcript aria-label variants
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Preserves the existing aria-label matching path for transcript buttons.
+    lastReviewedOn: 2026-05-10
+    reviewBy: 2026-11-10
+  - file: tests/extension/youtubeDomControls.test.ts
+    name: isDescriptionExpandControl matches visible more text without legacy expand id
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Lets the extension expand modern YouTube descriptions when the old #expand selector is absent.
+    lastReviewedOn: 2026-05-10
+    reviewBy: 2026-11-10
+  - file: tests/extension/youtubeDomControls.test.ts
+    name: isDescriptionExpandControl does not match YouTube's more actions menu
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Prevents the description fallback from opening the video actions menu instead of the description expander.
+    lastReviewedOn: 2026-05-10
+    reviewBy: 2026-11-10
   - file: tests/features/import/importMode.test.ts
     name: deriveImportMode returns 'manual' when source is absent
     category: unit

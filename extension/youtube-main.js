@@ -199,6 +199,71 @@
     return (h * 3600 + m * 60 + s) * 1000;
   }
 
+  function readControlTextCandidates(control) {
+    if (!control || typeof control !== "object") return [];
+
+    const candidates = [];
+    const getAttribute =
+      typeof control.getAttribute === "function" ? control.getAttribute.bind(control) : null;
+
+    for (const attr of ["aria-label", "title"]) {
+      const value = getAttribute?.(attr);
+      if (typeof value === "string" && value.trim()) candidates.push(value);
+    }
+
+    if (typeof control.textContent === "string" && control.textContent.trim()) {
+      candidates.push(control.textContent);
+    }
+
+    return candidates;
+  }
+
+  function normalizeControlText(value) {
+    return String(value)
+      .replace(/\u00a0/g, " ")
+      .replace(/…/g, "...")
+      .replace(/\s+/g, " ")
+      .trim()
+      .toLowerCase();
+  }
+
+  function controlMatches(control, patterns, excludePatterns = []) {
+    const labels = readControlTextCandidates(control).map(normalizeControlText);
+    if (labels.some((label) => excludePatterns.some((pattern) => pattern.test(label)))) {
+      return false;
+    }
+    return labels.some((label) => patterns.some((pattern) => pattern.test(label)));
+  }
+
+  const TRANSCRIPT_CONTROL_PATTERNS = [
+    /\bshow transcript\b/i,
+    /\bopen transcript\b/i,
+    /\btranscript\b/i,
+    /字幕/i,
+    /文字稿/i,
+    /转录/i,
+  ];
+
+  const DESCRIPTION_EXPAND_PATTERNS = [
+    /^more$/i,
+    /^\.\.\.more$/i,
+    /^show more$/i,
+    /^read more$/i,
+    /^更多$/i,
+    /^显示更多$/i,
+    /^展开$/i,
+  ];
+
+  const DESCRIPTION_EXPAND_EXCLUDES = [/\bmore actions\b/i, /\bmore options\b/i, /\blearn more\b/i];
+
+  function isTranscriptOpenControl(control) {
+    return controlMatches(control, TRANSCRIPT_CONTROL_PATTERNS);
+  }
+
+  function isDescriptionExpandControl(control) {
+    return controlMatches(control, DESCRIPTION_EXPAND_PATTERNS, DESCRIPTION_EXPAND_EXCLUDES);
+  }
+
   function sleep(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
@@ -207,31 +272,84 @@
     return document.querySelector("ytd-transcript-segment-list-renderer");
   }
 
-  async function openTranscriptPanel(maxWaitMs = 6_000) {
-    if (findTranscriptList()) return true;
+  const CLICKABLE_CONTROL_SELECTOR = [
+    "button",
+    '[role="button"]',
+    "tp-yt-paper-button",
+    "yt-button-view-model",
+    "ytd-button-renderer",
+    "ytd-menu-service-item-renderer",
+  ].join(",");
 
-    // Expand description first — the "Show transcript" button lives there on modern YouTube.
-    const expandBtn = document.querySelector(
+  function isVisibleControl(control) {
+    if (!(control instanceof Element)) return false;
+    const rects = control.getClientRects();
+    if (rects.length === 0) return false;
+
+    const style = window.getComputedStyle(control);
+    return style.display !== "none" && style.visibility !== "hidden";
+  }
+
+  function resolveClickTarget(control) {
+    return control.querySelector?.("button, [role='button'], tp-yt-paper-button") ?? control;
+  }
+
+  function findClickableControl(root, predicate) {
+    const controls = Array.from(root.querySelectorAll(CLICKABLE_CONTROL_SELECTOR));
+    return controls.find((control) => isVisibleControl(control) && predicate(control)) ?? null;
+  }
+
+  function findDescriptionExpandControl() {
+    const direct = document.querySelector(
       "ytd-text-inline-expander tp-yt-paper-button#expand, ytd-text-inline-expander #expand, #description #expand",
     );
-    if (expandBtn) {
-      expandBtn.click();
-      await sleep(200);
+    if (direct && isVisibleControl(direct)) return resolveClickTarget(direct);
+
+    const roots = [
+      document.querySelector("ytd-text-inline-expander"),
+      document.querySelector("#description"),
+      document.querySelector("#bottom-row"),
+      document.querySelector("ytd-watch-metadata"),
+    ].filter(Boolean);
+
+    for (const root of roots) {
+      const control = findClickableControl(root, isDescriptionExpandControl);
+      if (control) return resolveClickTarget(control);
     }
 
-    // Find the transcript button. YouTube uses several variants over time; cover them all.
-    const candidates = [
+    return null;
+  }
+
+  function findTranscriptOpenControl() {
+    const selectors = [
       'ytd-video-description-transcript-section-renderer button[aria-label*="ranscript" i]',
       'ytd-button-renderer button[aria-label*="ranscript" i]',
       'button[aria-label*="Show transcript" i]',
       'button[aria-label*="字幕" i]',
       'button[aria-label*="transcript" i]',
     ];
-    let transcriptBtn = null;
-    for (const selector of candidates) {
-      transcriptBtn = document.querySelector(selector);
-      if (transcriptBtn) break;
+
+    for (const selector of selectors) {
+      const control = document.querySelector(selector);
+      if (control && isVisibleControl(control)) return resolveClickTarget(control);
     }
+
+    const textMatched = findClickableControl(document, isTranscriptOpenControl);
+    return textMatched ? resolveClickTarget(textMatched) : null;
+  }
+
+  async function openTranscriptPanel(maxWaitMs = 6_000) {
+    if (findTranscriptList()) return true;
+
+    // Expand description first — the "Show transcript" button lives there on modern YouTube.
+    const expandBtn = findDescriptionExpandControl();
+    if (expandBtn) {
+      expandBtn.click();
+      await sleep(200);
+    }
+
+    // Find the transcript button. YouTube uses several variants over time; cover them all.
+    const transcriptBtn = findTranscriptOpenControl();
 
     if (!transcriptBtn) return false;
     transcriptBtn.click();
