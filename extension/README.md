@@ -36,6 +36,8 @@ Settings are stored in `chrome.storage.sync`.
 ## How it works
 
 - **youtube-main.js** (MAIN world): reads `ytInitialPlayerResponse` and its fallbacks (`ytplayer.config.args.player_response`, `ytd-watch-flexy.__data`), then fetches the selected caption track using the user's own YouTube session.
+  - DOM fallback: when the timedtext endpoint returns no usable captions, the script reads the on-page Transcript panel instead. It supports both panel variants — legacy `ytd-transcript-segment-renderer` rows and modern `transcript-segment-view-model` rows (`.ytAttributedStringHost` / `.ytwTranscriptSegmentViewModelTimestamp`) — and ignores spoken-time accessibility labels.
+  - Completeness pass: because YouTube may virtualize rows, the reader scrolls the list's scroll container from top to bottom in viewport-sized steps (short waits, hard step/budget caps), accumulates rows in a `startMs|text` map to dedupe re-rendered rows, then restores the original scroll position and sorts the transcript by start time. Short videos without overflow are read in a single pass.
 - **youtube-bridge.js** (ISOLATED world): mediates between the popup's `chrome.tabs.sendMessage` and the MAIN-world script's window events.
 - **popup.js**: drives the UX — track listing, action buttons, status line, debug log, and delivery/download.
 - **background.js**: install hint only. The popup owns the work because MV3 service workers suspend aggressively and losing state mid-delivery would hide errors.

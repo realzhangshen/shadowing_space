@@ -1080,7 +1080,7 @@ tests:
     lastReviewedOn: 2026-04-17
     reviewBy: 2026-10-17
   - file: tests/server/youtube/segments.test.ts
-    name: mergeSegments force-splits when duration exceeds 15 seconds
+    name: mergeSegments splits when merged duration would exceed 8 seconds
     category: unit
     validity: reasonable
     owner: shadowing-team
@@ -1573,5 +1573,333 @@ tests:
     validity: reasonable
     owner: shadowing-team
     reason: Prevents the PWA service worker from intercepting cross-origin requests its CSP blocks (broken dashboard thumbnails).
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/extension/transcriptDomComplete.test.ts
+    name: readTranscriptTextFromRow reads modern transcript-segment-view-model text
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks the extension complete-transcript DOM pass across modern YouTube panel variants and virtualized scroll batches.
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/extension/transcriptDomComplete.test.ts
+    name: readTranscriptTextFromRow ignores visually hidden a11y spoken-time labels
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks the extension complete-transcript DOM pass across modern YouTube panel variants and virtualized scroll batches.
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/extension/transcriptDomComplete.test.ts
+    name: readTranscriptTextFromRow still reads text hosted on an aria-hidden element
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks the extension complete-transcript DOM pass across modern YouTube panel variants and virtualized scroll batches.
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/extension/transcriptDomComplete.test.ts
+    name: readTranscriptTextFromRow drops aria-hidden descendants inside the text host
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks the extension complete-transcript DOM pass across modern YouTube panel variants and virtualized scroll batches.
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/extension/transcriptDomComplete.test.ts
+    name: readTranscriptTextFromRow falls back to legacy segment-text
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks the extension complete-transcript DOM pass across modern YouTube panel variants and virtualized scroll batches.
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/extension/transcriptDomComplete.test.ts
+    name: resolveTranscriptRowTiming parses the modern timestamp element
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks the extension complete-transcript DOM pass across modern YouTube panel variants and virtualized scroll batches.
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/extension/transcriptDomComplete.test.ts
+    name: resolveTranscriptRowTiming ignores a11y spoken-time labels in the timestamp element
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks the extension complete-transcript DOM pass across modern YouTube panel variants and virtualized scroll batches.
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/extension/transcriptDomComplete.test.ts
+    name: resolveTranscriptRowTiming prefers Polymer millisecond data over displayed text
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks the extension complete-transcript DOM pass across modern YouTube panel variants and virtualized scroll batches.
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/extension/transcriptDomComplete.test.ts
+    name: resolveTranscriptRowTiming falls back to a data-start-ms attribute
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks the extension complete-transcript DOM pass across modern YouTube panel variants and virtualized scroll batches.
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/extension/transcriptDomComplete.test.ts
+    name: resolveTranscriptRowTiming returns null when a row has no timing signal
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks the extension complete-transcript DOM pass across modern YouTube panel variants and virtualized scroll batches.
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/extension/transcriptDomComplete.test.ts
+    name: mergeTranscriptRows dedupes rows repeated across scroll batches
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks the extension complete-transcript DOM pass across modern YouTube panel variants and virtualized scroll batches.
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/extension/transcriptDomComplete.test.ts
+    name: mergeTranscriptRows keeps rows collected before scrolling
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks the extension complete-transcript DOM pass across modern YouTube panel variants and virtualized scroll batches.
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/extension/transcriptDomComplete.test.ts
+    name: dedupeTranscriptSegments normalizes whitespace and sorts by startMs
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks the extension complete-transcript DOM pass across modern YouTube panel variants and virtualized scroll batches.
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/extension/transcriptDomComplete.test.ts
+    name: dedupeTranscriptSegments keeps the longer known endMs for duplicate rows
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks the extension complete-transcript DOM pass across modern YouTube panel variants and virtualized scroll batches.
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/extension/transcriptDomComplete.test.ts
+    name: fillTranscriptEndMs fills each end from the next start and pads the last segment
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks the extension complete-transcript DOM pass across modern YouTube panel variants and virtualized scroll batches.
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/extension/transcriptDomComplete.test.ts
+    name: fillTranscriptEndMs keeps explicit end times and recomputes invalid ones
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks the extension complete-transcript DOM pass across modern YouTube panel variants and virtualized scroll batches.
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/extension/transcriptDomComplete.test.ts
+    name: parseTranscriptTimestamp parses M:SS and H:MM:SS timestamps
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks the extension complete-transcript DOM pass across modern YouTube panel variants and virtualized scroll batches.
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/extension/transcriptDomComplete.test.ts
+    name: parseTranscriptTimestamp rejects spoken-time labels and malformed values
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks the extension complete-transcript DOM pass across modern YouTube panel variants and virtualized scroll batches.
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/extension/transcriptDomComplete.test.ts
+    name: extractTranscriptTimestamp finds a visual timestamp inside mixed a11y text
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks the extension complete-transcript DOM pass across modern YouTube panel variants and virtualized scroll batches.
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/extension/transcriptDomComplete.test.ts
+    name: normalizeTranscriptText collapses whitespace and non-breaking spaces
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks the extension complete-transcript DOM pass across modern YouTube panel variants and virtualized scroll batches.
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/extension/transcriptDomComplete.test.ts
+    name: shouldScrollTranscript requires real overflow beyond a noise threshold
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks the extension complete-transcript DOM pass across modern YouTube panel variants and virtualized scroll batches.
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/components/virtualWindow.test.ts
+    name: buildItemOffsets returns prefix-sum boundaries using measured heights and estimates
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks variable-height virtual-list math so every sentence stays reachable and the active row scrolls into view.
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/components/virtualWindow.test.ts
+    name: buildItemOffsets falls back to the estimate for non-finite or non-positive measurements
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks variable-height virtual-list math so every sentence stays reachable and the active row scrolls into view.
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/components/virtualWindow.test.ts
+    name: buildItemOffsets handles empty counts and invalid estimates
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks variable-height virtual-list math so every sentence stays reachable and the active row scrolls into view.
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/components/virtualWindow.test.ts
+    name: indexAtOffset finds the row whose slot contains the offset
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks variable-height virtual-list math so every sentence stays reachable and the active row scrolls into view.
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/components/virtualWindow.test.ts
+    name: indexAtOffset clamps at both ends and handles degenerate input
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks variable-height virtual-list math so every sentence stays reachable and the active row scrolls into view.
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/components/virtualWindow.test.ts
+    name: computeVisibleWindowByOffsets derives the window from variable row offsets
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks variable-height virtual-list math so every sentence stays reachable and the active row scrolls into view.
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/components/virtualWindow.test.ts
+    name: computeVisibleWindowByOffsets clamps to list bounds and never inverts the window
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks variable-height virtual-list math so every sentence stays reachable and the active row scrolls into view.
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/components/virtualWindow.test.ts
+    name: computeVisibleWindowByOffsets falls back to the full range for degenerate inputs
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks variable-height virtual-list math so every sentence stays reachable and the active row scrolls into view.
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/components/virtualWindow.test.ts
+    name: scrollOffsetForIndexByOffsets centers variable-height rows
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks variable-height virtual-list math so every sentence stays reachable and the active row scrolls into view.
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/components/virtualWindow.test.ts
+    name: scrollOffsetForIndexByOffsets clamps to the top and bottom of the list
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks variable-height virtual-list math so every sentence stays reachable and the active row scrolls into view.
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/components/virtualWindow.test.ts
+    name: scrollOffsetForIndexByOffsets handles degenerate input
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks variable-height virtual-list math so every sentence stays reachable and the active row scrolls into view.
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/components/virtualWindow.test.ts
+    name: adjustScrollTopForMeasurements shifts scrollTop for rows above the viewport
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks variable-height virtual-list math so every sentence stays reachable and the active row scrolls into view.
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/components/virtualWindow.test.ts
+    name: adjustScrollTopForMeasurements ignores rows at or below the viewport start
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks variable-height virtual-list math so every sentence stays reachable and the active row scrolls into view.
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/components/virtualWindow.test.ts
+    name: adjustScrollTopForMeasurements guards against invalid input
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks variable-height virtual-list math so every sentence stays reachable and the active row scrolls into view.
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/server/youtube/segments.test.ts
+    name: parseTranscriptPayload rejects html error pages that use html and body without a doctype
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks transcript parsing and sentence segmentation so caption tracks stay complete and correctly timed.
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/server/youtube/segments.test.ts
+    name: parseTranscriptPayload parses srv3 timedtext xml that contains a body element
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks transcript parsing and sentence segmentation so caption tracks stay complete and correctly timed.
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/server/youtube/segments.test.ts
+    name: mergeSegments merges continuous speech cues without sentence-ending punctuation
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks transcript parsing and sentence segmentation so caption tracks stay complete and correctly timed.
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/server/youtube/segments.test.ts
+    name: mergeSegments splits when the pause between cues exceeds the gap threshold
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks transcript parsing and sentence segmentation so caption tracks stay complete and correctly timed.
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/server/youtube/segments.test.ts
+    name: mergeSegments splits when merged text would exceed the length cap
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks transcript parsing and sentence segmentation so caption tracks stay complete and correctly timed.
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/server/youtube/segments.test.ts
+    name: mergeSegments preserves every cue text exactly once
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks transcript parsing and sentence segmentation so caption tracks stay complete and correctly timed.
     lastReviewedOn: 2026-11-03
     reviewBy: 2027-05-03

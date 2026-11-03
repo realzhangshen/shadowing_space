@@ -333,13 +333,12 @@ function stripXssiPrefix(payload: string): string {
   return payload.replace(/^\)\]\}'\s*/, "");
 }
 
+// Only real HTML document markers count as HTML. `<body>` alone is not a marker:
+// YouTube srv3/timedtext payloads are `<timedtext><body><p t=...>` and are valid captions.
 function looksLikeHtmlDocument(payload: string): boolean {
   const lowered = payload.slice(0, 800).toLowerCase();
   return (
-    lowered.includes("<!doctype html") ||
-    lowered.includes("<html") ||
-    lowered.includes("<head") ||
-    lowered.includes("<body")
+    lowered.includes("<!doctype html") || lowered.includes("<html") || lowered.includes("<head")
   );
 }
 
@@ -355,8 +354,13 @@ function looksLikeTranscriptXml(payload: string): boolean {
   return /<(text|p)\b[^>]*(start|t|begin|dur|d|end)\s*=/i.test(payload);
 }
 
-const SENTENCE_END = /[.?!。？！]\s*$/;
-const MAX_MERGED_DURATION_MS = 15_000;
+// Terminal punctuation of a sentence or fragment, optionally followed by closing quotes/brackets.
+const SENTENCE_END = /[.?!。？！…]["'”’)\]]*\s*$/;
+// A pause longer than this between cues is a phrase boundary (lyrics, poetry, slides).
+const MAX_GAP_MS = 750;
+// Hard cap on one practice sentence so a run of unpunctuated cues cannot collapse into a wall of text.
+const MAX_MERGED_DURATION_MS = 8_000;
+const MAX_MERGED_TEXT_LENGTH = 220;
 
 function flush(buffer: SegmentDTO[], index: number): SegmentDTO {
   return {
@@ -367,7 +371,30 @@ function flush(buffer: SegmentDTO[], index: number): SegmentDTO {
   };
 }
 
-// Merges until MAX_MERGED_DURATION_MS or sentence-terminator, preserving original timing bounds.
+function shouldSplitBuffer(buffer: SegmentDTO[], current: SegmentDTO): boolean {
+  const previous = buffer[buffer.length - 1];
+
+  if (SENTENCE_END.test(previous.text)) {
+    return true;
+  }
+
+  if (current.startMs - previous.endMs > MAX_GAP_MS) {
+    return true;
+  }
+
+  if (current.endMs - buffer[0].startMs > MAX_MERGED_DURATION_MS) {
+    return true;
+  }
+
+  const bufferedTextLength = buffer.reduce((total, segment) => total + segment.text.length, 0);
+  const mergedTextLength = bufferedTextLength + buffer.length + current.text.length;
+
+  return mergedTextLength > MAX_MERGED_TEXT_LENGTH;
+}
+
+// Merges consecutive cues until a sentence boundary, a pause, or a size cap is reached.
+// Text is never dropped: every input cue lands in exactly one output segment and timings
+// keep their original [first.startMs, last.endMs] bounds.
 export function mergeSegments(segments: SegmentDTO[]): SegmentDTO[] {
   if (segments.length === 0) return [];
 
@@ -376,22 +403,14 @@ export function mergeSegments(segments: SegmentDTO[]): SegmentDTO[] {
 
   for (let i = 1; i < segments.length; i++) {
     const current = segments[i];
-    const bufferStart = buffer[0].startMs;
-    const wouldExceed = current.endMs - bufferStart > MAX_MERGED_DURATION_MS;
 
-    if (wouldExceed) {
+    if (shouldSplitBuffer(buffer, current)) {
       merged.push(flush(buffer, merged.length));
       buffer = [current];
       continue;
     }
 
-    const lastText = buffer[buffer.length - 1].text;
-    if (SENTENCE_END.test(lastText)) {
-      merged.push(flush(buffer, merged.length));
-      buffer = [current];
-    } else {
-      buffer.push(current);
-    }
+    buffer.push(current);
   }
 
   if (buffer.length > 0) {
@@ -423,12 +442,14 @@ export function parseTranscriptPayload(rawPayload: string): {
     }
   }
 
-  if (looksLikeHtmlDocument(trimmed)) {
-    return { parsed: false, segments: [] };
-  }
-
+  // XML caption formats first: srv3/timedtext and TTML both carry a <body>/<head> element,
+  // so the HTML check must only reject payloads that do not look like captions.
   if (looksLikeTranscriptXml(trimmed)) {
     return { parsed: true, segments: normalizeXmlSegments(trimmed) };
+  }
+
+  if (looksLikeHtmlDocument(trimmed)) {
+    return { parsed: false, segments: [] };
   }
 
   if (looksLikeVtt(trimmed)) {

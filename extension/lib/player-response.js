@@ -234,6 +234,279 @@ export function parseTimestampToMs(value) {
   return (h * 3600 + m * 60 + s) * 1000;
 }
 
+// ---------------------------------------------------------------------------
+// Transcript DOM helpers.
+//
+// YouTube renders the transcript panel in two shapes that coexist across builds:
+//   legacy <ytd-transcript-segment-renderer> with .segment-timestamp/.segment-text
+//   modern <transcript-segment-view-model> with .ytwTranscriptSegmentViewModelTimestamp
+//          and .ytAttributedStringHost
+// Everything below is selector/row based so it can be unit tested against plain
+// row-like objects (only querySelector/childNodes are required).
+// ---------------------------------------------------------------------------
+
+export const TRANSCRIPT_ROW_SELECTOR =
+  "ytd-transcript-segment-renderer, transcript-segment-view-model";
+
+export const TRANSCRIPT_TEXT_SELECTORS = [
+  ".segment-text",
+  ".ytAttributedStringHost",
+  '[class*="segment-text"]',
+  '[class*="SegmentText"]',
+  "yt-formatted-string.segment-text",
+];
+
+export const TRANSCRIPT_TIMESTAMP_SELECTORS = [
+  ".segment-timestamp",
+  ".ytwTranscriptSegmentViewModelTimestamp",
+  '[class*="segment-timestamp"]',
+  '[class*="SegmentTimestamp"]',
+];
+
+// Spoken-time accessibility labels ("1 minute, 23 seconds") are announced by
+// screen readers next to the visual timestamps. They must never leak into the
+// transcript text or be mistaken for a timestamp.
+const A11Y_TEXT_NOISE_PATTERN = /a11y|visually-hidden|screen-reader|sr-only/i;
+const TRANSCRIPT_TIMESTAMP_PATTERN = /\d{1,3}(?::\d{2}){1,2}/;
+const TRANSCRIPT_MIN_OVERFLOW_PX = 8;
+
+export function normalizeTranscriptText(value) {
+  if (typeof value !== "string") return "";
+  return value
+    .replace(/\u00a0/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function hasA11yNoiseClass(element) {
+  if (!element || typeof element !== "object" || element.nodeType === 3) return false;
+
+  const className =
+    typeof element.className === "string"
+      ? element.className
+      : (element.getAttribute?.("class") ?? "");
+  return A11Y_TEXT_NOISE_PATTERN.test(className);
+}
+
+function isA11yNoiseElement(element) {
+  if (hasA11yNoiseClass(element)) return true;
+  if (!element || typeof element !== "object" || element.nodeType === 3) return false;
+  return element.getAttribute?.("aria-hidden") === "true";
+}
+
+function readElementVisibleText(element) {
+  if (!element || typeof element !== "object") return "";
+
+  const childNodes = Array.isArray(element.childNodes) ? element.childNodes : null;
+  if (childNodes && childNodes.length > 0) {
+    let text = "";
+    const visit = (node) => {
+      if (!node || typeof node !== "object") return;
+      if (node.nodeType === 3) {
+        text += node.nodeValue ?? "";
+        return;
+      }
+      if (isA11yNoiseElement(node)) return;
+      const children = Array.isArray(node.childNodes) ? node.childNodes : [];
+      for (const child of children) visit(child);
+    };
+    for (const child of childNodes) visit(child);
+    return text;
+  }
+
+  return typeof element.textContent === "string" ? element.textContent : "";
+}
+
+export function readTranscriptTextFromRow(row) {
+  if (!row || typeof row !== "object") return "";
+
+  for (const selector of TRANSCRIPT_TEXT_SELECTORS) {
+    let element = null;
+    try {
+      element = row.querySelector?.(selector) ?? null;
+    } catch {
+      element = null;
+    }
+    if (!element || hasA11yNoiseClass(element)) continue;
+
+    const text = normalizeTranscriptText(readElementVisibleText(element));
+    if (text) return text;
+  }
+
+  return "";
+}
+
+export function parseTranscriptTimestamp(text) {
+  if (typeof text !== "string") return null;
+  const trimmed = text.trim();
+  if (!trimmed) return null;
+
+  const parts = trimmed.split(":");
+  if (parts.length < 2 || parts.length > 3) return null;
+
+  const numbers = parts.map((part) => Number.parseInt(part, 10));
+  if (numbers.some((n) => !Number.isFinite(n))) return null;
+
+  if (numbers.length === 2) {
+    const [minutes, seconds] = numbers;
+    return (minutes * 60 + seconds) * 1_000;
+  }
+  const [hours, minutes, seconds] = numbers;
+  return (hours * 3600 + minutes * 60 + seconds) * 1_000;
+}
+
+export function extractTranscriptTimestamp(text) {
+  if (typeof text !== "string") return null;
+  const match = text.match(TRANSCRIPT_TIMESTAMP_PATTERN);
+  if (!match) return null;
+  return parseTranscriptTimestamp(match[0]);
+}
+
+/**
+ * Resolves a transcript row's timing without touching the network.
+ * Resolution order (mirrors the popup's precision accounting):
+ *   1. "polymer-ms" — YouTube's internal data object (ms precision)
+ *   2. "data-attr"  — data-start-ms DOM attribute (ms precision)
+ *   3. "text"       — parsed from the displayed M:SS/H:MM:SS label (second precision)
+ */
+export function resolveTranscriptRowTiming(row) {
+  if (!row || typeof row !== "object") return null;
+
+  const startMs = readStartMsFromRow(row);
+  if (startMs !== null) {
+    return { startMs, endMs: readEndMsFromRow(row), precision: "polymer-ms" };
+  }
+
+  const segmentLike = row.querySelector?.(".segment") ?? row;
+  const attributeValue =
+    segmentLike?.getAttribute?.("data-start-ms") ?? row.getAttribute?.("data-start-ms") ?? null;
+  if (attributeValue != null) {
+    const fromAttribute = toFiniteNumber(attributeValue);
+    if (fromAttribute !== null) {
+      return { startMs: fromAttribute, endMs: null, precision: "data-attr" };
+    }
+  }
+
+  for (const selector of TRANSCRIPT_TIMESTAMP_SELECTORS) {
+    let element = null;
+    try {
+      element = row.querySelector?.(selector) ?? null;
+    } catch {
+      element = null;
+    }
+    if (!element) continue;
+
+    const label = readElementVisibleText(element) || element.textContent || "";
+    const fromText = extractTranscriptTimestamp(label);
+    if (fromText !== null) {
+      return { startMs: fromText, endMs: null, precision: "text" };
+    }
+  }
+
+  return null;
+}
+
+function normalizeTranscriptSegment(segment) {
+  if (!segment || typeof segment !== "object") return null;
+
+  const startMs = toFiniteNumber(segment.startMs);
+  if (startMs === null) return null;
+
+  const text = normalizeTranscriptText(segment.text);
+  if (!text) return null;
+
+  const rawEndMs = toFiniteNumber(segment.endMs);
+  const endMs = rawEndMs !== null && rawEndMs > startMs ? rawEndMs : null;
+  return { startMs, endMs, text };
+}
+
+/**
+ * Dedupes rows re-rendered across scroll passes. Keyed by startMs + normalized
+ * text, so the same row rendered twice collapses; when a duplicate carries a
+ * longer known end time, that end time wins.
+ */
+export function dedupeTranscriptSegments(segments) {
+  const byKey = new Map();
+
+  for (const segment of Array.isArray(segments) ? segments : []) {
+    const normalized = normalizeTranscriptSegment(segment);
+    if (!normalized) continue;
+
+    const key = `${normalized.startMs}|${normalized.text}`;
+    const prior = byKey.get(key);
+    if (!prior) {
+      byKey.set(key, normalized);
+      continue;
+    }
+    if (prior.endMs === null || (normalized.endMs !== null && normalized.endMs > prior.endMs)) {
+      byKey.set(key, { ...prior, endMs: normalized.endMs });
+    }
+  }
+
+  return Array.from(byKey.values()).sort(
+    (a, b) => a.startMs - b.startMs || a.text.localeCompare(b.text),
+  );
+}
+
+/**
+ * Sorts by start time and fills missing/invalid end times from the next
+ * segment's start. The final segment gets `lastPaddingMs` of breathing room.
+ */
+export function fillTranscriptEndMs(segments, options = {}) {
+  const lastPaddingMs = toFiniteNumber(options.lastPaddingMs) ?? 3_000;
+  const minDurationMs = toFiniteNumber(options.minDurationMs) ?? 200;
+
+  const normalized = (Array.isArray(segments) ? segments : [])
+    .map((segment) => normalizeTranscriptSegment(segment))
+    .filter(Boolean)
+    .sort((a, b) => a.startMs - b.startMs);
+
+  return normalized.map((segment, index) => {
+    const next = normalized[index + 1];
+    const explicitEnd = segment.endMs;
+    const endMs =
+      explicitEnd !== null
+        ? explicitEnd
+        : next
+          ? Math.max(next.startMs, segment.startMs + minDurationMs)
+          : segment.startMs + lastPaddingMs;
+    return { startMs: segment.startMs, endMs, text: segment.text };
+  });
+}
+
+/**
+ * Merges transcript rows collected across one or more scroll passes (plus any
+ * rows collected before scrolling) into a deduped, sorted, end-filled list.
+ */
+export function mergeTranscriptRows(batches, existing = []) {
+  const rows = [];
+  const append = (value) => {
+    if (Array.isArray(value)) rows.push(...value);
+    else if (value) rows.push(value);
+  };
+
+  for (const batch of Array.isArray(batches) ? batches : [batches]) append(batch);
+  append(existing);
+
+  return fillTranscriptEndMs(dedupeTranscriptSegments(rows));
+}
+
+/**
+ * Decides whether the transcript list actually overflows its viewport, so a
+ * single read pass is enough for short videos.
+ */
+export function shouldScrollTranscript(metrics, options = {}) {
+  if (!metrics || typeof metrics !== "object") return false;
+
+  const scrollHeight = Number(metrics.scrollHeight);
+  const clientHeight = Number(metrics.clientHeight);
+  if (!Number.isFinite(scrollHeight) || !Number.isFinite(clientHeight)) return false;
+  if (scrollHeight <= 0 || clientHeight <= 0) return false;
+
+  const minOverflowPx = toFiniteNumber(options.minOverflowPx) ?? TRANSCRIPT_MIN_OVERFLOW_PX;
+  return scrollHeight - clientHeight > minOverflowPx;
+}
+
 function readControlTextCandidates(control) {
   if (!control || typeof control !== "object") return [];
 

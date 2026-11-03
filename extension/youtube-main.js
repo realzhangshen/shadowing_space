@@ -229,6 +229,260 @@
     return (h * 3600 + m * 60 + s) * 1000;
   }
 
+  // -------------------------------------------------------------------------
+  // Transcript DOM helpers (mirrored from extension/lib/player-response.js —
+  // MV3 manifest content scripts cannot import, so keep the two copies equal).
+  //
+  // YouTube renders the transcript panel in two shapes that coexist across
+  // builds: legacy <ytd-transcript-segment-renderer> with .segment-timestamp /
+  // .segment-text, and modern <transcript-segment-view-model> with
+  // .ytwTranscriptSegmentViewModelTimestamp / .ytAttributedStringHost.
+  // -------------------------------------------------------------------------
+
+  const TRANSCRIPT_ROW_SELECTOR = "ytd-transcript-segment-renderer, transcript-segment-view-model";
+
+  const TRANSCRIPT_TEXT_SELECTORS = [
+    ".segment-text",
+    ".ytAttributedStringHost",
+    '[class*="segment-text"]',
+    '[class*="SegmentText"]',
+    "yt-formatted-string.segment-text",
+  ];
+
+  const TRANSCRIPT_TIMESTAMP_SELECTORS = [
+    ".segment-timestamp",
+    ".ytwTranscriptSegmentViewModelTimestamp",
+    '[class*="segment-timestamp"]',
+    '[class*="SegmentTimestamp"]',
+  ];
+
+  // Spoken-time accessibility labels ("1 minute, 23 seconds") are announced by
+  // screen readers next to the visual timestamps. They must never leak into the
+  // transcript text or be mistaken for a timestamp.
+  const A11Y_TEXT_NOISE_PATTERN = /a11y|visually-hidden|screen-reader|sr-only/i;
+  const TRANSCRIPT_TIMESTAMP_PATTERN = /\d{1,3}(?::\d{2}){1,2}/;
+  const TRANSCRIPT_MIN_OVERFLOW_PX = 8;
+
+  function normalizeTranscriptText(value) {
+    if (typeof value !== "string") return "";
+    return value
+      .replace(/\u00a0/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  function hasA11yNoiseClass(element) {
+    if (!element || typeof element !== "object" || element.nodeType === 3) return false;
+
+    const className =
+      typeof element.className === "string"
+        ? element.className
+        : (element.getAttribute?.("class") ?? "");
+    return A11Y_TEXT_NOISE_PATTERN.test(className);
+  }
+
+  function isA11yNoiseElement(element) {
+    if (hasA11yNoiseClass(element)) return true;
+    if (!element || typeof element !== "object" || element.nodeType === 3) return false;
+    return element.getAttribute?.("aria-hidden") === "true";
+  }
+
+  function readElementVisibleText(element) {
+    if (!element || typeof element !== "object") return "";
+
+    const childNodes = Array.isArray(element.childNodes) ? element.childNodes : null;
+    if (childNodes && childNodes.length > 0) {
+      let text = "";
+      const visit = (node) => {
+        if (!node || typeof node !== "object") return;
+        if (node.nodeType === 3) {
+          text += node.nodeValue ?? "";
+          return;
+        }
+        if (isA11yNoiseElement(node)) return;
+        const children = Array.isArray(node.childNodes) ? node.childNodes : [];
+        for (const child of children) visit(child);
+      };
+      for (const child of childNodes) visit(child);
+      return text;
+    }
+
+    return typeof element.textContent === "string" ? element.textContent : "";
+  }
+
+  function readTranscriptTextFromRow(row) {
+    if (!row || typeof row !== "object") return "";
+
+    for (const selector of TRANSCRIPT_TEXT_SELECTORS) {
+      let element = null;
+      try {
+        element = row.querySelector?.(selector) ?? null;
+      } catch {
+        element = null;
+      }
+      if (!element || hasA11yNoiseClass(element)) continue;
+
+      const text = normalizeTranscriptText(readElementVisibleText(element));
+      if (text) return text;
+    }
+
+    return "";
+  }
+
+  function parseTranscriptTimestamp(text) {
+    if (typeof text !== "string") return null;
+    const trimmed = text.trim();
+    if (!trimmed) return null;
+
+    const parts = trimmed.split(":");
+    if (parts.length < 2 || parts.length > 3) return null;
+
+    const numbers = parts.map((part) => Number.parseInt(part, 10));
+    if (numbers.some((n) => !Number.isFinite(n))) return null;
+
+    if (numbers.length === 2) {
+      const [minutes, seconds] = numbers;
+      return (minutes * 60 + seconds) * 1_000;
+    }
+    const [hours, minutes, seconds] = numbers;
+    return (hours * 3600 + minutes * 60 + seconds) * 1_000;
+  }
+
+  function extractTranscriptTimestamp(text) {
+    if (typeof text !== "string") return null;
+    const match = text.match(TRANSCRIPT_TIMESTAMP_PATTERN);
+    if (!match) return null;
+    return parseTranscriptTimestamp(match[0]);
+  }
+
+  /**
+   * Resolves a transcript row's timing without touching the network.
+   * Resolution order (mirrors the popup's precision accounting):
+   *   1. "polymer-ms" — YouTube's internal data object (ms precision)
+   *   2. "data-attr"  — data-start-ms DOM attribute (ms precision)
+   *   3. "text"       — parsed from the displayed M:SS/H:MM:SS label (second precision)
+   */
+  function resolveTranscriptRowTiming(row) {
+    if (!row || typeof row !== "object") return null;
+
+    const startMs = readStartMsFromRow(row);
+    if (startMs !== null) {
+      return { startMs, endMs: readEndMsFromRow(row), precision: "polymer-ms" };
+    }
+
+    const segmentLike = row.querySelector?.(".segment") ?? row;
+    const attributeValue =
+      segmentLike?.getAttribute?.("data-start-ms") ?? row.getAttribute?.("data-start-ms") ?? null;
+    if (attributeValue != null) {
+      const fromAttribute = toFiniteNumber(attributeValue);
+      if (fromAttribute !== null) {
+        return { startMs: fromAttribute, endMs: null, precision: "data-attr" };
+      }
+    }
+
+    for (const selector of TRANSCRIPT_TIMESTAMP_SELECTORS) {
+      let element = null;
+      try {
+        element = row.querySelector?.(selector) ?? null;
+      } catch {
+        element = null;
+      }
+      if (!element) continue;
+
+      const label = readElementVisibleText(element) || element.textContent || "";
+      const fromText = extractTranscriptTimestamp(label);
+      if (fromText !== null) {
+        return { startMs: fromText, endMs: null, precision: "text" };
+      }
+    }
+
+    return null;
+  }
+
+  function normalizeTranscriptSegment(segment) {
+    if (!segment || typeof segment !== "object") return null;
+
+    const startMs = toFiniteNumber(segment.startMs);
+    if (startMs === null) return null;
+
+    const text = normalizeTranscriptText(segment.text);
+    if (!text) return null;
+
+    const rawEndMs = toFiniteNumber(segment.endMs);
+    const endMs = rawEndMs !== null && rawEndMs > startMs ? rawEndMs : null;
+    return { startMs, endMs, text };
+  }
+
+  function dedupeTranscriptSegments(segments) {
+    const byKey = new Map();
+
+    for (const segment of Array.isArray(segments) ? segments : []) {
+      const normalized = normalizeTranscriptSegment(segment);
+      if (!normalized) continue;
+
+      const key = `${normalized.startMs}|${normalized.text}`;
+      const prior = byKey.get(key);
+      if (!prior) {
+        byKey.set(key, normalized);
+        continue;
+      }
+      if (prior.endMs === null || (normalized.endMs !== null && normalized.endMs > prior.endMs)) {
+        byKey.set(key, { ...prior, endMs: normalized.endMs });
+      }
+    }
+
+    return Array.from(byKey.values()).sort(
+      (a, b) => a.startMs - b.startMs || a.text.localeCompare(b.text),
+    );
+  }
+
+  function fillTranscriptEndMs(segments, options = {}) {
+    const lastPaddingMs = toFiniteNumber(options.lastPaddingMs) ?? 3_000;
+    const minDurationMs = toFiniteNumber(options.minDurationMs) ?? 200;
+
+    const normalized = (Array.isArray(segments) ? segments : [])
+      .map((segment) => normalizeTranscriptSegment(segment))
+      .filter(Boolean)
+      .sort((a, b) => a.startMs - b.startMs);
+
+    return normalized.map((segment, index) => {
+      const next = normalized[index + 1];
+      const explicitEnd = segment.endMs;
+      const endMs =
+        explicitEnd !== null
+          ? explicitEnd
+          : next
+            ? Math.max(next.startMs, segment.startMs + minDurationMs)
+            : segment.startMs + lastPaddingMs;
+      return { startMs: segment.startMs, endMs, text: segment.text };
+    });
+  }
+
+  function mergeTranscriptRows(batches, existing = []) {
+    const rows = [];
+    const append = (value) => {
+      if (Array.isArray(value)) rows.push(...value);
+      else if (value) rows.push(value);
+    };
+
+    for (const batch of Array.isArray(batches) ? batches : [batches]) append(batch);
+    append(existing);
+
+    return fillTranscriptEndMs(dedupeTranscriptSegments(rows));
+  }
+
+  function shouldScrollTranscript(metrics, options = {}) {
+    if (!metrics || typeof metrics !== "object") return false;
+
+    const scrollHeight = Number(metrics.scrollHeight);
+    const clientHeight = Number(metrics.clientHeight);
+    if (!Number.isFinite(scrollHeight) || !Number.isFinite(clientHeight)) return false;
+    if (scrollHeight <= 0 || clientHeight <= 0) return false;
+
+    const minOverflowPx = toFiniteNumber(options.minOverflowPx) ?? TRANSCRIPT_MIN_OVERFLOW_PX;
+    return scrollHeight - clientHeight > minOverflowPx;
+  }
+
   function readControlTextCandidates(control) {
     if (!control || typeof control !== "object") return [];
 
@@ -298,21 +552,37 @@
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
-  const TRANSCRIPT_ROW_SELECTOR = "ytd-transcript-segment-renderer";
   const TRANSCRIPT_PANEL_SELECTOR = [
     "ytd-transcript-segment-list-renderer",
     'ytd-engagement-panel-section-list-renderer[target-id="engagement-panel-searchable-transcript"]',
     'ytd-engagement-panel-section-list-renderer[target-id="PAmodern_transcript_view"]',
     "ytd-transcript-search-panel-renderer",
+    "ytd-transcript-renderer",
+    "yt-transcript-panel-view-model",
     ".ytd-transcript-search-panel-renderer #segments-container",
     "#segments-container",
+    "#transcript-scrollbox",
   ].join(",");
-  const TRANSCRIPT_TEXT_SELECTORS = [
-    ".segment-text yt-formatted-string",
-    ".segment-text",
-    "yt-formatted-string.segment-text",
-    '[class*="segment-text"]',
-  ];
+
+  const TRANSCRIPT_PANEL_ANCESTOR_SELECTOR = [
+    "ytd-engagement-panel-section-list-renderer[target-id]",
+    "ytd-transcript-search-panel-renderer",
+    "ytd-transcript-segment-list-renderer",
+    "ytd-transcript-renderer",
+    "yt-transcript-panel-view-model",
+    "#segments-container",
+    "#transcript-scrollbox",
+  ].join(",");
+
+  // Containers that scroll (and therefore virtualize) the transcript list.
+  const TRANSCRIPT_SCROLL_CANDIDATE_SELECTOR = [
+    "#segments-container",
+    "#transcript-scrollbox",
+    "ytd-transcript-segment-list-renderer",
+    "transcript-segment-list-view-model",
+    '[class*="segment-list"]',
+    '[class*="SegmentList"]',
+  ].join(",");
 
   function findTranscriptRows(root) {
     const rows = [];
@@ -323,7 +593,8 @@
 
   function hasTranscriptContent(root) {
     if (!root) return false;
-    return findTranscriptRows(root).length > 0 || Boolean(root.querySelector?.(".segment-text"));
+    if (findTranscriptRows(root).length > 0) return true;
+    return Boolean(root.querySelector?.(".segment-text, .ytAttributedStringHost"));
   }
 
   function findTranscriptList() {
@@ -332,14 +603,21 @@
       if (hasTranscriptContent(root)) return root;
     }
 
+    // Document-wide fallback: modern panels occasionally render rows before the
+    // panel wrapper is findable by our selectors.
     const row = document.querySelector(TRANSCRIPT_ROW_SELECTOR);
-    return (
-      row?.closest?.(
-        "ytd-engagement-panel-section-list-renderer[target-id], ytd-transcript-search-panel-renderer, ytd-transcript-segment-list-renderer, #segments-container",
-      ) ??
-      row?.parentElement ??
-      null
-    );
+    if (row) {
+      return row.closest?.(TRANSCRIPT_PANEL_ANCESTOR_SELECTOR) ?? row.parentElement ?? null;
+    }
+
+    const legacyText = document.querySelector(".segment-text");
+    if (legacyText) {
+      return (
+        legacyText.closest?.(TRANSCRIPT_PANEL_ANCESTOR_SELECTOR) ?? legacyText.parentElement ?? null
+      );
+    }
+
+    return null;
   }
 
   const CLICKABLE_CONTROL_SELECTOR = [
@@ -434,91 +712,209 @@
     return false;
   }
 
-  function readTextFromRow(row) {
-    for (const selector of TRANSCRIPT_TEXT_SELECTORS) {
-      const value = normalizeText(row.querySelector?.(selector)?.textContent ?? "");
-      if (value) return value;
-    }
-    return "";
-  }
-
   function collectTranscriptDomDebug() {
+    const list = findTranscriptList();
+    const scroller = findTranscriptScrollContainer(list);
     return {
       panelCount: document.querySelectorAll(TRANSCRIPT_PANEL_SELECTOR).length,
       rowCount: document.querySelectorAll(TRANSCRIPT_ROW_SELECTOR).length,
+      modernRowCount: document.querySelectorAll("transcript-segment-view-model").length,
       segmentTextCount: document.querySelectorAll(".segment-text").length,
+      attributedTextCount: document.querySelectorAll(".ytAttributedStringHost").length,
       engagementPanelTargets: Array.from(
         document.querySelectorAll("ytd-engagement-panel-section-list-renderer[target-id]"),
       )
         .map((panel) => panel.getAttribute("target-id"))
         .filter(Boolean)
         .slice(0, 8),
-      hasTranscriptRoot: Boolean(findTranscriptList()),
+      hasTranscriptRoot: Boolean(list),
+      scroll: scroller
+        ? {
+            scrollHeight: Number(scroller.scrollHeight) || 0,
+            clientHeight: Number(scroller.clientHeight) || 0,
+          }
+        : null,
     };
   }
 
-  function readTranscriptFromDom() {
-    const list = findTranscriptList();
+  // Scrolling completeness pass: YouTube may virtualize transcript rows, so only
+  // the rows near the viewport exist in the DOM at any moment. We read, scroll by
+  // roughly one viewport (with overlap), read again, and stop once we reach the
+  // bottom with two consecutive passes that produced no new rows.
+  const TRANSCRIPT_SCROLL_STEP_CAP = 400;
+  const TRANSCRIPT_SCROLL_STEP_DELAY_MS = 60;
+  const TRANSCRIPT_SCROLL_IDLE_PASSES = 2;
+  const TRANSCRIPT_SCROLL_BUDGET_MS = 10_000;
+  const TRANSCRIPT_SCROLL_OVERLAP_PX = 40;
+  const TRANSCRIPT_SCROLL_MAX_STEP_MULTIPLIER = 8;
+
+  function readScrollMetrics(element) {
+    return {
+      scrollHeight: Number(element?.scrollHeight) || 0,
+      clientHeight: Number(element?.clientHeight) || 0,
+    };
+  }
+
+  function isScrollableByStyle(element) {
+    try {
+      const overflowY = window.getComputedStyle(element)?.overflowY ?? "";
+      return /^(auto|scroll|overlay|hidden)$/i.test(overflowY);
+    } catch {
+      return false;
+    }
+  }
+
+  function findTranscriptScrollContainer(list) {
     if (!list) return null;
 
-    const rows = findTranscriptRows(list);
-    if (rows.length === 0) return null;
+    let fallback = null;
+    const consider = (node) => {
+      if (!node) return null;
+      if (!shouldScrollTranscript(readScrollMetrics(node))) return null;
+      if (isScrollableByStyle(node)) return node;
+      if (!fallback) fallback = node;
+      return null;
+    };
+
+    const direct = consider(list);
+    if (direct) return direct;
+
+    try {
+      const candidates = Array.from(
+        list.querySelectorAll?.(TRANSCRIPT_SCROLL_CANDIDATE_SELECTOR) ?? [],
+      );
+      for (const candidate of candidates) {
+        const found = consider(candidate);
+        if (found) return found;
+      }
+    } catch {
+      // querySelectorAll can throw before custom elements upgrade; ignore.
+    }
+
+    let node = list.parentElement;
+    let depth = 0;
+    while (node && depth < 14) {
+      const tagName = String(node.tagName ?? "").toLowerCase();
+      if (tagName === "html" || tagName === "body") break;
+      const found = consider(node);
+      if (found) return found;
+      node = node.parentElement;
+      depth += 1;
+    }
+
+    return fallback;
+  }
+
+  function collectTranscriptRowsInto(list, collected, precisionCounts) {
+    let added = 0;
+
+    for (const row of findTranscriptRows(list)) {
+      const text = readTranscriptTextFromRow(row);
+      if (!text) continue;
+
+      const timing = resolveTranscriptRowTiming(row);
+      if (!timing) continue;
+
+      const key = `${timing.startMs}|${text}`;
+      const prior = collected.get(key);
+      if (prior) {
+        if (timing.endMs !== null && (prior.endMs === null || timing.endMs > prior.endMs)) {
+          collected.set(key, { ...prior, endMs: timing.endMs });
+        }
+        continue;
+      }
+
+      collected.set(key, {
+        startMs: timing.startMs,
+        endMs: timing.endMs,
+        text,
+        precision: timing.precision,
+      });
+      precisionCounts[timing.precision] = (precisionCounts[timing.precision] ?? 0) + 1;
+      added += 1;
+    }
+
+    return added;
+  }
+
+  async function collectTranscriptRowsWithScroll(list, collected, precisionCounts) {
+    collectTranscriptRowsInto(list, collected, precisionCounts);
+
+    const scroller = findTranscriptScrollContainer(list);
+    if (!scroller) return; // No overflow: a single pass already saw every row.
+
+    const originalScrollTop = Number(scroller.scrollTop) || 0;
+    const startedAt = performance.now();
+    let idlePasses = 0;
+    let stepMultiplier = 1;
+    let steps = 0;
+
+    try {
+      scroller.scrollTop = 0;
+      await sleep(TRANSCRIPT_SCROLL_STEP_DELAY_MS);
+      collectTranscriptRowsInto(list, collected, precisionCounts);
+
+      while (steps < TRANSCRIPT_SCROLL_STEP_CAP) {
+        if (performance.now() - startedAt > TRANSCRIPT_SCROLL_BUDGET_MS) break;
+
+        const { scrollHeight, clientHeight } = readScrollMetrics(scroller);
+        const maxScrollTop = Math.max(0, scrollHeight - clientHeight);
+        const currentTop = Number(scroller.scrollTop) || 0;
+        const viewportStep = Math.max(clientHeight - TRANSCRIPT_SCROLL_OVERLAP_PX, 60);
+        const stepSize = Math.min(
+          viewportStep * stepMultiplier,
+          Math.max(maxScrollTop, viewportStep),
+        );
+        const nextTop = Math.min(currentTop + stepSize, maxScrollTop);
+
+        scroller.scrollTop = nextTop;
+        await sleep(TRANSCRIPT_SCROLL_STEP_DELAY_MS);
+
+        const added = collectTranscriptRowsInto(list, collected, precisionCounts);
+        steps += 1;
+
+        const settledTop = Number(scroller.scrollTop) || 0;
+        const atBottom = settledTop >= maxScrollTop - 2;
+        if (added === 0) {
+          idlePasses += 1;
+          // Non-virtualized lists add nothing while scrolling; accelerate to the
+          // bottom instead of burning the step cap on a no-op sweep.
+          stepMultiplier = Math.min(stepMultiplier * 2, TRANSCRIPT_SCROLL_MAX_STEP_MULTIPLIER);
+        } else {
+          idlePasses = 0;
+          stepMultiplier = 1;
+        }
+
+        if (atBottom && idlePasses >= TRANSCRIPT_SCROLL_IDLE_PASSES) break;
+        // The container refused to move: another sweep cannot reveal new rows.
+        if (settledTop === currentTop && added === 0) break;
+      }
+    } finally {
+      // Restore the viewer's scroll position; the collected rows stay in the Map.
+      try {
+        scroller.scrollTop = originalScrollTop;
+      } catch {
+        // Best-effort restoration.
+      }
+    }
+  }
+
+  async function readTranscriptFromDomComplete() {
+    const list = findTranscriptList();
+    if (!list) return null;
 
     // Track which timing source was used so the popup can log it:
     // - "polymer-ms" = millisecond precision from YouTube's internal Polymer data (ideal)
     // - "data-attr"  = data-start-ms DOM attribute (ms precision)
     // - "text"       = parsed from "M:SS" displayed text (second precision, ±500ms drift)
     const precisionCounts = { "polymer-ms": 0, "data-attr": 0, text: 0 };
+    const collected = new Map();
 
-    const parsed = [];
-    rows.forEach((row) => {
-      let startMs = readStartMsFromRow(row);
-      const endMs = readEndMsFromRow(row);
-      let precision = "polymer-ms";
+    await collectTranscriptRowsWithScroll(list, collected, precisionCounts);
+    if (collected.size === 0) return null;
 
-      if (startMs === null) {
-        const segmentDiv = row.querySelector(".segment") ?? row;
-        const attr =
-          segmentDiv.getAttribute?.("data-start-ms") ?? row.getAttribute?.("data-start-ms") ?? null;
-        if (attr != null) {
-          const n = Number.parseInt(attr, 10);
-          if (Number.isFinite(n)) {
-            startMs = n;
-            precision = "data-attr";
-          }
-        }
-      }
-
-      if (startMs === null) {
-        const ts = row.querySelector(".segment-timestamp");
-        const n = parseTimestampToMs(ts?.textContent ?? "");
-        if (Number.isFinite(n)) {
-          startMs = n;
-          precision = "text";
-        }
-      }
-
-      const text = readTextFromRow(row);
-
-      if (startMs !== null && text) {
-        precisionCounts[precision] += 1;
-        parsed.push({ startMs, endMs, text });
-      }
-    });
-
-    if (parsed.length === 0) return null;
-
-    // Fill missing endMs from the next segment's start; last segment gets +3s padding.
-    const segments = parsed.map((seg, index) => {
-      const next = parsed[index + 1];
-      const resolvedEnd =
-        seg.endMs !== null
-          ? seg.endMs
-          : next
-            ? Math.max(next.startMs, seg.startMs + 200)
-            : seg.startMs + 3_000;
-      return { startMs: seg.startMs, endMs: resolvedEnd, text: seg.text };
-    });
+    const segments = mergeTranscriptRows([], Array.from(collected.values()));
+    if (segments.length === 0) return null;
 
     return { segments, precisionCounts };
   }
@@ -700,9 +1096,10 @@
 
     // Prefer the DOM path when the transcript panel is already open. It's both
     // faster (no ~500ms per fetch attempt) and immune to YouTube's silent-reject.
+    // The complete read scrolls virtualized rows, so completeness wins over latency.
     if (findTranscriptList()) {
       await sleep(200);
-      const domResult = readTranscriptFromDom();
+      const domResult = await readTranscriptFromDomComplete();
       if (domResult && domResult.segments.length > 0) {
         segments = domResult.segments;
         precisionCounts = domResult.precisionCounts;
@@ -743,9 +1140,9 @@
         throw err;
       }
 
-      // Small settle so the last few rows get rendered before we read.
+      // Small settle so the first rows get rendered before the completeness pass.
       await sleep(300);
-      const domResult = readTranscriptFromDom();
+      const domResult = await readTranscriptFromDomComplete();
       if (!domResult || !domResult.segments || domResult.segments.length === 0) {
         const err = new Error(
           "Transcript panel is open but contains no readable segments. It may still be loading — wait a moment and retry.",

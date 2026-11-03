@@ -167,6 +167,43 @@ test("parseTranscriptPayload does not treat html pages as transcript xml", () =>
   assert.equal(result.segments.length, 0);
 });
 
+test("parseTranscriptPayload rejects html error pages that use html and body without a doctype", () => {
+  const payload = `<html><body><p>This video is unavailable.</p></body></html>`;
+  const result = parseTranscriptPayload(payload);
+
+  assert.equal(result.parsed, false);
+  assert.equal(result.segments.length, 0);
+});
+
+test("parseTranscriptPayload parses srv3 timedtext xml that contains a body element", () => {
+  // Real shape of a YouTube srv3 payload: <timedtext><body><p t="ms" d="ms">text</p>
+  // The <body> element must not make this look like an HTML error page.
+  const payload = `<?xml version="1.0" encoding="utf-8" ?><timedtext format="3">
+<body>
+<p t="1360" d="1680">[♪♪♪]</p>
+<p t="18640" d="3240">♪ We&#39;re no strangers to love ♪</p>
+<p t="27040" d="4000">♪ A full commitment&#39;s
+what I&#39;m thinking of ♪</p>
+<p t="43000" d="2120">Tom &amp; Jerry</p>
+</body>
+</timedtext>`;
+
+  const result = parseTranscriptPayload(payload);
+
+  assert.equal(result.parsed, true);
+  assert.deepEqual(result.segments, [
+    { index: 0, startMs: 1360, endMs: 3040, text: "[♪♪♪]" },
+    { index: 1, startMs: 18640, endMs: 21880, text: "♪ We're no strangers to love ♪" },
+    {
+      index: 2,
+      startMs: 27040,
+      endMs: 31040,
+      text: "♪ A full commitment's what I'm thinking of ♪",
+    },
+    { index: 3, startMs: 43000, endMs: 45120, text: "Tom & Jerry" },
+  ]);
+});
+
 test("parseTranscriptPayload treats empty payload as unsupported", () => {
   const result = parseTranscriptPayload("   ");
 
@@ -210,14 +247,102 @@ test("mergeSegments splits on sentence-ending punctuation", () => {
   ]);
 });
 
-test("mergeSegments force-splits when duration exceeds 15 seconds", () => {
+test("mergeSegments merges continuous speech cues without sentence-ending punctuation", () => {
+  // Auto-generated speech cues arrive back-to-back with tiny gaps and no punctuation.
   const input = [
-    { index: 0, startMs: 0, endMs: 5000, text: "one" },
-    { index: 1, startMs: 5000, endMs: 10000, text: "two" },
-    { index: 2, startMs: 10000, endMs: 16000, text: "three" },
+    { index: 0, startMs: 0, endMs: 2000, text: "so the first thing" },
+    { index: 1, startMs: 2080, endMs: 4000, text: "we should look at" },
+    { index: 2, startMs: 4080, endMs: 6000, text: "is the request body" },
+  ];
+  const result = mergeSegments(input);
+  assert.deepEqual(result, [
+    {
+      index: 0,
+      startMs: 0,
+      endMs: 6000,
+      text: "so the first thing we should look at is the request body",
+    },
+  ]);
+});
+
+test("mergeSegments splits when the pause between cues exceeds the gap threshold", () => {
+  // 1000ms pause between lyric lines is a phrase boundary; 0ms gaps stay merged.
+  const input = [
+    { index: 0, startMs: 0, endMs: 1000, text: "♪ first line" },
+    { index: 1, startMs: 1000, endMs: 2000, text: "♪ second line" },
+    { index: 2, startMs: 3000, endMs: 4000, text: "♪ third line" },
+  ];
+  const result = mergeSegments(input);
+  assert.deepEqual(result, [
+    { index: 0, startMs: 0, endMs: 2000, text: "♪ first line ♪ second line" },
+    { index: 1, startMs: 3000, endMs: 4000, text: "♪ third line" },
+  ]);
+});
+
+test("mergeSegments splits when merged duration would exceed 8 seconds", () => {
+  const input = [
+    { index: 0, startMs: 0, endMs: 4000, text: "one" },
+    { index: 1, startMs: 4000, endMs: 8000, text: "two" },
+    { index: 2, startMs: 8000, endMs: 12000, text: "three" },
   ];
   const result = mergeSegments(input);
   assert.equal(result.length, 2);
-  assert.deepEqual(result[0], { index: 0, startMs: 0, endMs: 10000, text: "one two" });
-  assert.deepEqual(result[1], { index: 1, startMs: 10000, endMs: 16000, text: "three" });
+  assert.deepEqual(result[0], { index: 0, startMs: 0, endMs: 8000, text: "one two" });
+  assert.deepEqual(result[1], { index: 1, startMs: 8000, endMs: 12000, text: "three" });
+});
+
+test("mergeSegments splits when merged text would exceed the length cap", () => {
+  const input = [
+    { index: 0, startMs: 0, endMs: 1000, text: "a".repeat(100) },
+    { index: 1, startMs: 1000, endMs: 2000, text: "b".repeat(100) },
+    { index: 2, startMs: 2000, endMs: 3000, text: "c".repeat(100) },
+  ];
+  const result = mergeSegments(input);
+  assert.equal(result.length, 2);
+  assert.deepEqual(result[0], {
+    index: 0,
+    startMs: 0,
+    endMs: 2000,
+    text: `${"a".repeat(100)} ${"b".repeat(100)}`,
+  });
+  assert.deepEqual(result[1], { index: 1, startMs: 2000, endMs: 3000, text: "c".repeat(100) });
+});
+
+test("mergeSegments preserves every cue text exactly once", () => {
+  // Mixed payload: continuous lines, a terminal-punctuation line, a long pause and a >8s span.
+  const input = [
+    { index: 0, startMs: 0, endMs: 4000, text: "First line of the talk" },
+    { index: 1, startMs: 4000, endMs: 8000, text: "second line continues" },
+    { index: 2, startMs: 8000, endMs: 12000, text: "third line arrives" },
+    { index: 3, startMs: 12000, endMs: 16000, text: "fourth line ends here." },
+    { index: 4, startMs: 17500, endMs: 20000, text: "fifth line." },
+  ];
+
+  const result = mergeSegments(input);
+
+  assert.deepEqual(result, [
+    {
+      index: 0,
+      startMs: 0,
+      endMs: 8000,
+      text: "First line of the talk second line continues",
+    },
+    {
+      index: 1,
+      startMs: 8000,
+      endMs: 16000,
+      text: "third line arrives fourth line ends here.",
+    },
+    { index: 2, startMs: 17500, endMs: 20000, text: "fifth line." },
+  ]);
+  // No text lost or duplicated.
+  assert.equal(
+    result.map((segment) => segment.text).join(" "),
+    input.map((segment) => segment.text).join(" "),
+  );
+  // Indexes stay sequential and timings stay inside the original span.
+  result.forEach((segment, position) => {
+    assert.equal(segment.index, position);
+    assert.ok(segment.endMs > segment.startMs);
+  });
 });
