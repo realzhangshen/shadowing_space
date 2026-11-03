@@ -27,7 +27,7 @@
     "format:check": "prettier --check .",
     "i18n:check": "node --import tsx scripts/i18n/check.ts",
     "ci:local": "npm run typecheck && npm run lint && npm run format:check && npm run i18n:check && npm run test && TRACK_TOKEN_SECRET=local-ci-dummy npm run build",
-    "prepare": "git config core.hooksPath .hooks"
+    "prepare": "git config core.hooksPath .hooks || true"
   },
   "dependencies": {
     "@serwist/next": "^9.5.6",
