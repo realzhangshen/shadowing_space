@@ -622,20 +622,86 @@ textarea {
 
 /* Practice layout */
 
-.practice-layout {
+.resizable-split {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1.5rem;
+  grid-template-columns: var(--split-left, 58%) 12px minmax(0, 1fr);
+  column-gap: 0.75rem;
+  row-gap: 1.5rem;
   max-width: 1200px;
   height: calc(100vh - 8rem);
   min-height: 600px;
+  align-items: stretch;
+}
+
+.resizable-split-pane {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.resizable-split-pane > .main-practice {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* Drag handle: 12px hit area with a 4px visible bar. */
+.split-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 12px;
+  min-height: 0;
+  border-radius: 999px;
+  outline: none;
+  cursor: col-resize;
+  touch-action: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.split-divider-bar {
+  width: 4px;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--line);
+  transition:
+    background 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.split-divider:hover .split-divider-bar {
+  background: var(--primary);
+}
+
+.split-divider:focus-visible .split-divider-bar {
+  background: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-muted);
+}
+
+.resizable-split.is-dragging {
+  cursor: col-resize;
+  user-select: none;
+}
+
+.resizable-split.is-dragging .split-divider-bar {
+  background: var(--primary);
+}
+
+/* Keep the YouTube iframe from swallowing pointer events mid-drag. */
+.resizable-split.is-dragging iframe {
+  pointer-events: none;
 }
 
 @media (max-width: 768px) {
-  .practice-layout {
+  .resizable-split {
     grid-template-columns: 1fr;
     height: auto;
     min-height: auto;
+  }
+
+  .split-divider {
+    display: none;
   }
 
   .main-practice {
@@ -804,6 +870,13 @@ textarea {
   flex-direction: column;
   gap: 0.45rem;
   min-height: 0;
+}
+
+/* Virtualized spacer divs must keep their measured height: as column flex
+   children their default `flex-shrink: 1` collapses them to ~0, which breaks
+   scrolling past the rendered window. */
+.segment-list > [data-virtual-spacer] {
+  flex: 0 0 auto;
 }
 
 .segment-item {

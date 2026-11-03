@@ -216,7 +216,8 @@
     "wordUpdated": "Слово «{word}» обновлено.",
     "wordDeleted": "Слово удалено.",
     "wordSaveFailed": "Не удалось сохранить слово.",
-    "wordDeleteFailed": "Не удалось удалить слово."
+    "wordDeleteFailed": "Не удалось удалить слово.",
+    "resizePanels": "Изменить размер панелей"
   },
   "PlaybackControlBar": {
     "prev": "← Пред.",

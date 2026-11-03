@@ -216,7 +216,8 @@
     "wordUpdated": "已更新「{word}」",
     "wordDeleted": "已刪除生詞",
     "wordSaveFailed": "記錄生詞失敗。",
-    "wordDeleteFailed": "刪除生詞失敗。"
+    "wordDeleteFailed": "刪除生詞失敗。",
+    "resizePanels": "調整面板大小"
   },
   "PlaybackControlBar": {
     "prev": "← 上一句",

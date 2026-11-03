@@ -1439,6 +1439,54 @@ tests:
     reason: Locks thumbnail fallback behavior so dashboard cards recover from missing YouTube rendition variants and non-https URLs.
     lastReviewedOn: 2026-11-03
     reviewBy: 2027-05-03
+  - file: tests/lib/panelSplit.test.ts
+    name: split ratio constants keep the video pane dominant by default
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks the practice split-pane ratio math used by the draggable video/sentence divider.
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/lib/panelSplit.test.ts
+    name: clampSplitRatio keeps ratios inside the supported range and falls back for invalid input
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks the practice split-pane ratio math used by the draggable video/sentence divider.
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/lib/panelSplit.test.ts
+    name: parseStoredSplitRatio restores valid values and ignores garbage or out-of-range input
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks the practice split-pane ratio math used by the draggable video/sentence divider.
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/lib/panelSplit.test.ts
+    name: splitRatioFromPointer converts pointer position into a clamped ratio
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks the practice split-pane ratio math used by the draggable video/sentence divider.
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/lib/panelSplit.test.ts
+    name: nextSplitRatioForKeyboard steps with arrows and clamps at the bounds
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks the practice split-pane ratio math used by the draggable video/sentence divider.
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/lib/panelSplit.test.ts
+    name: formatSplitColumns renders percentage widths that add up to 100%
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks the practice split-pane ratio math used by the draggable video/sentence divider.
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
   - file: tests/lib/swRuntimeCaching.test.ts
     name: isSameOriginUrl treats the default port and trailing slash as the same origin
     category: unit

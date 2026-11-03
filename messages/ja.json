@@ -216,7 +216,8 @@
     "wordUpdated": "「{word}」を更新しました。",
     "wordDeleted": "単語を削除しました。",
     "wordSaveFailed": "単語を保存できませんでした。",
-    "wordDeleteFailed": "単語を削除できませんでした。"
+    "wordDeleteFailed": "単語を削除できませんでした。",
+    "resizePanels": "パネル幅を調整"
   },
   "PlaybackControlBar": {
     "prev": "← 前へ",

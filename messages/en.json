@@ -216,7 +216,8 @@
     "wordUpdated": "Updated “{word}”.",
     "wordDeleted": "Saved word deleted.",
     "wordSaveFailed": "Failed to save the word.",
-    "wordDeleteFailed": "Failed to delete the word."
+    "wordDeleteFailed": "Failed to delete the word.",
+    "resizePanels": "Resize panels"
   },
   "PlaybackControlBar": {
     "prev": "\u2190 Prev",
