@@ -2047,3 +2047,19 @@ tests:
     reason: Locks the transcript DOM sweep completeness contract so long virtualized transcripts are never silently truncated.
     lastReviewedOn: 2026-11-03
     reviewBy: 2027-05-03
+  - file: tests/extension/transcriptScrollCompleteness.test.ts
+    name: buildRenderSignature distinguishes same-count windows without data attributes
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks transcript DOM-sweep completeness and render-signature evidence for long virtualized transcripts.
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/extension/transcriptScrollCompleteness.test.ts
+    name: buildRenderSignature falls back to row position when no identity is available
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks transcript DOM-sweep completeness and render-signature evidence for long virtualized transcripts.
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  buildRenderSignature,
   collectTranscriptRowsByScroll,
   computeTranscriptScrollBudgetMs,
   estimateTranscriptScrollSteps,
@@ -461,4 +462,46 @@ test("computeTranscriptScrollBudgetMs clamps between 15s and 90s", () => {
     90_000,
   );
   assert.equal(estimateTranscriptScrollSteps({ scrollHeight: 400, clientHeight: 400 }), 0);
+});
+
+test("buildRenderSignature distinguishes same-count windows without data attributes", () => {
+  const firstWindow = [
+    { startMs: 1_000, text: "one" },
+    { startMs: 2_000, text: "two" },
+    { startMs: 3_000, text: "three" },
+  ];
+  const secondWindow = [
+    { startMs: 4_000, text: "four" },
+    { startMs: 5_000, text: "five" },
+    { startMs: 6_000, text: "six" },
+  ];
+
+  const keyOf = (row: { startMs: number; text: string } | undefined) => row?.startMs ?? "";
+  assert.notEqual(
+    buildRenderSignature(firstWindow, keyOf),
+    buildRenderSignature(secondWindow, keyOf),
+  );
+  assert.equal(buildRenderSignature(firstWindow, keyOf), buildRenderSignature(firstWindow, keyOf));
+});
+
+test("buildRenderSignature falls back to row position when no identity is available", () => {
+  const row = (index: number) => ({
+    getAttribute: () => null,
+    getBoundingClientRect: () => ({ top: index * 50, bottom: index * 50 + 50 }),
+  });
+  const allRows = Array.from({ length: 100 }, (_unused, index) => row(index));
+  const firstWindow = allRows.slice(0, 3);
+  const secondWindow = allRows.slice(50, 53);
+
+  // The MAIN-world adapter supplies the row's position in the full DOM list so
+  // opaque rows (no data attributes, no text) still produce a changing signature.
+  const keyOf = (entry: ReturnType<typeof row> | undefined) =>
+    entry ? allRows.indexOf(entry) : "";
+  assert.notEqual(
+    buildRenderSignature(firstWindow, keyOf),
+    buildRenderSignature(secondWindow, keyOf),
+  );
+
+  // Without any identity the helper still returns a deterministic signature.
+  assert.equal(buildRenderSignature([row(0), row(1)]), "2|0|1");
 });

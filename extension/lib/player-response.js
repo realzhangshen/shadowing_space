@@ -599,6 +599,38 @@ function isTranscriptAtBottom(snapshot) {
   return scrollTop >= maxScrollTop - TRANSCRIPT_SCROLL_BOTTOM_EPSILON_PX;
 }
 
+function defaultRenderRowKey(row, index) {
+  if (row === null || row === undefined) return "";
+  if (typeof row !== "object") return String(row);
+  const candidates = [row.startMs, row.index, row.id, row.targetId, row.text];
+  for (const candidate of candidates) {
+    if (candidate !== undefined && candidate !== null && candidate !== "") return String(candidate);
+  }
+  return String(index);
+}
+
+/**
+ * Stable signature of the currently *visible* rows. It must change whenever the
+ * DOM re-renders for a new scroll position. Rows often lack data attributes on
+ * modern YouTube panels, so callers can supply `keyOf` (timing/text based);
+ * otherwise sizes, startMs/text fallbacks and finally row position are used.
+ */
+export function buildRenderSignature(rows, keyOf) {
+  const list = Array.isArray(rows) ? rows : [];
+  const key = (row, index) => {
+    try {
+      if (typeof keyOf === "function") {
+        const custom = keyOf(row, index);
+        if (custom !== undefined && custom !== null && custom !== "") return String(custom);
+      }
+      return defaultRenderRowKey(row, index);
+    } catch {
+      return "";
+    }
+  };
+  return `${list.length}|${key(list[0], 0)}|${key(list[list.length - 1], list.length - 1)}`;
+}
+
 /**
  * Distance between the bottom of the last rendered row and the end of the
  * scroll content, or null when the caller cannot provide that evidence.

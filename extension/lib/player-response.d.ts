@@ -92,10 +92,11 @@ export declare function shouldScrollTranscript(
 
 export type TranscriptScrollReason =
   | "no_overflow"
-  | "fully_rendered"
   | "budget"
   | "step_cap"
   | "stalled"
+  | "render_timeout"
+  | "missing_rows"
   | null;
 
 export interface TranscriptScrollSnapshot<Row = unknown> {
@@ -105,11 +106,21 @@ export interface TranscriptScrollSnapshot<Row = unknown> {
   clientHeight: number;
   renderedCount?: number;
   /**
-   * Total row count estimated from scrollHeight / measured row stride. Used for
-   * the "DOM already holds every row" shortcut; the reader derives it from the
-   * smallest sampled row height so the estimate never under-counts.
+   * Diagnostic estimate only (scrollHeight / row stride). It is never used to
+   * declare a transcript complete.
    */
   estimatedTotalRows?: number | null;
+  /**
+   * Signature of the currently visible rows. It must change when the DOM
+   * re-renders for a new scroll position; the sweep reads the DOM only after an
+   * observed change (or reports render_timeout).
+   */
+  renderSignature?: string | number | null;
+  /** Bottom of the last rendered row in scroll-content coordinates. */
+  contentBottomPx?: number | null;
+  /** Measured row stride used to scale the bottom-gap tolerance. */
+  rowStridePx?: number | null;
+  visibleCount?: number;
 }
 
 export interface TranscriptScrollResult<Row = unknown> {
@@ -129,18 +140,24 @@ export interface CollectTranscriptRowsByScrollOptions<Row = unknown> {
   now?: () => number;
   budgetMs?: number;
   stepDelayMs?: number;
+  renderWaitMs?: number;
+  pollDelayMs?: number;
   maxSteps?: number;
   overlapPx?: number;
   idlePasses?: number;
 }
 
 export declare const TRANSCRIPT_SCROLL_STEP_DELAY_MS: number;
+export declare const TRANSCRIPT_SCROLL_RENDER_WAIT_MS: number;
+export declare const TRANSCRIPT_SCROLL_POLL_DELAY_MS: number;
 export declare const TRANSCRIPT_SCROLL_OVERLAP_PX: number;
 export declare const TRANSCRIPT_SCROLL_IDLE_PASSES: number;
 export declare const TRANSCRIPT_SCROLL_MAX_STEPS: number;
 export declare const TRANSCRIPT_SCROLL_ABSOLUTE_MAX_STEPS: number;
 export declare const TRANSCRIPT_SCROLL_MIN_STEP_PX: number;
 export declare const TRANSCRIPT_SCROLL_BOTTOM_EPSILON_PX: number;
+export declare const TRANSCRIPT_SCROLL_BOTTOM_GAP_MIN_PX: number;
+export declare const TRANSCRIPT_SCROLL_BOTTOM_GAP_STRIDE_FACTOR: number;
 export declare const TRANSCRIPT_SCROLL_BUDGET_MIN_MS: number;
 export declare const TRANSCRIPT_SCROLL_BUDGET_MAX_MS: number;
 export declare const TRANSCRIPT_SCROLL_BUDGET_OVERHEAD_MS: number;
@@ -155,6 +172,7 @@ export declare function computeTranscriptScrollBudgetMs(options?: {
   scrollHeight?: number;
   clientHeight?: number;
   stepDelayMs?: number;
+  renderWaitMs?: number;
   overlapPx?: number;
   minBudgetMs?: number;
   maxBudgetMs?: number;
@@ -164,6 +182,12 @@ export declare function computeTranscriptScrollBudgetMs(options?: {
 export declare function collectTranscriptRowsByScroll<Row = unknown>(
   options: CollectTranscriptRowsByScrollOptions<Row>,
 ): Promise<TranscriptScrollResult<Row>>;
+
+/** Stable signature of the currently visible transcript rows. */
+export declare function buildRenderSignature<Row = unknown>(
+  rows: Row[] | null | undefined,
+  keyOf?: (row: Row | undefined, index: number) => string | number | null | undefined,
+): string;
 
 export declare function readStartMsFromRow(row: unknown): number | null;
 export declare function readEndMsFromRow(row: unknown): number | null;

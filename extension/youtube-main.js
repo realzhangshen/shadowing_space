@@ -485,6 +485,7 @@
 
   // ---------------------------------------------------------------------------
   // ---------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
   // Transcript scroll completeness.
   //
   // YouTube virtualizes long transcript lists: only the rows near the viewport
@@ -575,6 +576,39 @@
     const scrollTop = readSnapshotNumber(snapshot, "scrollTop");
     const maxScrollTop = Math.max(0, scrollHeight - clientHeight);
     return scrollTop >= maxScrollTop - TRANSCRIPT_SCROLL_BOTTOM_EPSILON_PX;
+  }
+
+  function defaultRenderRowKey(row, index) {
+    if (row === null || row === undefined) return "";
+    if (typeof row !== "object") return String(row);
+    const candidates = [row.startMs, row.index, row.id, row.targetId, row.text];
+    for (const candidate of candidates) {
+      if (candidate !== undefined && candidate !== null && candidate !== "")
+        return String(candidate);
+    }
+    return String(index);
+  }
+
+  /**
+   * Stable signature of the currently *visible* rows. It must change whenever the
+   * DOM re-renders for a new scroll position. Rows often lack data attributes on
+   * modern YouTube panels, so callers can supply `keyOf` (timing/text based);
+   * otherwise sizes, startMs/text fallbacks and finally row position are used.
+   */
+  function buildRenderSignature(rows, keyOf) {
+    const list = Array.isArray(rows) ? rows : [];
+    const key = (row, index) => {
+      try {
+        if (typeof keyOf === "function") {
+          const custom = keyOf(row, index);
+          if (custom !== undefined && custom !== null && custom !== "") return String(custom);
+        }
+        return defaultRenderRowKey(row, index);
+      } catch {
+        return "";
+      }
+    };
+    return `${list.length}|${key(list[0], 0)}|${key(list[list.length - 1], list.length - 1)}`;
   }
 
   /**
@@ -1300,29 +1334,35 @@
       // The render signature must change whenever the DOM re-renders for a new
       // scroll position. Only *visible* rows count: fully rendered lists keep
       // every row in the DOM, but the visible slice still moves while scrolling.
-      let visibleFirst = "";
-      let visibleLast = "";
-      let visibleCount = 0;
+      // Rows are identified by timing/text (modern panels often lack data
+      // attributes) with row position as the final fallback.
+      let visibleRows = [];
       let contentBottomPx = null;
       try {
         const targetRect = target.getBoundingClientRect();
-        const listRect = list.getBoundingClientRect();
-        for (const row of rows) {
+        visibleRows = rows.filter((row) => {
           const rect = row.getBoundingClientRect();
-          if (rect.bottom <= targetRect.top || rect.top >= targetRect.bottom) continue;
-          visibleCount += 1;
-          const index = row.getAttribute?.("data-segment-index");
-          if (visibleFirst === "") visibleFirst = index ?? String(visibleCount);
-          visibleLast = index ?? String(visibleCount);
-        }
+          return rect.bottom > targetRect.top && rect.top < targetRect.bottom;
+        });
         const lastRow = rows[rows.length - 1];
         if (lastRow) {
           const lastRect = lastRow.getBoundingClientRect();
-          contentBottomPx = lastRect.bottom - listRect.top;
+          // Convert the last row's bottom into the scroll container's content
+          // coordinates. targetRect.top is the viewport top, so adding scrollTop
+          // is required when the list itself is the scroll container.
+          contentBottomPx = lastRect.bottom - targetRect.top + scrollTop;
         }
       } catch {
         // Geometry reads can throw for detached nodes; leave evidence null.
       }
+
+      const renderSignature = buildRenderSignature(visibleRows, (row) => {
+        const timing = resolveTranscriptRowTiming(row);
+        if (timing) return `${timing.startMs}`;
+        const text = readTranscriptTextFromRow(row);
+        if (text) return text.slice(0, 48);
+        return row.getAttribute?.("data-segment-index") ?? rows.indexOf(row);
+      });
 
       const snapshot = {
         rows,
@@ -1331,9 +1371,10 @@
         clientHeight,
         renderedCount: rows.length,
         estimatedTotalRows,
-        renderSignature: `${visibleCount}|${visibleFirst}|${visibleLast}`,
+        renderSignature,
         contentBottomPx,
         rowStridePx,
+        visibleCount: visibleRows.length,
       };
       lastSnapshot = snapshot;
       return snapshot;
