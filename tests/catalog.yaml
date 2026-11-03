@@ -1928,14 +1928,6 @@ tests:
     lastReviewedOn: 2026-11-03
     reviewBy: 2027-05-03
   - file: tests/extension/transcriptScrollCompleteness.test.ts
-    name: collectTranscriptRowsByScroll skips scrolling when the DOM already holds every row
-    category: unit
-    validity: reasonable
-    owner: shadowing-team
-    reason: Locks the transcript DOM sweep completeness contract so long virtualized transcripts are never silently truncated.
-    lastReviewedOn: 2026-11-03
-    reviewBy: 2027-05-03
-  - file: tests/extension/transcriptScrollCompleteness.test.ts
     name: collectTranscriptRowsByScroll reports step_cap when the scroll step limit is reached
     category: unit
     validity: reasonable
@@ -2013,5 +2005,45 @@ tests:
     validity: reasonable
     owner: shadowing-team
     reason: Locks variable-height virtual-list math so every sentence stays reachable and the active row scrolls into view.
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/extension/transcriptScrollCompleteness.test.ts
+    name: collectTranscriptRowsByScroll still sweeps a fully rendered list and proves completeness
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks the transcript DOM sweep completeness contract so long virtualized transcripts are never silently truncated.
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/extension/transcriptScrollCompleteness.test.ts
+    name: collectTranscriptRowsByScroll does not complete from a stale DOM when rendering lags 120ms
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks the transcript DOM sweep completeness contract so long virtualized transcripts are never silently truncated.
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/extension/transcriptScrollCompleteness.test.ts
+    name: collectTranscriptRowsByScroll reports render_timeout when a scroll step never re-renders
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks the transcript DOM sweep completeness contract so long virtualized transcripts are never silently truncated.
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/extension/transcriptScrollCompleteness.test.ts
+    name: collectTranscriptRowsByScroll reports missing_rows when the last row never renders at the bottom
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks the transcript DOM sweep completeness contract so long virtualized transcripts are never silently truncated.
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/extension/transcriptScrollCompleteness.test.ts
+    name: collectTranscriptRowsByScroll collects all 20 rows when the viewport first shows 19
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks the transcript DOM sweep completeness contract so long virtualized transcripts are never silently truncated.
     lastReviewedOn: 2026-11-03
     reviewBy: 2027-05-03

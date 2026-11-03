@@ -31,6 +31,8 @@ interface SimulatedListOptions {
   hydrateLagReads?: number;
   stuck?: boolean;
   initialScrollTop?: number;
+  renderLagMs?: number;
+  hideLastRowAtBottom?: boolean;
 }
 
 function makeRows(rowCount: number): SimRow[] {
@@ -47,11 +49,16 @@ class SimulatedTranscriptList {
   readonly clientHeight: number;
   readonly fullyRendered: boolean;
   readonly hydrateLagReads: number;
+  readonly renderLagMs: number;
+  readonly hideLastRowAtBottom: boolean;
   readonly setCalls: number[] = [];
+  nowFn: () => number = () => 0;
   stuck: boolean;
   scrollTop: number;
   readCount = 0;
   private pendingTop: number | null = null;
+  private renderTop = 0;
+  private lastScrollAt = 0;
 
   constructor(options: SimulatedListOptions = {}) {
     this.rows = makeRows(options.rowCount ?? 2_000);
@@ -59,8 +66,11 @@ class SimulatedTranscriptList {
     this.clientHeight = options.clientHeight ?? 400;
     this.fullyRendered = options.fullyRendered ?? false;
     this.hydrateLagReads = options.hydrateLagReads ?? 0;
+    this.renderLagMs = options.renderLagMs ?? 0;
+    this.hideLastRowAtBottom = options.hideLastRowAtBottom ?? false;
     this.stuck = options.stuck ?? false;
     this.scrollTop = options.initialScrollTop ?? 0;
+    this.renderTop = this.scrollTop;
   }
 
   get scrollHeight(): number {
@@ -75,29 +85,52 @@ class SimulatedTranscriptList {
     this.setCalls.push(value);
     if (this.stuck) return;
     this.scrollTop = Math.min(Math.max(0, value), this.maxScrollTop);
+    this.lastScrollAt = this.nowFn();
+  }
+
+  /** Advances the simulated DOM render clock based on renderLagMs. */
+  private syncRenderTop(): void {
+    if (this.renderLagMs <= 0) {
+      this.renderTop = this.scrollTop;
+      return;
+    }
+    if (this.nowFn() - this.lastScrollAt >= this.renderLagMs) {
+      this.renderTop = this.scrollTop;
+    }
   }
 
   readSnapshot() {
     // hydrateLagReads: simulate a virtualized list whose newly exposed rows only
-    // render one snapshot later. Accelerating (skipping viewports) starts
-    // dropping rows in this mode; viewport-sized stepping still sees every row.
+    // render one snapshot later. renderLagMs: the DOM catches up after a wall
+    // clock delay (e.g. 120ms), which used to make the sweep read stale rows.
+    this.syncRenderTop();
     const effectiveTop =
       this.hydrateLagReads > 0 && this.readCount > 0
-        ? (this.pendingTop ?? this.scrollTop)
-        : this.scrollTop;
+        ? (this.pendingTop ?? this.renderTop)
+        : this.renderTop;
     this.pendingTop = this.scrollTop;
     this.readCount += 1;
 
-    const visible = this.fullyRendered ? this.rows : this.rowsInWindow(effectiveTop);
+    const windowRows = this.rowsInWindow(effectiveTop);
+    const visibleRows =
+      this.hideLastRowAtBottom && effectiveTop >= this.maxScrollTop - 1
+        ? windowRows.filter((row) => row.id !== this.rows.length - 1)
+        : windowRows;
+    const rendered = this.fullyRendered ? this.rows : visibleRows;
+    const visibleIds = windowRows.map((row) => row.id);
+    const lastRendered = rendered[rendered.length - 1];
     return {
-      rows: visible,
+      rows: rendered,
       scrollTop: this.scrollTop,
       scrollHeight: this.scrollHeight,
       clientHeight: this.clientHeight,
-      renderedCount: visible.length,
-      // Mirrors what the MAIN-world reader derives from scrollHeight / row stride:
-      // the estimated total row count, independent of how many are rendered now.
+      renderedCount: rendered.length,
       estimatedTotalRows: this.rows.length,
+      // Visible-row signature: changes whenever the DOM re-renders for a new
+      // scroll position, even for lists that keep every row in the DOM.
+      renderSignature: `${visibleIds.length}|${visibleIds[0] ?? ""}|${visibleIds[visibleIds.length - 1] ?? ""}`,
+      contentBottomPx: lastRendered ? (lastRendered.id + 1) * this.rowHeightPx : null,
+      rowStridePx: this.rowHeightPx,
     };
   }
 
@@ -200,7 +233,7 @@ test("collectTranscriptRowsByScroll completes a list without real overflow in a 
   assert.deepEqual(list.setCalls, [], "a non-overflowing list must never be scrolled");
 });
 
-test("collectTranscriptRowsByScroll skips scrolling when the DOM already holds every row", async () => {
+test("collectTranscriptRowsByScroll still sweeps a fully rendered list and proves completeness", async () => {
   const list = new SimulatedTranscriptList({
     rowCount: 2_000,
     rowHeightPx: 50,
@@ -212,12 +245,78 @@ test("collectTranscriptRowsByScroll skips scrolling when the DOM already holds e
 
   const result = await collectTranscriptRowsByScroll(rawOptions(list, clock));
 
+  // No estimation-based shortcut: a fully rendered list still walks the
+  // viewports (it is cheap because every pass re-reads the same DOM rows), and
+  // only reports success once it has actually reached the bottom.
   assert.equal(result.complete, true);
-  assert.equal(result.reason, "fully_rendered");
-  assert.equal(result.steps, 0);
+  assert.equal(result.reason, null);
+  assert.ok(result.steps > 0, "the sweep must not trust a renderedCount estimate");
   assert.equal(result.rows.length, 2_000);
-  assert.deepEqual(list.setCalls, [], "a fully rendered list must not be scrolled at all");
   assert.equal(list.scrollTop, 1_200);
+});
+
+test("collectTranscriptRowsByScroll does not complete from a stale DOM when rendering lags 120ms", async () => {
+  const list = new SimulatedTranscriptList({
+    rowCount: 2_000,
+    rowHeightPx: 50,
+    clientHeight: 400,
+    renderLagMs: 120,
+  });
+  const clock = createClock();
+  list.nowFn = clock.now;
+
+  const result = await collectTranscriptRowsByScroll(rawOptions(list, clock));
+
+  assert.equal(result.complete, true);
+  assert.equal(result.reason, null);
+  assert.equal(result.rows.length, 2_000);
+  assert.equal(new Set(result.rows.map((row) => row.id)).size, 2_000);
+});
+
+test("collectTranscriptRowsByScroll reports render_timeout when a scroll step never re-renders", async () => {
+  const list = new SimulatedTranscriptList({
+    rowCount: 2_000,
+    rowHeightPx: 50,
+    clientHeight: 400,
+    renderLagMs: Number.POSITIVE_INFINITY,
+  });
+  const clock = createClock();
+  list.nowFn = clock.now;
+
+  const result = await collectTranscriptRowsByScroll(rawOptions(list, clock));
+
+  assert.equal(result.complete, false);
+  assert.equal(result.reason, "render_timeout");
+  assert.ok(result.rows.length < 2_000);
+});
+
+test("collectTranscriptRowsByScroll reports missing_rows when the last row never renders at the bottom", async () => {
+  const list = new SimulatedTranscriptList({
+    rowCount: 20,
+    rowHeightPx: 50,
+    clientHeight: 950,
+    hideLastRowAtBottom: true,
+  });
+  const clock = createClock();
+
+  const result = await collectTranscriptRowsByScroll(rawOptions(list, clock));
+
+  assert.equal(result.complete, false);
+  assert.equal(result.reason, "missing_rows");
+  assert.equal(result.rows.length, 19);
+});
+
+test("collectTranscriptRowsByScroll collects all 20 rows when the viewport first shows 19", async () => {
+  const list = new SimulatedTranscriptList({ rowCount: 20, rowHeightPx: 50, clientHeight: 950 });
+  const clock = createClock();
+
+  const result = await collectTranscriptRowsByScroll(rawOptions(list, clock));
+
+  // Codex's repro: the old `renderedCount >= estimatedTotalRows - 1` shortcut
+  // claimed completeness with 19/20 rows and zero scroll steps.
+  assert.equal(result.complete, true);
+  assert.equal(result.rows.length, 20);
+  assert.ok(result.steps > 0, "the sweep must actually look for the missing row");
 });
 
 test("collectTranscriptRowsByScroll reports step_cap when the scroll step limit is reached", async () => {
@@ -343,7 +442,9 @@ test("computeTranscriptScrollBudgetMs scales past the old fixed 10s budget", () 
   assert.ok(budgetMs > 10_000, `expected more than the old 10s budget, got ${budgetMs}ms`);
   assert.ok(budgetMs >= steps * 60, "the budget must cover a full viewport-by-viewport sweep");
   assert.ok(budgetMs <= 90_000);
-  assert.equal(budgetMs, 26_930);
+  // The budget also accounts for per-step render waiting, so a 2,000-row list
+  // reaches the 90s ceiling instead of the old 26.93s step-only figure.
+  assert.equal(budgetMs, 90_000);
 });
 
 test("computeTranscriptScrollBudgetMs clamps between 15s and 90s", () => {

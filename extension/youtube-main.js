@@ -483,20 +483,44 @@
     return scrollHeight - clientHeight > minOverflowPx;
   }
 
-  // --- Mirrored from extension/lib/player-response.js (transcript completeness) ---
+  // ---------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
+  // Transcript scroll completeness.
+  //
+  // YouTube virtualizes long transcript lists: only the rows near the viewport
+  // exist in the DOM at any moment. Collecting the whole transcript therefore
+  // needs a deterministic top-to-bottom sweep of the scroll container. The sweep
+  // below is pure and dependency-injected (snapshot/scroll/merge/sleep/clock) so
+  // Node tests can simulate a virtualized list exactly and the MAIN-world script
+  // can drive it against the real DOM.
+  //
+  // Correctness rules learned from review:
+  // - A scroll step must be followed by an actual render change of the visible
+  //   rows; otherwise a lagging DOM would be read stale and rows would be missed.
+  // - There is no "looks fully rendered" shortcut: an estimate can never prove
+  //   completeness. Success requires reaching the bottom and seeing the last
+  //   rendered row reach the end of the scroll content.
+  //
+  // Contract: `complete: false` means "this is NOT the whole transcript"; callers
+  // MUST surface an error with the returned diagnostics instead of importing the
+  // partial rows.
+  // ---------------------------------------------------------------------------
 
   const TRANSCRIPT_SCROLL_STEP_DELAY_MS = 60;
+  const TRANSCRIPT_SCROLL_RENDER_WAIT_MS = 750;
+  const TRANSCRIPT_SCROLL_POLL_DELAY_MS = 50;
   const TRANSCRIPT_SCROLL_OVERLAP_PX = 40;
   const TRANSCRIPT_SCROLL_IDLE_PASSES = 2;
   const TRANSCRIPT_SCROLL_MAX_STEPS = 400;
   const TRANSCRIPT_SCROLL_ABSOLUTE_MAX_STEPS = 2_000;
   const TRANSCRIPT_SCROLL_MIN_STEP_PX = 60;
   const TRANSCRIPT_SCROLL_BOTTOM_EPSILON_PX = 2;
+  const TRANSCRIPT_SCROLL_BOTTOM_GAP_MIN_PX = 12;
+  const TRANSCRIPT_SCROLL_BOTTOM_GAP_STRIDE_FACTOR = 0.75;
   const TRANSCRIPT_SCROLL_BUDGET_MIN_MS = 15_000;
   const TRANSCRIPT_SCROLL_BUDGET_MAX_MS = 90_000;
   const TRANSCRIPT_SCROLL_BUDGET_OVERHEAD_MS = 2_000;
   const TRANSCRIPT_SCROLL_BUDGET_SAFETY_FACTOR = 1.5;
-  const TRANSCRIPT_FULLY_RENDERED_TOLERANCE_ROWS = 1;
 
   function readSnapshotObject(snapshot) {
     return snapshot && typeof snapshot === "object" ? snapshot : {};
@@ -511,6 +535,40 @@
     return Number.isFinite(value) ? value : 0;
   }
 
+  function readOptionalSnapshotNumber(snapshot, key) {
+    if (!snapshot || snapshot[key] === undefined || snapshot[key] === null) return null;
+    const value = Number(snapshot[key]);
+    return Number.isFinite(value) ? value : null;
+  }
+
+  function rowSignaturePart(row) {
+    if (row === null || row === undefined) return "";
+    if (typeof row !== "object") return String(row);
+    const candidates = [row.startMs, row.index, row.id, row.text, row.targetId];
+    for (const candidate of candidates) {
+      if (candidate !== undefined && candidate !== null && candidate !== "")
+        return String(candidate);
+    }
+    return Object.prototype.toString.call(row);
+  }
+
+  /**
+   * Signatures must change when the DOM re-renders for a new scroll position.
+   * Callers (the MAIN-world reader) provide an explicit `renderSignature` computed
+   * from the *visible* rows; when they do not, we derive one from the row batch so
+   * dependency-injected simulations still get stale-render protection.
+   */
+  function deriveRowsSignature(rows) {
+    if (!Array.isArray(rows) || rows.length === 0) return "0";
+    return `${rows.length}|${rowSignaturePart(rows[0])}|${rowSignaturePart(rows[rows.length - 1])}`;
+  }
+
+  function readRenderSignature(snapshot) {
+    const signature = snapshot?.renderSignature;
+    if (signature !== undefined && signature !== null) return String(signature);
+    return deriveRowsSignature(readSnapshotRows(snapshot));
+  }
+
   function isTranscriptAtBottom(snapshot) {
     const scrollHeight = readSnapshotNumber(snapshot, "scrollHeight");
     const clientHeight = readSnapshotNumber(snapshot, "clientHeight");
@@ -519,14 +577,33 @@
     return scrollTop >= maxScrollTop - TRANSCRIPT_SCROLL_BOTTOM_EPSILON_PX;
   }
 
-  function isTranscriptFullyRendered(snapshot) {
-    const renderedCount = Number(snapshot?.renderedCount);
-    const estimatedTotalRows = Number(snapshot?.estimatedTotalRows);
-    if (!Number.isFinite(renderedCount) || !Number.isFinite(estimatedTotalRows)) return false;
-    if (estimatedTotalRows <= 0) return false;
-    return renderedCount >= estimatedTotalRows - TRANSCRIPT_FULLY_RENDERED_TOLERANCE_ROWS;
+  /**
+   * Distance between the bottom of the last rendered row and the end of the
+   * scroll content, or null when the caller cannot provide that evidence.
+   */
+  function readTranscriptBottomGap(snapshot) {
+    const contentBottomPx = readOptionalSnapshotNumber(snapshot, "contentBottomPx");
+    const scrollHeight = readOptionalSnapshotNumber(snapshot, "scrollHeight");
+    if (contentBottomPx === null || scrollHeight === null) return null;
+    return Math.max(0, scrollHeight - contentBottomPx);
   }
 
+  function isTranscriptBottomGapAcceptable(snapshot) {
+    const gap = readTranscriptBottomGap(snapshot);
+    if (gap === null) return true; // No evidence available; other checks still apply.
+    const rowStridePx = readOptionalSnapshotNumber(snapshot, "rowStridePx");
+    const tolerance = Math.max(
+      TRANSCRIPT_SCROLL_BOTTOM_GAP_MIN_PX,
+      (rowStridePx ?? TRANSCRIPT_SCROLL_BOTTOM_GAP_MIN_PX / 2) *
+        TRANSCRIPT_SCROLL_BOTTOM_GAP_STRIDE_FACTOR,
+    );
+    return gap <= tolerance;
+  }
+
+  /**
+   * Estimated number of viewport-sized scroll steps needed to sweep the list from
+   * top to bottom. 0 when the list does not really overflow.
+   */
   function estimateTranscriptScrollSteps(metrics, options = {}) {
     if (!metrics || typeof metrics !== "object") return 0;
     if (!shouldScrollTranscript(metrics)) return 0;
@@ -544,6 +621,12 @@
     return Math.ceil(maxScrollTop / viewportStep);
   }
 
+  /**
+   * Adaptive completeness budget: one full sweep including per-step render waits,
+   * clamped to [15s, 90s]. Deliberately not a fixed constant — long transcripts
+   * need proportionally more time, and the caller turns an exhausted budget into
+   * an explicit error rather than a truncated transcript.
+   */
   function computeTranscriptScrollBudgetMs(options = {}) {
     const scrollHeight = Number(options.scrollHeight);
     const clientHeight = Number(options.clientHeight);
@@ -555,15 +638,53 @@
       0,
       toFiniteNumber(options.stepDelayMs) ?? TRANSCRIPT_SCROLL_STEP_DELAY_MS,
     );
+    const renderWaitMs = Math.max(
+      0,
+      toFiniteNumber(options.renderWaitMs) ?? TRANSCRIPT_SCROLL_RENDER_WAIT_MS,
+    );
     const minBudgetMs = toFiniteNumber(options.minBudgetMs) ?? TRANSCRIPT_SCROLL_BUDGET_MIN_MS;
     const maxBudgetMs = toFiniteNumber(options.maxBudgetMs) ?? TRANSCRIPT_SCROLL_BUDGET_MAX_MS;
     const overheadMs = toFiniteNumber(options.overheadMs) ?? TRANSCRIPT_SCROLL_BUDGET_OVERHEAD_MS;
 
     const rawBudgetMs =
-      steps * stepDelayMs * TRANSCRIPT_SCROLL_BUDGET_SAFETY_FACTOR + Math.max(0, overheadMs);
+      steps * (stepDelayMs + renderWaitMs * 0.5) * TRANSCRIPT_SCROLL_BUDGET_SAFETY_FACTOR +
+      Math.max(0, overheadMs);
     return Math.min(Math.max(rawBudgetMs, minBudgetMs), maxBudgetMs);
   }
 
+  /**
+   * Sweeps a (possibly virtualized) transcript scroll container and reports
+   * whether the collected rows are the whole transcript.
+   *
+   * Required options:
+   *   readSnapshot(): {
+   *     rows, scrollTop, scrollHeight, clientHeight, renderedCount,
+   *     renderSignature, contentBottomPx?, rowStridePx?, estimatedTotalRows?
+   *   }
+   *   setScrollTop(scrollTop): applies a scroll position to the container.
+   * Optional options:
+   *   mergeRows(accumulatedRows, batch) -> accumulatedRows (defaults to concat)
+   *   sleep(ms), now(), budgetMs, stepDelayMs, renderWaitMs, pollDelayMs,
+   *   maxSteps, overlapPx, idlePasses
+   *
+   * Guarantees:
+   *   - no real overflow -> one pass, complete (reason "no_overflow")
+   *   - every advancing scroll step must produce an observable render change
+   *     (renderSignature) within renderWaitMs; otherwise incomplete
+   *     (reason "render_timeout") — stale DOM is never trusted
+   *   - overflow sweep advances at most `clientHeight - overlapPx` per step; rows
+   *     are never skipped for the sake of speed (no acceleration multiplier)
+   *   - complete only after reaching the bottom AND `idlePasses` consecutive
+   *     stable passes, with the last rendered row reaching the end of the scroll
+   *     content (otherwise "missing_rows")
+   *   - incomplete with reason "budget" | "step_cap" | "stalled" |
+   *     "render_timeout" | "missing_rows" when limits/evidence fail; `atBottom`
+   *     stays false unless the bottom was actually reached
+   *   - a container that exposes rows but has no measurable viewport (hidden or
+   *     collapsed panel) is reported incomplete (reason "stalled") — never treated
+   *     as "no overflow" — because completeness cannot be proven without a viewport
+   *   - the caller's original scrollTop is restored before returning
+   */
   async function collectTranscriptRowsByScroll(options = {}) {
     const readSnapshot = options.readSnapshot;
     const setScrollTop = options.setScrollTop;
@@ -593,6 +714,14 @@
       0,
       toFiniteNumber(options.stepDelayMs) ?? TRANSCRIPT_SCROLL_STEP_DELAY_MS,
     );
+    const renderWaitMs = Math.max(
+      0,
+      toFiniteNumber(options.renderWaitMs) ?? TRANSCRIPT_SCROLL_RENDER_WAIT_MS,
+    );
+    const pollDelayMs = Math.max(
+      1,
+      toFiniteNumber(options.pollDelayMs) ?? TRANSCRIPT_SCROLL_POLL_DELAY_MS,
+    );
     const maxSteps = Math.max(
       1,
       Math.floor(toFiniteNumber(options.maxSteps) ?? TRANSCRIPT_SCROLL_MAX_STEPS),
@@ -619,6 +748,7 @@
     const originalScrollTop = readSnapshotNumber(snapshot, "scrollTop");
     let steps = 0;
     let atBottom = isTranscriptAtBottom(snapshot);
+    let signature = readRenderSignature(snapshot);
 
     // A container that still exposes rows but has no measurable viewport (hidden
     // or collapsed panel) cannot be swept, so completeness cannot be proven there.
@@ -633,6 +763,7 @@
       };
     }
 
+    // Short/non-overflowing lists are complete after the single pass above.
     if (!shouldScrollTranscript(snapshot)) {
       return {
         rows,
@@ -644,28 +775,49 @@
       };
     }
 
-    if (isTranscriptFullyRendered(snapshot)) {
-      return {
-        rows,
-        complete: true,
-        reason: "fully_rendered",
-        steps,
-        elapsedMs: elapsedMs(),
-        atBottom,
-      };
-    }
+    /**
+     * After a scroll step, waits until the visible-row signature changes (the DOM
+     * re-rendered for the new position). `renderWaitMs === 0` falls back to one
+     * fixed delay for callers that cannot provide a signature.
+     */
+    const waitForRenderedChange = async (previousSignature, fallbackSleepMs) => {
+      if (previousSignature === null) {
+        // No signature available: keep the fixed settle delay. Main-world callers
+        // always provide one, so this only affects legacy/custom callers.
+        await sleep(Math.max(stepDelayMs, fallbackSleepMs));
+        return { snapshot: readSnapshotObject(readSnapshot()), changed: false, verifiable: false };
+      }
+
+      const deadline = now() + renderWaitMs;
+      await sleep(Math.max(0, Math.min(stepDelayMs, renderWaitMs)));
+      let nextSnapshot = readSnapshotObject(readSnapshot());
+      let nextSignature = readRenderSignature(nextSnapshot);
+      let changed = nextSignature !== previousSignature;
+
+      while (!changed && now() < deadline) {
+        await sleep(Math.max(1, Math.min(pollDelayMs, deadline - now())));
+        nextSnapshot = readSnapshotObject(readSnapshot());
+        nextSignature = readRenderSignature(nextSnapshot);
+        changed = nextSignature !== previousSignature;
+      }
+
+      return { snapshot: nextSnapshot, changed, verifiable: true, signature: nextSignature };
+    };
 
     let complete = false;
     let reason = null;
 
     try {
+      // Deterministic top-down sweep: start at the very top so early rows are seen
+      // even when the viewer had the panel scrolled down.
       setScrollTop(0);
-      await sleep(stepDelayMs);
-
-      snapshot = readSnapshotObject(readSnapshot());
+      const topSettle = await waitForRenderedChange(signature, 0);
+      snapshot = topSettle.snapshot;
       rows = applyMerge(rows, snapshot);
+      signature = topSettle.signature ?? readRenderSignature(snapshot);
       let top = readSnapshotNumber(snapshot, "scrollTop");
       let idle = 0;
+      let reachedBottomViaRender = isTranscriptAtBottom(snapshot);
 
       while (true) {
         const clientHeight = readSnapshotNumber(snapshot, "clientHeight");
@@ -676,9 +828,16 @@
         const viewportStep = Math.max(clientHeight - overlapPx, TRANSCRIPT_SCROLL_MIN_STEP_PX);
         const atBottomNow = top >= maxScrollTop - TRANSCRIPT_SCROLL_BOTTOM_EPSILON_PX;
 
-        if (atBottomNow && idle >= idlePasses) {
-          complete = true;
-          break;
+        if (atBottomNow) {
+          atBottom = true;
+          if (!isTranscriptBottomGapAcceptable(snapshot)) {
+            reason = "missing_rows";
+            break;
+          }
+          if (reachedBottomViaRender && idle >= idlePasses) {
+            complete = true;
+            break;
+          }
         }
         if (steps >= maxSteps) {
           reason = "step_cap";
@@ -690,42 +849,61 @@
         }
 
         const nextTop = Math.min(top + viewportStep, maxScrollTop);
-        if (nextTop > top) {
+        const advancing = nextTop > top;
+
+        if (advancing) {
           setScrollTop(nextTop);
-        }
-        await sleep(stepDelayMs);
+          const rendered = await waitForRenderedChange(signature, stepDelayMs);
+          snapshot = rendered.snapshot;
+          if (rendered.signature !== undefined) signature = rendered.signature;
+          steps += 1;
 
-        const rowsBefore = rows.length;
-        snapshot = readSnapshotObject(readSnapshot());
-        rows = applyMerge(rows, snapshot);
+          const settledTop = readSnapshotNumber(snapshot, "scrollTop");
+          const atBottomAfter = isTranscriptAtBottom(snapshot);
 
-        const added = Math.max(0, rows.length - rowsBefore);
-        steps += 1;
-
-        const settledTop = readSnapshotNumber(snapshot, "scrollTop");
-        const maxScrollTopAfter = Math.max(
-          0,
-          readSnapshotNumber(snapshot, "scrollHeight") -
-            readSnapshotNumber(snapshot, "clientHeight"),
-        );
-        const atBottomAfter = settledTop >= maxScrollTopAfter - TRANSCRIPT_SCROLL_BOTTOM_EPSILON_PX;
-
-        idle = added === 0 ? idle + 1 : 0;
-
-        if (atBottomAfter) {
-          atBottom = true;
-          if (idle >= idlePasses) {
-            complete = true;
+          if (settledTop <= top + 0.5 && nextTop > top) {
+            // The container refused to move: another pass cannot reveal rows.
+            reason = "stalled";
             break;
           }
-        } else if (added === 0 && settledTop <= top) {
-          reason = "stalled";
-          break;
-        }
 
-        top = settledTop;
+          if (rendered.verifiable && !rendered.changed) {
+            // The DOM never re-rendered for the new position. If we are already at
+            // the bottom with the last row present, that is a legitimate settle;
+            // otherwise we cannot trust the rows we would read here.
+            if (!(atBottomAfter && isTranscriptBottomGapAcceptable(snapshot))) {
+              reason = "render_timeout";
+              break;
+            }
+          }
+
+          const rowsBefore = rows.length;
+          rows = applyMerge(rows, snapshot);
+          idle = 0;
+
+          if (atBottomAfter) {
+            atBottom = true;
+            reachedBottomViaRender = true;
+          }
+          top = settledTop;
+        } else {
+          // Already at the bottom: read one stable pass. No scroll/render change is
+          // expected here, so only bottom evidence gates the idle counter.
+          await sleep(stepDelayMs);
+          snapshot = readSnapshotObject(readSnapshot());
+          const rowsBefore = rows.length;
+          rows = applyMerge(rows, snapshot);
+          const added = Math.max(0, rows.length - rowsBefore);
+          steps += 1;
+          idle = added === 0 ? idle + 1 : 0;
+          if (!isTranscriptBottomGapAcceptable(snapshot)) {
+            reason = "missing_rows";
+            break;
+          }
+        }
       }
     } finally {
+      // Restore the viewer's scroll position; collected rows stay with the caller.
       try {
         setScrollTop(originalScrollTop);
       } catch {
@@ -1085,10 +1263,9 @@
   }
 
   /**
-   * Row stride used to detect lists that are fully rendered (no virtualization).
-   * The SMALLEST sampled height is used on purpose: a smaller stride only makes
-   * the "estimated total rows" larger, so the fully-rendered shortcut can never
-   * under-count rows and silently skip a sweep that was still needed.
+   * Smallest sampled row height. Used only as the tolerance scale for the
+   * bottom-gap completeness check (and for diagnostics); it is never used to
+   * declare a list fully rendered.
    */
   function measureTranscriptRowStride(rows) {
     const heights = [];
@@ -1116,15 +1293,47 @@
       rowStridePx = measureTranscriptRowStride(rows) || rowStridePx;
       const scrollHeight = Number(target?.scrollHeight) || 0;
       const clientHeight = Number(target?.clientHeight) || 0;
+      const scrollTop = Number(target?.scrollTop) || 0;
       const estimatedTotalRows =
         rowStridePx > 0 && scrollHeight > 0 ? Math.ceil(scrollHeight / rowStridePx) : null;
+
+      // The render signature must change whenever the DOM re-renders for a new
+      // scroll position. Only *visible* rows count: fully rendered lists keep
+      // every row in the DOM, but the visible slice still moves while scrolling.
+      let visibleFirst = "";
+      let visibleLast = "";
+      let visibleCount = 0;
+      let contentBottomPx = null;
+      try {
+        const targetRect = target.getBoundingClientRect();
+        const listRect = list.getBoundingClientRect();
+        for (const row of rows) {
+          const rect = row.getBoundingClientRect();
+          if (rect.bottom <= targetRect.top || rect.top >= targetRect.bottom) continue;
+          visibleCount += 1;
+          const index = row.getAttribute?.("data-segment-index");
+          if (visibleFirst === "") visibleFirst = index ?? String(visibleCount);
+          visibleLast = index ?? String(visibleCount);
+        }
+        const lastRow = rows[rows.length - 1];
+        if (lastRow) {
+          const lastRect = lastRow.getBoundingClientRect();
+          contentBottomPx = lastRect.bottom - listRect.top;
+        }
+      } catch {
+        // Geometry reads can throw for detached nodes; leave evidence null.
+      }
+
       const snapshot = {
         rows,
-        scrollTop: Number(target?.scrollTop) || 0,
+        scrollTop,
         scrollHeight,
         clientHeight,
         renderedCount: rows.length,
         estimatedTotalRows,
+        renderSignature: `${visibleCount}|${visibleFirst}|${visibleLast}`,
+        contentBottomPx,
+        rowStridePx,
       };
       lastSnapshot = snapshot;
       return snapshot;
@@ -1172,6 +1381,8 @@
       now: () => performance.now(),
       budgetMs,
       stepDelayMs: TRANSCRIPT_SCROLL_STEP_DELAY_MS,
+      renderWaitMs: TRANSCRIPT_SCROLL_RENDER_WAIT_MS,
+      pollDelayMs: TRANSCRIPT_SCROLL_POLL_DELAY_MS,
       maxSteps,
       overlapPx: TRANSCRIPT_SCROLL_OVERLAP_PX,
       idlePasses: TRANSCRIPT_SCROLL_IDLE_PASSES,
@@ -1184,6 +1395,9 @@
         estimatedTotalRows: lastSnapshot?.estimatedTotalRows ?? null,
         scrollHeight: lastSnapshot?.scrollHeight ?? scrollHeight,
         clientHeight: lastSnapshot?.clientHeight ?? clientHeight,
+        contentBottomPx: lastSnapshot?.contentBottomPx ?? null,
+        renderSignature: lastSnapshot?.renderSignature ?? null,
+        renderWaitMs: TRANSCRIPT_SCROLL_RENDER_WAIT_MS,
         budgetMs,
         maxSteps,
       },
