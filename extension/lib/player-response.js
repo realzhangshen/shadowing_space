@@ -538,8 +538,7 @@ export const TRANSCRIPT_SCROLL_MAX_STEPS = 400;
 export const TRANSCRIPT_SCROLL_ABSOLUTE_MAX_STEPS = 2_000;
 export const TRANSCRIPT_SCROLL_MIN_STEP_PX = 60;
 export const TRANSCRIPT_SCROLL_BOTTOM_EPSILON_PX = 2;
-export const TRANSCRIPT_SCROLL_BOTTOM_GAP_MIN_PX = 12;
-export const TRANSCRIPT_SCROLL_BOTTOM_GAP_STRIDE_FACTOR = 0.75;
+export const TRANSCRIPT_SCROLL_BOTTOM_GAP_TOLERANCE_PX = 2;
 export const TRANSCRIPT_SCROLL_BUDGET_MIN_MS = 15_000;
 export const TRANSCRIPT_SCROLL_BUDGET_MAX_MS = 90_000;
 export const TRANSCRIPT_SCROLL_BUDGET_OVERHEAD_MS = 2_000;
@@ -632,26 +631,36 @@ export function buildRenderSignature(rows, keyOf) {
 }
 
 /**
- * Distance between the bottom of the last rendered row and the end of the
- * scroll content, or null when the caller cannot provide that evidence.
+ * Uncovered content below the last rendered row, or null when the caller
+ * cannot provide evidence.
+ *
+ * Preferred evidence is list-relative: `contentHeightPx` is the transcript
+ * list's full content height (including virtualization spacers) and
+ * `lastRowBottomInListPx` is the last rendered row's bottom inside that list.
+ * That difference is row-height independent and ignores container padding, so
+ * a short final row that never rendered is still detected.
+ *
+ * Fallback is scroll-container relative: scrollHeight minus the last rendered
+ * row's bottom in content coordinates minus known bottom padding.
  */
 function readTranscriptBottomGap(snapshot) {
+  const contentHeightPx = readOptionalSnapshotNumber(snapshot, "contentHeightPx");
+  const lastRowBottomInListPx = readOptionalSnapshotNumber(snapshot, "lastRowBottomInListPx");
+  if (contentHeightPx !== null && lastRowBottomInListPx !== null) {
+    return Math.max(0, contentHeightPx - lastRowBottomInListPx);
+  }
+
   const contentBottomPx = readOptionalSnapshotNumber(snapshot, "contentBottomPx");
   const scrollHeight = readOptionalSnapshotNumber(snapshot, "scrollHeight");
   if (contentBottomPx === null || scrollHeight === null) return null;
-  return Math.max(0, scrollHeight - contentBottomPx);
+  const paddingBottomPx = readOptionalSnapshotNumber(snapshot, "paddingBottomPx") ?? 0;
+  return Math.max(0, scrollHeight - contentBottomPx - paddingBottomPx);
 }
 
 function isTranscriptBottomGapAcceptable(snapshot) {
   const gap = readTranscriptBottomGap(snapshot);
   if (gap === null) return true; // No evidence available; other checks still apply.
-  const rowStridePx = readOptionalSnapshotNumber(snapshot, "rowStridePx");
-  const tolerance = Math.max(
-    TRANSCRIPT_SCROLL_BOTTOM_GAP_MIN_PX,
-    (rowStridePx ?? TRANSCRIPT_SCROLL_BOTTOM_GAP_MIN_PX / 2) *
-      TRANSCRIPT_SCROLL_BOTTOM_GAP_STRIDE_FACTOR,
-  );
-  return gap <= tolerance;
+  return gap <= TRANSCRIPT_SCROLL_BOTTOM_GAP_TOLERANCE_PX;
 }
 
 /**
@@ -710,7 +719,9 @@ export function computeTranscriptScrollBudgetMs(options = {}) {
  * Required options:
  *   readSnapshot(): {
  *     rows, scrollTop, scrollHeight, clientHeight, renderedCount,
- *     renderSignature, contentBottomPx?, rowStridePx?, estimatedTotalRows?
+ *     renderSignature, contentBottomPx?, paddingBottomPx?,
+ *     contentHeightPx?, lastRowBottomInListPx?, rowStridePx?,
+ *     estimatedTotalRows?
  *   }
  *   setScrollTop(scrollTop): applies a scroll position to the container.
  * Optional options:
@@ -726,8 +737,9 @@ export function computeTranscriptScrollBudgetMs(options = {}) {
  *   - overflow sweep advances at most `clientHeight - overlapPx` per step; rows
  *     are never skipped for the sake of speed (no acceleration multiplier)
  *   - complete only after reaching the bottom AND `idlePasses` consecutive
- *     stable passes, with the last rendered row reaching the end of the scroll
- *     content (otherwise "missing_rows")
+ *     stable passes, with no uncovered row content below the last rendered row
+ *     (row-height independent; container padding is not counted as missing
+ *     content). Any residual gap greater than 2px is "missing_rows".
  *   - incomplete with reason "budget" | "step_cap" | "stalled" |
  *     "render_timeout" | "missing_rows" when limits/evidence fail; `atBottom`
  *     stays false unless the bottom was actually reached

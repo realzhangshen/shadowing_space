@@ -118,7 +118,13 @@ export interface TranscriptScrollSnapshot<Row = unknown> {
   renderSignature?: string | number | null;
   /** Bottom of the last rendered row in scroll-content coordinates. */
   contentBottomPx?: number | null;
-  /** Measured row stride used to scale the bottom-gap tolerance. */
+  /** Known bottom padding of the scroll container (whitespace, not content). */
+  paddingBottomPx?: number | null;
+  /** Full transcript-list content height when the list is not the scroller. */
+  contentHeightPx?: number | null;
+  /** Last rendered row bottom relative to the transcript list (list evidence). */
+  lastRowBottomInListPx?: number | null;
+  /** Measured row stride (diagnostic only; never proves completeness). */
   rowStridePx?: number | null;
   visibleCount?: number;
 }
@@ -156,8 +162,7 @@ export declare const TRANSCRIPT_SCROLL_MAX_STEPS: number;
 export declare const TRANSCRIPT_SCROLL_ABSOLUTE_MAX_STEPS: number;
 export declare const TRANSCRIPT_SCROLL_MIN_STEP_PX: number;
 export declare const TRANSCRIPT_SCROLL_BOTTOM_EPSILON_PX: number;
-export declare const TRANSCRIPT_SCROLL_BOTTOM_GAP_MIN_PX: number;
-export declare const TRANSCRIPT_SCROLL_BOTTOM_GAP_STRIDE_FACTOR: number;
+export declare const TRANSCRIPT_SCROLL_BOTTOM_GAP_TOLERANCE_PX: number;
 export declare const TRANSCRIPT_SCROLL_BUDGET_MIN_MS: number;
 export declare const TRANSCRIPT_SCROLL_BUDGET_MAX_MS: number;
 export declare const TRANSCRIPT_SCROLL_BUDGET_OVERHEAD_MS: number;

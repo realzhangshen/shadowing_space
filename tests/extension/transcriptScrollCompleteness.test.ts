@@ -505,3 +505,83 @@ test("buildRenderSignature falls back to row position when no identity is availa
   // Without any identity the helper still returns a deterministic signature.
   assert.equal(buildRenderSignature([row(0), row(1)]), "2|0|1");
 });
+
+test("collectTranscriptRowsByScroll detects a missing short final row with uneven heights", async () => {
+  // Codex's fourth repro: 19 rows of 80px followed by a missing 40px last row.
+  // A stride-proportional tolerance (80 * 0.75 = 60px) would hide the 40px gap.
+  const clock = createClock();
+  const rows = Array.from({ length: 19 }, (_unused, index) => ({
+    id: index,
+    startMs: index * 1_000,
+    text: `row ${index}`,
+  }));
+  const contentHeightPx = 19 * 80 + 40;
+  const maxScrollTop = contentHeightPx - 400;
+  let top = 0;
+  const result = await collectTranscriptRowsByScroll({
+    readSnapshot: () => ({
+      rows,
+      scrollTop: top,
+      scrollHeight: contentHeightPx,
+      clientHeight: 400,
+      renderedCount: rows.length,
+      renderSignature: `${rows.length}|${rows[0].id}|${rows.at(-1)?.id}|${top}`,
+      contentHeightPx,
+      lastRowBottomInListPx: 19 * 80,
+    }),
+    setScrollTop: (value) => {
+      top = Math.min(Math.max(0, value), maxScrollTop);
+    },
+    mergeRows: createRowMerger(),
+    sleep: clock.sleep,
+    now: clock.now,
+    budgetMs: 30_000,
+    stepDelayMs: 40,
+    maxSteps: 100,
+    overlapPx: 40,
+    idlePasses: 2,
+  });
+
+  assert.equal(result.complete, false);
+  assert.equal(result.reason, "missing_rows");
+  assert.equal(result.rows.length, 19);
+});
+
+test("collectTranscriptRowsByScroll ignores legitimate container bottom padding", async () => {
+  const clock = createClock();
+  const rows = Array.from({ length: 20 }, (_unused, index) => ({
+    id: index,
+    startMs: index * 1_000,
+    text: `row ${index}`,
+  }));
+  const maxScrollTop = 80;
+  let top = 0;
+  const result = await collectTranscriptRowsByScroll({
+    readSnapshot: () => ({
+      rows,
+      scrollTop: top,
+      // Content (1,000px) + legitimate 80px bottom padding.
+      scrollHeight: 1_080,
+      clientHeight: 1_000,
+      renderedCount: rows.length,
+      renderSignature: `all|${rows[0].id}|${rows.at(-1)?.id}|${top}`,
+      contentBottomPx: 1_000,
+      paddingBottomPx: 80,
+    }),
+    setScrollTop: (value) => {
+      top = Math.min(Math.max(0, value), maxScrollTop);
+    },
+    mergeRows: createRowMerger(),
+    sleep: clock.sleep,
+    now: clock.now,
+    budgetMs: 30_000,
+    stepDelayMs: 40,
+    maxSteps: 100,
+    overlapPx: 40,
+    idlePasses: 2,
+  });
+
+  assert.equal(result.complete, true);
+  assert.equal(result.reason, null);
+  assert.equal(result.rows.length, 20);
+});

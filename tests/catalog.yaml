@@ -2063,3 +2063,19 @@ tests:
     reason: Locks transcript DOM-sweep completeness and render-signature evidence for long virtualized transcripts.
     lastReviewedOn: 2026-11-03
     reviewBy: 2027-05-03
+  - file: tests/extension/transcriptScrollCompleteness.test.ts
+    name: collectTranscriptRowsByScroll detects a missing short final row with uneven heights
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks transcript DOM-sweep completeness evidence, including uneven row heights and container padding.
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/extension/transcriptScrollCompleteness.test.ts
+    name: collectTranscriptRowsByScroll ignores legitimate container bottom padding
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks transcript DOM-sweep completeness evidence, including uneven row heights and container padding.
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
