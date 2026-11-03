@@ -1903,3 +1903,27 @@ tests:
     reason: Locks transcript parsing and sentence segmentation so caption tracks stay complete and correctly timed.
     lastReviewedOn: 2026-11-03
     reviewBy: 2027-05-03
+  - file: tests/components/virtualWindow.test.ts
+    name: computeWindowAroundIndex centers a viewport-sized window on the target row
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks variable-height virtual-list math so every sentence stays reachable and the active row scrolls into view.
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/components/virtualWindow.test.ts
+    name: computeWindowAroundIndex clamps to the list bounds
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks variable-height virtual-list math so every sentence stays reachable and the active row scrolls into view.
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/components/virtualWindow.test.ts
+    name: computeWindowAroundIndex handles degenerate input
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks variable-height virtual-list math so every sentence stays reachable and the active row scrolls into view.
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03

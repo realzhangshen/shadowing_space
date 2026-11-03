@@ -5,6 +5,7 @@ import {
   buildItemOffsets,
   computeVisibleWindow,
   computeVisibleWindowByOffsets,
+  computeWindowAroundIndex,
   indexAtOffset,
   isIndexInWindow,
   scrollOffsetForIndex,
@@ -220,4 +221,76 @@ test("adjustScrollTopForMeasurements guards against invalid input", () => {
   assert.equal(adjustScrollTopForMeasurements(5, 0, -40, 3), 0);
   assert.equal(adjustScrollTopForMeasurements(Number.NaN, 0, 12, 1), 12);
   assert.equal(adjustScrollTopForMeasurements(500, 2, Number.NaN, 3), 500);
+});
+
+test("computeWindowAroundIndex centers a viewport-sized window on the target row", () => {
+  // viewportRows = ceil(689 / 64) = 11, span = 11 + 2 * 8 = 27 rows, half = 13
+  const w = computeWindowAroundIndex({
+    index: 50,
+    totalCount: 128,
+    viewportHeight: 689,
+    estimatedHeight: 64,
+    overscan: 8,
+  });
+  assert.deepEqual(w, { startIndex: 37, endIndex: 63 });
+  assert.equal(w.endIndex - w.startIndex + 1, 27);
+});
+
+test("computeWindowAroundIndex clamps to the list bounds", () => {
+  const base = { totalCount: 128, viewportHeight: 689, estimatedHeight: 64, overscan: 8 };
+  // Near the top the window starts at row 0 and keeps its span.
+  assert.deepEqual(computeWindowAroundIndex({ ...base, index: 2 }), {
+    startIndex: 0,
+    endIndex: 26,
+  });
+  // Near the bottom it is shifted back so the target stays inside.
+  assert.deepEqual(computeWindowAroundIndex({ ...base, index: 127 }), {
+    startIndex: 101,
+    endIndex: 127,
+  });
+  // A list smaller than one viewport renders fully.
+  assert.deepEqual(
+    computeWindowAroundIndex({
+      index: 3,
+      totalCount: 5,
+      viewportHeight: 689,
+      estimatedHeight: 64,
+      overscan: 8,
+    }),
+    { startIndex: 0, endIndex: 4 },
+  );
+});
+
+test("computeWindowAroundIndex handles degenerate input", () => {
+  assert.deepEqual(
+    computeWindowAroundIndex({
+      index: 50,
+      totalCount: 0,
+      viewportHeight: 689,
+      estimatedHeight: 64,
+    }),
+    { startIndex: 0, endIndex: 0 },
+  );
+  // Unknown viewport height still yields a usable overscan-sized window.
+  assert.deepEqual(
+    computeWindowAroundIndex({
+      index: 50,
+      totalCount: 128,
+      viewportHeight: 0,
+      estimatedHeight: 64,
+      overscan: 8,
+    }),
+    { startIndex: 42, endIndex: 57 },
+  );
+  // A non-finite index falls back to the first row.
+  assert.deepEqual(
+    computeWindowAroundIndex({
+      index: Number.NaN,
+      totalCount: 128,
+      viewportHeight: 689,
+      estimatedHeight: 64,
+      overscan: 8,
+    }),
+    { startIndex: 0, endIndex: 26 },
+  );
 });

@@ -187,3 +187,48 @@ export function adjustScrollTopForMeasurements(
   if (changedIndex >= windowStartIndex) return base;
   return Math.max(0, base + delta);
 }
+
+type WindowAroundIndexInput = {
+  index: number;
+  totalCount: number;
+  viewportHeight: number;
+  estimatedHeight: number;
+  overscan?: number;
+};
+
+/**
+ * One-viewport window of rows centered on `index`, clamped to the list bounds.
+ * Used for a far programmatic jump: rendering only the target neighbourhood
+ * (instead of every row between the old window and the target) keeps the DOM
+ * small; the spacers keep the layout correct and the caller scrolls the row
+ * into view afterwards.
+ */
+export function computeWindowAroundIndex({
+  index,
+  totalCount,
+  viewportHeight,
+  estimatedHeight,
+  overscan = 0,
+}: WindowAroundIndexInput): VisibleWindow {
+  const count = Number.isFinite(totalCount) ? Math.max(0, Math.floor(totalCount)) : 0;
+  if (count <= 0) return { startIndex: 0, endIndex: 0 };
+
+  const safeOverscan = Number.isFinite(overscan) ? Math.max(0, Math.floor(overscan)) : 0;
+  const rowStride =
+    Number.isFinite(estimatedHeight) && estimatedHeight > 0 ? estimatedHeight : MIN_ITEM_HEIGHT_PX;
+  const viewportRows =
+    Number.isFinite(viewportHeight) && viewportHeight > 0
+      ? Math.ceil(viewportHeight / rowStride)
+      : 0;
+  const span = Math.max(1, viewportRows + safeOverscan * 2);
+  if (span >= count) return { startIndex: 0, endIndex: count - 1 };
+
+  const clampedIndex = Number.isFinite(index)
+    ? Math.max(0, Math.min(count - 1, Math.floor(index)))
+    : 0;
+  const half = Math.floor(span / 2);
+  const startIndex = Math.max(0, Math.min(clampedIndex - half, count - span));
+  const endIndex = Math.min(count - 1, startIndex + span - 1);
+
+  return { startIndex, endIndex };
+}

@@ -6,6 +6,7 @@ import {
   adjustScrollTopForMeasurements,
   buildItemOffsets,
   computeVisibleWindowByOffsets,
+  computeWindowAroundIndex,
   indexAtOffset,
   isIndexInWindow,
   scrollOffsetForIndexByOffsets,
@@ -101,14 +102,38 @@ export const SegmentNavigator = memo(function SegmentNavigator({
     forcedIndex === null || segments.length === 0
       ? null
       : Math.max(0, Math.min(segments.length - 1, forcedIndex));
+
+  // A far jump renders a window centered on the target row instead of the union
+  // with the current window: unioning would mount every row in between (hundreds
+  // on a long transcript) just to measure one row. Near jumps keep the union.
+  const forcedRenderSpan = 2 * OVERSCAN + Math.ceil(viewportHeight / ESTIMATED_ITEM_HEIGHT_PX);
+  const forcedIsFar =
+    clampedForcedIndex !== null &&
+    (clampedForcedIndex < baseWindow.startIndex - forcedRenderSpan ||
+      clampedForcedIndex > baseWindow.endIndex + forcedRenderSpan);
+  const forcedWindow =
+    clampedForcedIndex === null
+      ? null
+      : computeWindowAroundIndex({
+          index: clampedForcedIndex,
+          totalCount: segments.length,
+          viewportHeight,
+          estimatedHeight: ESTIMATED_ITEM_HEIGHT_PX,
+          overscan: OVERSCAN,
+        });
+
   const windowStartIndex =
     clampedForcedIndex === null
       ? baseWindow.startIndex
-      : Math.min(baseWindow.startIndex, clampedForcedIndex);
+      : forcedIsFar && forcedWindow
+        ? forcedWindow.startIndex
+        : Math.min(baseWindow.startIndex, clampedForcedIndex);
   const windowEndIndex =
     clampedForcedIndex === null
       ? baseWindow.endIndex
-      : Math.max(baseWindow.endIndex, clampedForcedIndex);
+      : forcedIsFar && forcedWindow
+        ? forcedWindow.endIndex
+        : Math.max(baseWindow.endIndex, clampedForcedIndex);
   const visibleWindow = { startIndex: windowStartIndex, endIndex: windowEndIndex };
 
   /** Align the scroll container metrics and detect whether it actually scrolls. */
@@ -346,14 +371,16 @@ export const SegmentNavigator = memo(function SegmentNavigator({
   }, [segmentsKey, viewportHeight, virtualize, segments.length]);
 
   // Exact post-render positioning for a row forced to render outside the
-  // measured window (e.g. resuming at segment 90 on load). Rect-based, so it
+  // measured window (e.g. resuming at segment 900 on load). Rect-based, so it
   // stays correct even while the skipped rows only have estimated heights.
+  // The forced window is only released once the *state-derived* base window
+  // contains the row again (see the effect below), so a stale scrollTop state
+  // can never unmount the row for a frame after the jump.
   useLayoutEffect(() => {
     if (!virtualize || forcedIndex === null) return;
     const el = listRef.current;
     if (!el || segments.length === 0) return;
 
-    const index = Math.max(0, Math.min(segments.length - 1, forcedIndex));
     const activeEl = activeRef.current;
     if (!activeEl) return;
 
@@ -362,16 +389,6 @@ export const SegmentNavigator = memo(function SegmentNavigator({
     const itemTop = itemRect.top - listRect.top;
     const fullyVisible = itemTop >= -1 && itemTop + itemRect.height <= el.clientHeight + 1;
     if (!fullyVisible) scrollElementIntoCenter(el, activeEl);
-
-    const currentWindow = computeVisibleWindowByOffsets({
-      scrollTop: el.scrollTop,
-      viewportHeight: el.clientHeight,
-      offsets: offsetsRef.current,
-      overscan: OVERSCAN,
-    });
-    if (isIndexInWindow(currentWindow, index)) {
-      setForcedIndex(null);
-    }
   }, [
     forcedIndex,
     measureTick,
@@ -381,6 +398,15 @@ export const SegmentNavigator = memo(function SegmentNavigator({
     segments.length,
     scrollElementIntoCenter,
   ]);
+
+  // Release the forced row only when the regular window (built from the
+  // rendered state) already covers it; keeps the active row mounted throughout.
+  useEffect(() => {
+    if (!virtualize || forcedIndex === null) return;
+    if (forcedIndex >= baseWindow.startIndex && forcedIndex <= baseWindow.endIndex) {
+      setForcedIndex(null);
+    }
+  }, [baseWindow.startIndex, baseWindow.endIndex, forcedIndex, virtualize]);
 
   // Spacers must never shrink: `.segment-list` is a column flex container, and
   // the default `flex-shrink: 1` would collapse them (the original scroll bug).
