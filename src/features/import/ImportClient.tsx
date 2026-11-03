@@ -27,6 +27,7 @@ import {
   mapTracks,
   saveImportBundle,
 } from "@/features/storage/repository";
+import { normalizeThumbnailUrl } from "@/lib/thumbnail";
 import type { FetchTranscriptResponse, ProxyHealthResponse, TrackSummary } from "@/types/api";
 import type { VideoRecord } from "@/types/models";
 
@@ -442,7 +443,7 @@ export function ImportClient(): JSX.Element {
         id: fetchResult.videoId,
         youtubeVideoId: fetchResult.videoId,
         title: fetchResult.title,
-        thumbnailUrl: fetchResult.thumbnailUrl,
+        thumbnailUrl: normalizeThumbnailUrl(fetchResult.thumbnailUrl),
         createdAt: now,
       };
 

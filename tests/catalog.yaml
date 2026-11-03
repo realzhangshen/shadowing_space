@@ -1367,3 +1367,163 @@ tests:
     reason: Confirms the stopped-recording snapshot is safe to retain across further pushes.
     lastReviewedOn: 2026-04-17
     reviewBy: 2026-10-17
+  - file: tests/lib/thumbnail.test.ts
+    name: buildThumbnailCandidates keeps the original YouTube URL first and appends size fallbacks
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks thumbnail fallback behavior so dashboard cards recover from missing YouTube rendition variants and non-https URLs.
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/lib/thumbnail.test.ts
+    name: buildThumbnailCandidates adds a jpg equivalent for webp thumbnail URLs
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks thumbnail fallback behavior so dashboard cards recover from missing YouTube rendition variants and non-https URLs.
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/lib/thumbnail.test.ts
+    name: buildThumbnailCandidates upgrades protocol-relative and http YouTube URLs to https
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks thumbnail fallback behavior so dashboard cards recover from missing YouTube rendition variants and non-https URLs.
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/lib/thumbnail.test.ts
+    name: buildThumbnailCandidates de-duplicates repeated candidates and is idempotent
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks thumbnail fallback behavior so dashboard cards recover from missing YouTube rendition variants and non-https URLs.
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/lib/thumbnail.test.ts
+    name: buildThumbnailCandidates returns a single https candidate for non-YouTube URLs
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks thumbnail fallback behavior so dashboard cards recover from missing YouTube rendition variants and non-https URLs.
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/lib/thumbnail.test.ts
+    name: buildThumbnailCandidates returns an empty list for missing or blank input
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks thumbnail fallback behavior so dashboard cards recover from missing YouTube rendition variants and non-https URLs.
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/lib/thumbnail.test.ts
+    name: buildThumbnailCandidates leaves YouTube URLs without a video path untouched
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks thumbnail fallback behavior so dashboard cards recover from missing YouTube rendition variants and non-https URLs.
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/lib/thumbnail.test.ts
+    name: normalizeThumbnailUrl trims input and forces https
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks thumbnail fallback behavior so dashboard cards recover from missing YouTube rendition variants and non-https URLs.
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/lib/thumbnail.test.ts
+    name: normalizeThumbnailUrl returns undefined for blank or unparseable values
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks thumbnail fallback behavior so dashboard cards recover from missing YouTube rendition variants and non-https URLs.
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/lib/swRuntimeCaching.test.ts
+    name: isSameOriginUrl treats the default port and trailing slash as the same origin
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Prevents the PWA service worker from intercepting cross-origin requests its CSP blocks (broken dashboard thumbnails).
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/lib/swRuntimeCaching.test.ts
+    name: isSameOriginUrl rejects different schemes, ports, subdomains, and hosts
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Prevents the PWA service worker from intercepting cross-origin requests its CSP blocks (broken dashboard thumbnails).
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/lib/swRuntimeCaching.test.ts
+    name: isSameOriginUrl resolves relative and protocol-relative URLs against the worker origin
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Prevents the PWA service worker from intercepting cross-origin requests its CSP blocks (broken dashboard thumbnails).
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/lib/swRuntimeCaching.test.ts
+    name: isSameOriginUrl returns false for malformed URLs
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Prevents the PWA service worker from intercepting cross-origin requests its CSP blocks (broken dashboard thumbnails).
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/lib/swRuntimeCaching.test.ts
+    name: sameOriginOnlyMatcher blocks cross-origin image URLs before the regex runs
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Prevents the PWA service worker from intercepting cross-origin requests its CSP blocks (broken dashboard thumbnails).
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/lib/swRuntimeCaching.test.ts
+    name: sameOriginOnlyMatcher delegates same-origin URLs to regex matchers
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Prevents the PWA service worker from intercepting cross-origin requests its CSP blocks (broken dashboard thumbnails).
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/lib/swRuntimeCaching.test.ts
+    name: sameOriginOnlyMatcher delegates same-origin URLs to string matchers
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Prevents the PWA service worker from intercepting cross-origin requests its CSP blocks (broken dashboard thumbnails).
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/lib/swRuntimeCaching.test.ts
+    name: sameOriginOnlyMatcher delegates function matchers with the original options object
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Prevents the PWA service worker from intercepting cross-origin requests its CSP blocks (broken dashboard thumbnails).
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/lib/swRuntimeCaching.test.ts
+    name: sameOriginOnlyMatcher skips function matchers for cross-origin URLs
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Prevents the PWA service worker from intercepting cross-origin requests its CSP blocks (broken dashboard thumbnails).
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/lib/swRuntimeCaching.test.ts
+    name: restrictRuntimeCachingToSameOrigin preserves entry order and does not mutate the input
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Prevents the PWA service worker from intercepting cross-origin requests its CSP blocks (broken dashboard thumbnails).
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/lib/swRuntimeCaching.test.ts
+    name: restrictRuntimeCachingToSameOrigin keeps handlers and other runtime-caching fields
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Prevents the PWA service worker from intercepting cross-origin requests its CSP blocks (broken dashboard thumbnails).
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03

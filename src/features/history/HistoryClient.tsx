@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
+import { VideoThumbnail } from "@/components/VideoThumbnail";
 import { formatStudyDuration, summarizeStudySessions } from "@/features/history/studySummary";
 import { Link, useRouter } from "@/i18n/navigation";
 import {
@@ -180,16 +181,7 @@ export function HistoryClient(): JSX.Element {
 
           return (
             <article key={item.video.id} className="video-card">
-              {item.video.thumbnailUrl ? (
-                <img
-                  className="video-card-thumb"
-                  src={item.video.thumbnailUrl}
-                  alt=""
-                  loading="lazy"
-                />
-              ) : (
-                <div className="video-card-thumb video-card-thumb-placeholder" />
-              )}
+              <VideoThumbnail className="video-card-thumb" src={item.video.thumbnailUrl} />
 
               <div className="video-card-body">
                 <h3 className="video-card-title">{item.video.title}</h3>

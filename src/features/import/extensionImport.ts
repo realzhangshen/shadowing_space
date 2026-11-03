@@ -1,4 +1,5 @@
 import { buildTrackId, mapSegments, mapTracks } from "@/features/storage/repository";
+import { normalizeThumbnailUrl } from "@/lib/thumbnail";
 import type { SegmentDTO, TrackSummary } from "@/types/api";
 import type { SegmentRecord, TrackRecord, VideoRecord } from "@/types/models";
 import { z } from "zod";
@@ -104,7 +105,7 @@ export function createImportBundleFromExtensionPayload(
     id: payload.video.videoId,
     youtubeVideoId: payload.video.videoId,
     title: payload.video.title.trim(),
-    thumbnailUrl: payload.video.thumbnailUrl?.trim(),
+    thumbnailUrl: normalizeThumbnailUrl(payload.video.thumbnailUrl),
     createdAt,
   };
 
