@@ -6,7 +6,11 @@ const LIST_REQUEST_EVENT = "shadowing-space-extension:list-request";
 const EXTRACT_REQUEST_EVENT = "shadowing-space-extension:extract-request";
 const LIST_RESULT_TYPE = "shadowing-space-extension/list-result";
 const EXTRACT_RESULT_TYPE = "shadowing-space-extension/extract-result";
-const TIMEOUT_MS = 20_000;
+// The DOM extraction path sweeps long/virtualized transcript lists one viewport
+// at a time, so its completeness budget can reach 90s (plus the prefetch settle
+// and fallback work). Keep the bridge timeout above that so a slow-but-complete
+// read is never mistaken for a dead content script.
+const TIMEOUT_MS = 120_000;
 
 function waitForResponse(expectedType) {
   return new Promise((resolve, reject) => {

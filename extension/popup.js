@@ -8,6 +8,10 @@ const LOG_PREFIX = "[SS]";
 const MESSAGE_LIST_TRACKS = "shadowing-space-extension/list-tracks";
 const MESSAGE_EXTRACT_TRACK = "shadowing-space-extension/extract-track";
 const INTRO_SEEN_STORAGE_KEY = "hasSeenIntro";
+// DOM extraction sweeps long/virtualized transcript panels (budget up to 90s and
+// a 120s bridge timeout), so tell the user why the popup may sit here a while.
+const EXTRACT_STATUS_TEXT =
+  "Extracting transcript… long videos can take up to ~2 minutes while the full transcript loads.";
 
 const els = {
   status: document.getElementById("status"),
@@ -264,6 +268,9 @@ async function extractSelectedTrack(tabId) {
     appendLog("info", "Captions read from YouTube's on-page transcript panel.", {
       fetchError: response.debug?.fetchError,
     });
+    if (response.debug?.domScroll) {
+      appendLog("info", "Transcript scroll completeness pass", response.debug.domScroll);
+    }
   }
   if (precision && precision.text > 0 && precision["polymer-ms"] === 0) {
     appendLog(
@@ -376,7 +383,7 @@ async function init() {
     els.downloadBtn.disabled = true;
     try {
       const tab = await getActiveTab();
-      showInfo("Extracting transcript…");
+      showInfo(EXTRACT_STATUS_TEXT);
       const payload = await extractSelectedTrack(tab.id);
       showInfo("Delivering to Shadowing Space…");
       await deliverToImportTab(payload);
@@ -394,7 +401,7 @@ async function init() {
     els.downloadBtn.disabled = true;
     try {
       const tab = await getActiveTab();
-      showInfo("Extracting transcript…");
+      showInfo(EXTRACT_STATUS_TEXT);
       const payload = await extractSelectedTrack(tab.id);
       await downloadPayload(payload);
       showOk("Download dialog opened.");

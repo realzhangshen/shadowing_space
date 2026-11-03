@@ -483,6 +483,259 @@
     return scrollHeight - clientHeight > minOverflowPx;
   }
 
+  // --- Mirrored from extension/lib/player-response.js (transcript completeness) ---
+
+  const TRANSCRIPT_SCROLL_STEP_DELAY_MS = 60;
+  const TRANSCRIPT_SCROLL_OVERLAP_PX = 40;
+  const TRANSCRIPT_SCROLL_IDLE_PASSES = 2;
+  const TRANSCRIPT_SCROLL_MAX_STEPS = 400;
+  const TRANSCRIPT_SCROLL_ABSOLUTE_MAX_STEPS = 2_000;
+  const TRANSCRIPT_SCROLL_MIN_STEP_PX = 60;
+  const TRANSCRIPT_SCROLL_BOTTOM_EPSILON_PX = 2;
+  const TRANSCRIPT_SCROLL_BUDGET_MIN_MS = 15_000;
+  const TRANSCRIPT_SCROLL_BUDGET_MAX_MS = 90_000;
+  const TRANSCRIPT_SCROLL_BUDGET_OVERHEAD_MS = 2_000;
+  const TRANSCRIPT_SCROLL_BUDGET_SAFETY_FACTOR = 1.5;
+  const TRANSCRIPT_FULLY_RENDERED_TOLERANCE_ROWS = 1;
+
+  function readSnapshotObject(snapshot) {
+    return snapshot && typeof snapshot === "object" ? snapshot : {};
+  }
+
+  function readSnapshotRows(snapshot) {
+    return Array.isArray(snapshot?.rows) ? snapshot.rows : [];
+  }
+
+  function readSnapshotNumber(snapshot, key) {
+    const value = Number(snapshot?.[key]);
+    return Number.isFinite(value) ? value : 0;
+  }
+
+  function isTranscriptAtBottom(snapshot) {
+    const scrollHeight = readSnapshotNumber(snapshot, "scrollHeight");
+    const clientHeight = readSnapshotNumber(snapshot, "clientHeight");
+    const scrollTop = readSnapshotNumber(snapshot, "scrollTop");
+    const maxScrollTop = Math.max(0, scrollHeight - clientHeight);
+    return scrollTop >= maxScrollTop - TRANSCRIPT_SCROLL_BOTTOM_EPSILON_PX;
+  }
+
+  function isTranscriptFullyRendered(snapshot) {
+    const renderedCount = Number(snapshot?.renderedCount);
+    const estimatedTotalRows = Number(snapshot?.estimatedTotalRows);
+    if (!Number.isFinite(renderedCount) || !Number.isFinite(estimatedTotalRows)) return false;
+    if (estimatedTotalRows <= 0) return false;
+    return renderedCount >= estimatedTotalRows - TRANSCRIPT_FULLY_RENDERED_TOLERANCE_ROWS;
+  }
+
+  function estimateTranscriptScrollSteps(metrics, options = {}) {
+    if (!metrics || typeof metrics !== "object") return 0;
+    if (!shouldScrollTranscript(metrics)) return 0;
+
+    const scrollHeight = Number(metrics.scrollHeight);
+    const clientHeight = Number(metrics.clientHeight);
+    if (!Number.isFinite(scrollHeight) || !Number.isFinite(clientHeight)) return 0;
+
+    const overlapPx = Math.max(
+      0,
+      toFiniteNumber(options.overlapPx) ?? TRANSCRIPT_SCROLL_OVERLAP_PX,
+    );
+    const viewportStep = Math.max(clientHeight - overlapPx, TRANSCRIPT_SCROLL_MIN_STEP_PX);
+    const maxScrollTop = Math.max(0, scrollHeight - clientHeight);
+    return Math.ceil(maxScrollTop / viewportStep);
+  }
+
+  function computeTranscriptScrollBudgetMs(options = {}) {
+    const scrollHeight = Number(options.scrollHeight);
+    const clientHeight = Number(options.clientHeight);
+    const steps = estimateTranscriptScrollSteps(
+      { scrollHeight, clientHeight },
+      { overlapPx: options.overlapPx },
+    );
+    const stepDelayMs = Math.max(
+      0,
+      toFiniteNumber(options.stepDelayMs) ?? TRANSCRIPT_SCROLL_STEP_DELAY_MS,
+    );
+    const minBudgetMs = toFiniteNumber(options.minBudgetMs) ?? TRANSCRIPT_SCROLL_BUDGET_MIN_MS;
+    const maxBudgetMs = toFiniteNumber(options.maxBudgetMs) ?? TRANSCRIPT_SCROLL_BUDGET_MAX_MS;
+    const overheadMs = toFiniteNumber(options.overheadMs) ?? TRANSCRIPT_SCROLL_BUDGET_OVERHEAD_MS;
+
+    const rawBudgetMs =
+      steps * stepDelayMs * TRANSCRIPT_SCROLL_BUDGET_SAFETY_FACTOR + Math.max(0, overheadMs);
+    return Math.min(Math.max(rawBudgetMs, minBudgetMs), maxBudgetMs);
+  }
+
+  async function collectTranscriptRowsByScroll(options = {}) {
+    const readSnapshot = options.readSnapshot;
+    const setScrollTop = options.setScrollTop;
+    if (typeof readSnapshot !== "function") {
+      throw new TypeError("collectTranscriptRowsByScroll requires a readSnapshot() function.");
+    }
+    if (typeof setScrollTop !== "function") {
+      throw new TypeError("collectTranscriptRowsByScroll requires a setScrollTop() function.");
+    }
+
+    const mergeRows =
+      typeof options.mergeRows === "function"
+        ? options.mergeRows
+        : (rows, batch) =>
+            (Array.isArray(rows) ? rows : []).concat(Array.isArray(batch) ? batch : []);
+    const sleep =
+      typeof options.sleep === "function"
+        ? options.sleep
+        : (ms) => new Promise((resolve) => setTimeout(resolve, Math.max(0, ms)));
+    const now = typeof options.now === "function" ? options.now : () => Date.now();
+
+    const budgetMs = Math.max(
+      0,
+      toFiniteNumber(options.budgetMs) ?? TRANSCRIPT_SCROLL_BUDGET_MIN_MS,
+    );
+    const stepDelayMs = Math.max(
+      0,
+      toFiniteNumber(options.stepDelayMs) ?? TRANSCRIPT_SCROLL_STEP_DELAY_MS,
+    );
+    const maxSteps = Math.max(
+      1,
+      Math.floor(toFiniteNumber(options.maxSteps) ?? TRANSCRIPT_SCROLL_MAX_STEPS),
+    );
+    const overlapPx = Math.max(
+      0,
+      toFiniteNumber(options.overlapPx) ?? TRANSCRIPT_SCROLL_OVERLAP_PX,
+    );
+    const idlePasses = Math.max(
+      1,
+      Math.floor(toFiniteNumber(options.idlePasses) ?? TRANSCRIPT_SCROLL_IDLE_PASSES),
+    );
+
+    const startedAt = now();
+    const elapsedMs = () => Math.max(0, now() - startedAt);
+
+    const applyMerge = (currentRows, batch) => {
+      const merged = mergeRows(currentRows, readSnapshotRows(batch));
+      return Array.isArray(merged) ? merged : currentRows;
+    };
+
+    let snapshot = readSnapshotObject(readSnapshot());
+    let rows = applyMerge([], snapshot);
+    const originalScrollTop = readSnapshotNumber(snapshot, "scrollTop");
+    let steps = 0;
+    let atBottom = isTranscriptAtBottom(snapshot);
+
+    // A container that still exposes rows but has no measurable viewport (hidden
+    // or collapsed panel) cannot be swept, so completeness cannot be proven there.
+    if (rows.length > 0 && readSnapshotNumber(snapshot, "clientHeight") <= 0) {
+      return {
+        rows,
+        complete: false,
+        reason: "stalled",
+        steps,
+        elapsedMs: elapsedMs(),
+        atBottom: false,
+      };
+    }
+
+    if (!shouldScrollTranscript(snapshot)) {
+      return {
+        rows,
+        complete: true,
+        reason: "no_overflow",
+        steps,
+        elapsedMs: elapsedMs(),
+        atBottom,
+      };
+    }
+
+    if (isTranscriptFullyRendered(snapshot)) {
+      return {
+        rows,
+        complete: true,
+        reason: "fully_rendered",
+        steps,
+        elapsedMs: elapsedMs(),
+        atBottom,
+      };
+    }
+
+    let complete = false;
+    let reason = null;
+
+    try {
+      setScrollTop(0);
+      await sleep(stepDelayMs);
+
+      snapshot = readSnapshotObject(readSnapshot());
+      rows = applyMerge(rows, snapshot);
+      let top = readSnapshotNumber(snapshot, "scrollTop");
+      let idle = 0;
+
+      while (true) {
+        const clientHeight = readSnapshotNumber(snapshot, "clientHeight");
+        const maxScrollTop = Math.max(
+          0,
+          readSnapshotNumber(snapshot, "scrollHeight") - clientHeight,
+        );
+        const viewportStep = Math.max(clientHeight - overlapPx, TRANSCRIPT_SCROLL_MIN_STEP_PX);
+        const atBottomNow = top >= maxScrollTop - TRANSCRIPT_SCROLL_BOTTOM_EPSILON_PX;
+
+        if (atBottomNow && idle >= idlePasses) {
+          complete = true;
+          break;
+        }
+        if (steps >= maxSteps) {
+          reason = "step_cap";
+          break;
+        }
+        if (elapsedMs() > budgetMs) {
+          reason = "budget";
+          break;
+        }
+
+        const nextTop = Math.min(top + viewportStep, maxScrollTop);
+        if (nextTop > top) {
+          setScrollTop(nextTop);
+        }
+        await sleep(stepDelayMs);
+
+        const rowsBefore = rows.length;
+        snapshot = readSnapshotObject(readSnapshot());
+        rows = applyMerge(rows, snapshot);
+
+        const added = Math.max(0, rows.length - rowsBefore);
+        steps += 1;
+
+        const settledTop = readSnapshotNumber(snapshot, "scrollTop");
+        const maxScrollTopAfter = Math.max(
+          0,
+          readSnapshotNumber(snapshot, "scrollHeight") -
+            readSnapshotNumber(snapshot, "clientHeight"),
+        );
+        const atBottomAfter = settledTop >= maxScrollTopAfter - TRANSCRIPT_SCROLL_BOTTOM_EPSILON_PX;
+
+        idle = added === 0 ? idle + 1 : 0;
+
+        if (atBottomAfter) {
+          atBottom = true;
+          if (idle >= idlePasses) {
+            complete = true;
+            break;
+          }
+        } else if (added === 0 && settledTop <= top) {
+          reason = "stalled";
+          break;
+        }
+
+        top = settledTop;
+      }
+    } finally {
+      try {
+        setScrollTop(originalScrollTop);
+      } catch {
+        // Best-effort restoration only.
+      }
+    }
+
+    return { rows, complete, reason, steps, elapsedMs: elapsedMs(), atBottom };
+  }
+
   function readControlTextCandidates(control) {
     if (!control || typeof control !== "object") return [];
 
@@ -737,17 +990,11 @@
     };
   }
 
-  // Scrolling completeness pass: YouTube may virtualize transcript rows, so only
-  // the rows near the viewport exist in the DOM at any moment. We read, scroll by
-  // roughly one viewport (with overlap), read again, and stop once we reach the
-  // bottom with two consecutive passes that produced no new rows.
-  const TRANSCRIPT_SCROLL_STEP_CAP = 400;
-  const TRANSCRIPT_SCROLL_STEP_DELAY_MS = 60;
-  const TRANSCRIPT_SCROLL_IDLE_PASSES = 2;
-  const TRANSCRIPT_SCROLL_BUDGET_MS = 10_000;
-  const TRANSCRIPT_SCROLL_OVERLAP_PX = 40;
-  const TRANSCRIPT_SCROLL_MAX_STEP_MULTIPLIER = 8;
-
+  // Scroll completeness pass: YouTube may virtualize transcript rows, so only
+  // the rows near the viewport exist in the DOM at any moment. The pure sweep in
+  // collectTranscriptRowsByScroll (mirrored from extension/lib/player-response.js)
+  // steps one viewport at a time with overlap, never skips ahead, and reports
+  // `complete: false` instead of silently handing back a truncated transcript.
   function readScrollMetrics(element) {
     return {
       scrollHeight: Number(element?.scrollHeight) || 0,
@@ -805,10 +1052,10 @@
     return fallback;
   }
 
-  function collectTranscriptRowsInto(list, collected, precisionCounts) {
+  function collectTranscriptRowsFromRows(rows, collected, precisionCounts) {
     let added = 0;
 
-    for (const row of findTranscriptRows(list)) {
+    for (const row of Array.isArray(rows) ? rows : []) {
       const text = readTranscriptTextFromRow(row);
       if (!text) continue;
 
@@ -837,66 +1084,141 @@
     return added;
   }
 
-  async function collectTranscriptRowsWithScroll(list, collected, precisionCounts) {
-    collectTranscriptRowsInto(list, collected, precisionCounts);
-
-    const scroller = findTranscriptScrollContainer(list);
-    if (!scroller) return; // No overflow: a single pass already saw every row.
-
-    const originalScrollTop = Number(scroller.scrollTop) || 0;
-    const startedAt = performance.now();
-    let idlePasses = 0;
-    let stepMultiplier = 1;
-    let steps = 0;
-
-    try {
-      scroller.scrollTop = 0;
-      await sleep(TRANSCRIPT_SCROLL_STEP_DELAY_MS);
-      collectTranscriptRowsInto(list, collected, precisionCounts);
-
-      while (steps < TRANSCRIPT_SCROLL_STEP_CAP) {
-        if (performance.now() - startedAt > TRANSCRIPT_SCROLL_BUDGET_MS) break;
-
-        const { scrollHeight, clientHeight } = readScrollMetrics(scroller);
-        const maxScrollTop = Math.max(0, scrollHeight - clientHeight);
-        const currentTop = Number(scroller.scrollTop) || 0;
-        const viewportStep = Math.max(clientHeight - TRANSCRIPT_SCROLL_OVERLAP_PX, 60);
-        const stepSize = Math.min(
-          viewportStep * stepMultiplier,
-          Math.max(maxScrollTop, viewportStep),
-        );
-        const nextTop = Math.min(currentTop + stepSize, maxScrollTop);
-
-        scroller.scrollTop = nextTop;
-        await sleep(TRANSCRIPT_SCROLL_STEP_DELAY_MS);
-
-        const added = collectTranscriptRowsInto(list, collected, precisionCounts);
-        steps += 1;
-
-        const settledTop = Number(scroller.scrollTop) || 0;
-        const atBottom = settledTop >= maxScrollTop - 2;
-        if (added === 0) {
-          idlePasses += 1;
-          // Non-virtualized lists add nothing while scrolling; accelerate to the
-          // bottom instead of burning the step cap on a no-op sweep.
-          stepMultiplier = Math.min(stepMultiplier * 2, TRANSCRIPT_SCROLL_MAX_STEP_MULTIPLIER);
-        } else {
-          idlePasses = 0;
-          stepMultiplier = 1;
-        }
-
-        if (atBottom && idlePasses >= TRANSCRIPT_SCROLL_IDLE_PASSES) break;
-        // The container refused to move: another sweep cannot reveal new rows.
-        if (settledTop === currentTop && added === 0) break;
-      }
-    } finally {
-      // Restore the viewer's scroll position; the collected rows stay in the Map.
+  /**
+   * Row stride used to detect lists that are fully rendered (no virtualization).
+   * The SMALLEST sampled height is used on purpose: a smaller stride only makes
+   * the "estimated total rows" larger, so the fully-rendered shortcut can never
+   * under-count rows and silently skip a sweep that was still needed.
+   */
+  function measureTranscriptRowStride(rows) {
+    const heights = [];
+    for (const row of (Array.isArray(rows) ? rows : []).slice(0, 12)) {
+      let height = 0;
       try {
-        scroller.scrollTop = originalScrollTop;
+        height = Number(row?.getBoundingClientRect?.().height ?? row?.offsetHeight ?? 0);
       } catch {
-        // Best-effort restoration.
+        height = 0;
       }
+      if (Number.isFinite(height) && height > 0) heights.push(height);
     }
+    if (heights.length === 0) return 0;
+    return Math.min(...heights);
+  }
+
+  async function collectTranscriptRowsWithScroll(list, collected, precisionCounts) {
+    const scroller = findTranscriptScrollContainer(list);
+    const target = scroller ?? list;
+    let rowStridePx = 0;
+    let lastSnapshot = null;
+
+    const readSnapshot = () => {
+      const rows = findTranscriptRows(list);
+      rowStridePx = measureTranscriptRowStride(rows) || rowStridePx;
+      const scrollHeight = Number(target?.scrollHeight) || 0;
+      const clientHeight = Number(target?.clientHeight) || 0;
+      const estimatedTotalRows =
+        rowStridePx > 0 && scrollHeight > 0 ? Math.ceil(scrollHeight / rowStridePx) : null;
+      const snapshot = {
+        rows,
+        scrollTop: Number(target?.scrollTop) || 0,
+        scrollHeight,
+        clientHeight,
+        renderedCount: rows.length,
+        estimatedTotalRows,
+      };
+      lastSnapshot = snapshot;
+      return snapshot;
+    };
+
+    // The helper owns the accumulated rows; this merge folds each DOM batch into
+    // the dedupe Map and hands the full list back so growth is measurable.
+    const mergeRows = (_rows, batch) => {
+      collectTranscriptRowsFromRows(batch, collected, precisionCounts);
+      return Array.from(collected.values());
+    };
+
+    const { scrollHeight, clientHeight } = readScrollMetrics(target);
+    const estimatedSteps = estimateTranscriptScrollSteps(
+      { scrollHeight, clientHeight },
+      { overlapPx: TRANSCRIPT_SCROLL_OVERLAP_PX },
+    );
+    // Adaptive budget: one full sweep at the configured step delay plus margin,
+    // clamped to [15s, 90s]. No fixed 10s assumption — a longer list gets more
+    // time, and an exhausted budget becomes an explicit error (never truncation).
+    const budgetMs = computeTranscriptScrollBudgetMs({
+      scrollHeight,
+      clientHeight,
+      stepDelayMs: TRANSCRIPT_SCROLL_STEP_DELAY_MS,
+      overlapPx: TRANSCRIPT_SCROLL_OVERLAP_PX,
+    });
+    const maxSteps = Math.min(
+      TRANSCRIPT_SCROLL_ABSOLUTE_MAX_STEPS,
+      Math.max(TRANSCRIPT_SCROLL_MAX_STEPS, estimatedSteps + TRANSCRIPT_SCROLL_IDLE_PASSES + 2),
+    );
+
+    const result = await collectTranscriptRowsByScroll({
+      readSnapshot,
+      setScrollTop: (value) => {
+        if (!scroller) return;
+        try {
+          scroller.scrollTop = value;
+        } catch {
+          // A detached scrolling element can reject writes; the sweep then
+          // reports `stalled` instead of pretending it read everything.
+        }
+      },
+      mergeRows,
+      sleep,
+      now: () => performance.now(),
+      budgetMs,
+      stepDelayMs: TRANSCRIPT_SCROLL_STEP_DELAY_MS,
+      maxSteps,
+      overlapPx: TRANSCRIPT_SCROLL_OVERLAP_PX,
+      idlePasses: TRANSCRIPT_SCROLL_IDLE_PASSES,
+    });
+
+    return {
+      ...result,
+      diagnostics: {
+        renderedCount: lastSnapshot?.renderedCount ?? 0,
+        estimatedTotalRows: lastSnapshot?.estimatedTotalRows ?? null,
+        scrollHeight: lastSnapshot?.scrollHeight ?? scrollHeight,
+        clientHeight: lastSnapshot?.clientHeight ?? clientHeight,
+        budgetMs,
+        maxSteps,
+      },
+    };
+  }
+
+  function buildTranscriptIncompleteError(scroll, collectedCount) {
+    const elapsedSeconds = Math.max(1, Math.round(scroll.elapsedMs / 1_000));
+    const reasonText =
+      scroll.reason === "budget"
+        ? `the ${elapsedSeconds}s completeness budget ran out`
+        : scroll.reason === "step_cap"
+          ? `the sweep stopped after ${scroll.steps} scroll step(s)`
+          : "the transcript panel was not visible or stopped revealing new rows before the end";
+
+    const error = new Error(
+      "YouTube's transcript panel did not finish loading, so the extension stopped " +
+        `instead of importing a truncated transcript. Collected ${collectedCount} row(s) ` +
+        `before ${reasonText}. Close and reopen the Transcript panel (or refresh the ` +
+        "YouTube tab) and try again — long videos can take up to ~2 minutes to read.",
+    );
+    error.domDebug = {
+      ...collectTranscriptDomDebug(),
+      completeness: {
+        complete: scroll.complete,
+        reason: scroll.reason,
+        steps: scroll.steps,
+        elapsedMs: scroll.elapsedMs,
+        atBottom: scroll.atBottom,
+        collectedRows: collectedCount,
+        ...(scroll.diagnostics ?? {}),
+      },
+    };
+    error.completeness = error.domDebug.completeness;
+    return error;
   }
 
   async function readTranscriptFromDomComplete() {
@@ -910,13 +1232,22 @@
     const precisionCounts = { "polymer-ms": 0, "data-attr": 0, text: 0 };
     const collected = new Map();
 
-    await collectTranscriptRowsWithScroll(list, collected, precisionCounts);
-    if (collected.size === 0) return null;
-
+    const scroll = await collectTranscriptRowsWithScroll(list, collected, precisionCounts);
     const segments = mergeTranscriptRows([], Array.from(collected.values()));
+
+    // CRITICAL: never return partial data as success. The caller turns this into
+    // a user-facing error with the diagnostics above.
+    if (!scroll.complete) {
+      throw buildTranscriptIncompleteError(scroll, segments.length);
+    }
+
     if (segments.length === 0) return null;
 
-    return { segments, precisionCounts };
+    return {
+      segments,
+      precisionCounts,
+      scroll: { steps: scroll.steps, elapsedMs: scroll.elapsedMs, reason: scroll.reason },
+    };
   }
 
   function parseXmlSegments(payloadText) {
@@ -1093,17 +1424,31 @@
     let source = "fetch";
     let fetchError = null;
     let precisionCounts = null;
+    let domScroll = null;
+    let domPrefetchError = null;
 
     // Prefer the DOM path when the transcript panel is already open. It's both
     // faster (no ~500ms per fetch attempt) and immune to YouTube's silent-reject.
     // The complete read scrolls virtualized rows, so completeness wins over latency.
+    // If the sweep cannot prove completeness we remember the actionable error and
+    // still try the network path — a successful fetch is a full transcript — but
+    // the partial DOM rows are never returned as success.
     if (findTranscriptList()) {
       await sleep(200);
-      const domResult = await readTranscriptFromDomComplete();
-      if (domResult && domResult.segments.length > 0) {
-        segments = domResult.segments;
-        precisionCounts = domResult.precisionCounts;
-        source = "dom-prefetch";
+      try {
+        const domResult = await readTranscriptFromDomComplete();
+        if (domResult && domResult.segments.length > 0) {
+          segments = domResult.segments;
+          precisionCounts = domResult.precisionCounts;
+          domScroll = domResult.scroll ?? null;
+          source = "dom-prefetch";
+        }
+      } catch (error) {
+        if (error?.completeness) {
+          domPrefetchError = error;
+        } else {
+          throw error;
+        }
       }
     }
 
@@ -1122,6 +1467,13 @@
     // with empty text/html bodies. Reading the already-rendered transcript panel
     // sidesteps that entirely (no unsigned network request needed).
     if (!segments || segments.length === 0) {
+      if (domPrefetchError) {
+        // The panel was already swept and could not prove completeness; surface
+        // that error instead of spending the same long budget a second time.
+        domPrefetchError.attempts = attempts;
+        throw domPrefetchError;
+      }
+
       source = "dom";
       let panelOpened = Boolean(findTranscriptList());
       if (!panelOpened) {
@@ -1142,17 +1494,23 @@
 
       // Small settle so the first rows get rendered before the completeness pass.
       await sleep(300);
-      const domResult = await readTranscriptFromDomComplete();
-      if (!domResult || !domResult.segments || domResult.segments.length === 0) {
-        const err = new Error(
-          "Transcript panel is open but contains no readable segments. It may still be loading — wait a moment and retry.",
-        );
-        err.attempts = attempts;
-        err.domDebug = collectTranscriptDomDebug();
-        throw err;
+      try {
+        const domResult = await readTranscriptFromDomComplete();
+        if (!domResult || !domResult.segments || domResult.segments.length === 0) {
+          const err = new Error(
+            "Transcript panel is open but contains no readable segments. It may still be loading — wait a moment and retry.",
+          );
+          err.attempts = attempts;
+          err.domDebug = collectTranscriptDomDebug();
+          throw err;
+        }
+        segments = domResult.segments;
+        precisionCounts = domResult.precisionCounts;
+        domScroll = domResult.scroll ?? null;
+      } catch (error) {
+        if (error?.completeness) error.attempts = attempts;
+        throw error;
       }
-      segments = domResult.segments;
-      precisionCounts = domResult.precisionCounts;
     }
 
     return {
@@ -1177,6 +1535,7 @@
         attempts,
         source,
         precisionCounts,
+        domScroll,
         fetchError: fetchError?.message ?? null,
       },
     };

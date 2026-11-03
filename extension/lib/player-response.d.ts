@@ -90,6 +90,81 @@ export declare function shouldScrollTranscript(
   options?: { minOverflowPx?: number },
 ): boolean;
 
+export type TranscriptScrollReason =
+  | "no_overflow"
+  | "fully_rendered"
+  | "budget"
+  | "step_cap"
+  | "stalled"
+  | null;
+
+export interface TranscriptScrollSnapshot<Row = unknown> {
+  rows: Row[];
+  scrollTop: number;
+  scrollHeight: number;
+  clientHeight: number;
+  renderedCount?: number;
+  /**
+   * Total row count estimated from scrollHeight / measured row stride. Used for
+   * the "DOM already holds every row" shortcut; the reader derives it from the
+   * smallest sampled row height so the estimate never under-counts.
+   */
+  estimatedTotalRows?: number | null;
+}
+
+export interface TranscriptScrollResult<Row = unknown> {
+  rows: Row[];
+  complete: boolean;
+  reason: TranscriptScrollReason;
+  steps: number;
+  elapsedMs: number;
+  atBottom: boolean;
+}
+
+export interface CollectTranscriptRowsByScrollOptions<Row = unknown> {
+  readSnapshot: () => TranscriptScrollSnapshot<Row> | null | undefined;
+  setScrollTop: (scrollTop: number) => void;
+  mergeRows?: (rows: Row[], batch: Row[]) => Row[];
+  sleep?: (ms: number) => Promise<void> | void;
+  now?: () => number;
+  budgetMs?: number;
+  stepDelayMs?: number;
+  maxSteps?: number;
+  overlapPx?: number;
+  idlePasses?: number;
+}
+
+export declare const TRANSCRIPT_SCROLL_STEP_DELAY_MS: number;
+export declare const TRANSCRIPT_SCROLL_OVERLAP_PX: number;
+export declare const TRANSCRIPT_SCROLL_IDLE_PASSES: number;
+export declare const TRANSCRIPT_SCROLL_MAX_STEPS: number;
+export declare const TRANSCRIPT_SCROLL_ABSOLUTE_MAX_STEPS: number;
+export declare const TRANSCRIPT_SCROLL_MIN_STEP_PX: number;
+export declare const TRANSCRIPT_SCROLL_BOTTOM_EPSILON_PX: number;
+export declare const TRANSCRIPT_SCROLL_BUDGET_MIN_MS: number;
+export declare const TRANSCRIPT_SCROLL_BUDGET_MAX_MS: number;
+export declare const TRANSCRIPT_SCROLL_BUDGET_OVERHEAD_MS: number;
+export declare const TRANSCRIPT_SCROLL_BUDGET_SAFETY_FACTOR: number;
+
+export declare function estimateTranscriptScrollSteps(
+  metrics: { scrollHeight?: number; clientHeight?: number } | null | undefined,
+  options?: { overlapPx?: number },
+): number;
+
+export declare function computeTranscriptScrollBudgetMs(options?: {
+  scrollHeight?: number;
+  clientHeight?: number;
+  stepDelayMs?: number;
+  overlapPx?: number;
+  minBudgetMs?: number;
+  maxBudgetMs?: number;
+  overheadMs?: number;
+}): number;
+
+export declare function collectTranscriptRowsByScroll<Row = unknown>(
+  options: CollectTranscriptRowsByScrollOptions<Row>,
+): Promise<TranscriptScrollResult<Row>>;
+
 export declare function readStartMsFromRow(row: unknown): number | null;
 export declare function readEndMsFromRow(row: unknown): number | null;
 export declare function isTranscriptOpenControl(control: unknown): boolean;

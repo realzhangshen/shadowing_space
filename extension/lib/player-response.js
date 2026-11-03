@@ -507,6 +507,307 @@ export function shouldScrollTranscript(metrics, options = {}) {
   return scrollHeight - clientHeight > minOverflowPx;
 }
 
+// ---------------------------------------------------------------------------
+// Transcript scroll completeness.
+//
+// YouTube virtualizes long transcript lists: only the rows near the viewport
+// exist in the DOM at any moment. Collecting the whole transcript therefore
+// needs a deterministic top-to-bottom sweep of the scroll container. The sweep
+// below is pure and dependency-injected (snapshot/scroll/merge/sleep/clock) so
+// Node tests can simulate a virtualized list exactly and the MAIN-world script
+// can drive it against the real DOM.
+//
+// Contract: `complete: false` means "this is NOT the whole transcript"; callers
+// MUST surface an error with the returned diagnostics instead of importing the
+// partial rows.
+// ---------------------------------------------------------------------------
+
+export const TRANSCRIPT_SCROLL_STEP_DELAY_MS = 60;
+export const TRANSCRIPT_SCROLL_OVERLAP_PX = 40;
+export const TRANSCRIPT_SCROLL_IDLE_PASSES = 2;
+export const TRANSCRIPT_SCROLL_MAX_STEPS = 400;
+export const TRANSCRIPT_SCROLL_ABSOLUTE_MAX_STEPS = 2_000;
+export const TRANSCRIPT_SCROLL_MIN_STEP_PX = 60;
+export const TRANSCRIPT_SCROLL_BOTTOM_EPSILON_PX = 2;
+export const TRANSCRIPT_SCROLL_BUDGET_MIN_MS = 15_000;
+export const TRANSCRIPT_SCROLL_BUDGET_MAX_MS = 90_000;
+export const TRANSCRIPT_SCROLL_BUDGET_OVERHEAD_MS = 2_000;
+export const TRANSCRIPT_SCROLL_BUDGET_SAFETY_FACTOR = 1.5;
+// A fully rendered list reports renderedCount >= the scrollHeight/rowStride
+// estimate (minus at most one row for ceil rounding). The MAIN-world reader
+// derives that estimate from the *smallest* sampled row height, so the estimate
+// errs high and the shortcut can never under-count rows.
+const TRANSCRIPT_FULLY_RENDERED_TOLERANCE_ROWS = 1;
+
+function readSnapshotObject(snapshot) {
+  return snapshot && typeof snapshot === "object" ? snapshot : {};
+}
+
+function readSnapshotRows(snapshot) {
+  return Array.isArray(snapshot?.rows) ? snapshot.rows : [];
+}
+
+function readSnapshotNumber(snapshot, key) {
+  const value = Number(snapshot?.[key]);
+  return Number.isFinite(value) ? value : 0;
+}
+
+function isTranscriptAtBottom(snapshot) {
+  const scrollHeight = readSnapshotNumber(snapshot, "scrollHeight");
+  const clientHeight = readSnapshotNumber(snapshot, "clientHeight");
+  const scrollTop = readSnapshotNumber(snapshot, "scrollTop");
+  const maxScrollTop = Math.max(0, scrollHeight - clientHeight);
+  return scrollTop >= maxScrollTop - TRANSCRIPT_SCROLL_BOTTOM_EPSILON_PX;
+}
+
+function isTranscriptFullyRendered(snapshot) {
+  const renderedCount = Number(snapshot?.renderedCount);
+  const estimatedTotalRows = Number(snapshot?.estimatedTotalRows);
+  if (!Number.isFinite(renderedCount) || !Number.isFinite(estimatedTotalRows)) return false;
+  if (estimatedTotalRows <= 0) return false;
+  return renderedCount >= estimatedTotalRows - TRANSCRIPT_FULLY_RENDERED_TOLERANCE_ROWS;
+}
+
+/**
+ * Estimated number of viewport-sized scroll steps needed to sweep the list from
+ * top to bottom. 0 when the list does not really overflow.
+ */
+export function estimateTranscriptScrollSteps(metrics, options = {}) {
+  if (!metrics || typeof metrics !== "object") return 0;
+  if (!shouldScrollTranscript(metrics)) return 0;
+
+  const scrollHeight = Number(metrics.scrollHeight);
+  const clientHeight = Number(metrics.clientHeight);
+  if (!Number.isFinite(scrollHeight) || !Number.isFinite(clientHeight)) return 0;
+
+  const overlapPx = Math.max(0, toFiniteNumber(options.overlapPx) ?? TRANSCRIPT_SCROLL_OVERLAP_PX);
+  const viewportStep = Math.max(clientHeight - overlapPx, TRANSCRIPT_SCROLL_MIN_STEP_PX);
+  const maxScrollTop = Math.max(0, scrollHeight - clientHeight);
+  return Math.ceil(maxScrollTop / viewportStep);
+}
+
+/**
+ * Adaptive completeness budget: one full sweep at the configured step delay plus
+ * safety margin, clamped to [15s, 90s]. Deliberately not a fixed 10s constant —
+ * long transcripts need proportionally more time, and the caller turns an
+ * exhausted budget into an explicit error rather than a truncated transcript.
+ */
+export function computeTranscriptScrollBudgetMs(options = {}) {
+  const scrollHeight = Number(options.scrollHeight);
+  const clientHeight = Number(options.clientHeight);
+  const steps = estimateTranscriptScrollSteps(
+    { scrollHeight, clientHeight },
+    { overlapPx: options.overlapPx },
+  );
+  const stepDelayMs = Math.max(
+    0,
+    toFiniteNumber(options.stepDelayMs) ?? TRANSCRIPT_SCROLL_STEP_DELAY_MS,
+  );
+  const minBudgetMs = toFiniteNumber(options.minBudgetMs) ?? TRANSCRIPT_SCROLL_BUDGET_MIN_MS;
+  const maxBudgetMs = toFiniteNumber(options.maxBudgetMs) ?? TRANSCRIPT_SCROLL_BUDGET_MAX_MS;
+  const overheadMs = toFiniteNumber(options.overheadMs) ?? TRANSCRIPT_SCROLL_BUDGET_OVERHEAD_MS;
+
+  const rawBudgetMs =
+    steps * stepDelayMs * TRANSCRIPT_SCROLL_BUDGET_SAFETY_FACTOR + Math.max(0, overheadMs);
+  return Math.min(Math.max(rawBudgetMs, minBudgetMs), maxBudgetMs);
+}
+
+/**
+ * Sweeps a (possibly virtualized) transcript scroll container and reports
+ * whether the collected rows are the whole transcript.
+ *
+ * Required options:
+ *   readSnapshot(): { rows, scrollTop, scrollHeight, clientHeight, renderedCount,
+ *                     estimatedTotalRows? }
+ *   setScrollTop(scrollTop): applies a scroll position to the container.
+ * Optional options:
+ *   mergeRows(accumulatedRows, batch) -> accumulatedRows (defaults to concat)
+ *   sleep(ms), now(), budgetMs, stepDelayMs, maxSteps, overlapPx, idlePasses
+ *
+ * Guarantees:
+ *   - no real overflow -> one pass, complete (reason "no_overflow")
+ *   - DOM already holds every row -> no scrolling at all (reason "fully_rendered")
+ *   - overflow sweep advances at most `clientHeight - overlapPx` per step; rows
+ *     are never skipped for the sake of speed (no acceleration multiplier)
+ *   - complete only after reaching the bottom AND `idlePasses` consecutive
+ *     passes with no new rows
+ *   - incomplete with reason "budget" | "step_cap" | "stalled" when limits hit;
+ *     `atBottom` stays false unless the bottom was actually reached
+ *   - a container that exposes rows but has no measurable viewport (hidden or
+ *     collapsed panel) is reported incomplete (reason "stalled") — never treated
+ *     as "no overflow" — because completeness cannot be proven without a viewport
+ *   - the caller's original scrollTop is restored before returning
+ */
+export async function collectTranscriptRowsByScroll(options = {}) {
+  const readSnapshot = options.readSnapshot;
+  const setScrollTop = options.setScrollTop;
+  if (typeof readSnapshot !== "function") {
+    throw new TypeError("collectTranscriptRowsByScroll requires a readSnapshot() function.");
+  }
+  if (typeof setScrollTop !== "function") {
+    throw new TypeError("collectTranscriptRowsByScroll requires a setScrollTop() function.");
+  }
+
+  const mergeRows =
+    typeof options.mergeRows === "function"
+      ? options.mergeRows
+      : (rows, batch) =>
+          (Array.isArray(rows) ? rows : []).concat(Array.isArray(batch) ? batch : []);
+  const sleep =
+    typeof options.sleep === "function"
+      ? options.sleep
+      : (ms) => new Promise((resolve) => setTimeout(resolve, Math.max(0, ms)));
+  const now = typeof options.now === "function" ? options.now : () => Date.now();
+
+  const budgetMs = Math.max(0, toFiniteNumber(options.budgetMs) ?? TRANSCRIPT_SCROLL_BUDGET_MIN_MS);
+  const stepDelayMs = Math.max(
+    0,
+    toFiniteNumber(options.stepDelayMs) ?? TRANSCRIPT_SCROLL_STEP_DELAY_MS,
+  );
+  const maxSteps = Math.max(
+    1,
+    Math.floor(toFiniteNumber(options.maxSteps) ?? TRANSCRIPT_SCROLL_MAX_STEPS),
+  );
+  const overlapPx = Math.max(0, toFiniteNumber(options.overlapPx) ?? TRANSCRIPT_SCROLL_OVERLAP_PX);
+  const idlePasses = Math.max(
+    1,
+    Math.floor(toFiniteNumber(options.idlePasses) ?? TRANSCRIPT_SCROLL_IDLE_PASSES),
+  );
+
+  const startedAt = now();
+  const elapsedMs = () => Math.max(0, now() - startedAt);
+
+  const applyMerge = (currentRows, batch) => {
+    const merged = mergeRows(currentRows, readSnapshotRows(batch));
+    return Array.isArray(merged) ? merged : currentRows;
+  };
+
+  let snapshot = readSnapshotObject(readSnapshot());
+  let rows = applyMerge([], snapshot);
+  const originalScrollTop = readSnapshotNumber(snapshot, "scrollTop");
+  let steps = 0;
+  let atBottom = isTranscriptAtBottom(snapshot);
+
+  // A container that still exposes rows but has no measurable viewport (hidden
+  // or collapsed panel) cannot be swept, so completeness cannot be proven there.
+  if (rows.length > 0 && readSnapshotNumber(snapshot, "clientHeight") <= 0) {
+    return {
+      rows,
+      complete: false,
+      reason: "stalled",
+      steps,
+      elapsedMs: elapsedMs(),
+      atBottom: false,
+    };
+  }
+
+  // Short/non-overflowing lists are complete after the single pass above.
+  if (!shouldScrollTranscript(snapshot)) {
+    return {
+      rows,
+      complete: true,
+      reason: "no_overflow",
+      steps,
+      elapsedMs: elapsedMs(),
+      atBottom,
+    };
+  }
+
+  // Fully rendered (non-virtualized) lists already hold every row in the DOM —
+  // scrolling would only burn time, so skip the sweep entirely.
+  if (isTranscriptFullyRendered(snapshot)) {
+    return {
+      rows,
+      complete: true,
+      reason: "fully_rendered",
+      steps,
+      elapsedMs: elapsedMs(),
+      atBottom,
+    };
+  }
+
+  let complete = false;
+  let reason = null;
+
+  try {
+    // Deterministic top-down sweep: start at the very top so early rows are seen
+    // even when the viewer had the panel scrolled down.
+    setScrollTop(0);
+    await sleep(stepDelayMs);
+
+    snapshot = readSnapshotObject(readSnapshot());
+    rows = applyMerge(rows, snapshot);
+    let top = readSnapshotNumber(snapshot, "scrollTop");
+    let idle = 0;
+
+    while (true) {
+      const clientHeight = readSnapshotNumber(snapshot, "clientHeight");
+      const maxScrollTop = Math.max(0, readSnapshotNumber(snapshot, "scrollHeight") - clientHeight);
+      const viewportStep = Math.max(clientHeight - overlapPx, TRANSCRIPT_SCROLL_MIN_STEP_PX);
+      const atBottomNow = top >= maxScrollTop - TRANSCRIPT_SCROLL_BOTTOM_EPSILON_PX;
+
+      if (atBottomNow && idle >= idlePasses) {
+        complete = true;
+        break;
+      }
+      if (steps >= maxSteps) {
+        reason = "step_cap";
+        break;
+      }
+      if (elapsedMs() > budgetMs) {
+        reason = "budget";
+        break;
+      }
+
+      const nextTop = Math.min(top + viewportStep, maxScrollTop);
+      if (nextTop > top) {
+        setScrollTop(nextTop);
+      }
+      await sleep(stepDelayMs);
+
+      const rowsBefore = rows.length;
+      snapshot = readSnapshotObject(readSnapshot());
+      rows = applyMerge(rows, snapshot);
+
+      const added = Math.max(0, rows.length - rowsBefore);
+      steps += 1;
+
+      const settledTop = readSnapshotNumber(snapshot, "scrollTop");
+      const maxScrollTopAfter = Math.max(
+        0,
+        readSnapshotNumber(snapshot, "scrollHeight") - readSnapshotNumber(snapshot, "clientHeight"),
+      );
+      const atBottomAfter = settledTop >= maxScrollTopAfter - TRANSCRIPT_SCROLL_BOTTOM_EPSILON_PX;
+
+      idle = added === 0 ? idle + 1 : 0;
+
+      if (atBottomAfter) {
+        atBottom = true;
+        if (idle >= idlePasses) {
+          complete = true;
+          break;
+        }
+      } else if (added === 0 && settledTop <= top) {
+        // The container refused to move and nothing new rendered: another pass
+        // cannot reveal rows, and we never reached the bottom.
+        reason = "stalled";
+        break;
+      }
+
+      top = settledTop;
+    }
+  } finally {
+    // Restore the viewer's scroll position; collected rows stay with the caller.
+    try {
+      setScrollTop(originalScrollTop);
+    } catch {
+      // Best-effort restoration only.
+    }
+  }
+
+  return { rows, complete, reason, steps, elapsedMs: elapsedMs(), atBottom };
+}
+
 function readControlTextCandidates(control) {
   if (!control || typeof control !== "object") return [];
 

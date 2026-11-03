@@ -1903,6 +1903,94 @@ tests:
     reason: Locks transcript parsing and sentence segmentation so caption tracks stay complete and correctly timed.
     lastReviewedOn: 2026-11-03
     reviewBy: 2027-05-03
+  - file: tests/extension/transcriptScrollCompleteness.test.ts
+    name: collectTranscriptRowsByScroll collects all 2,000 virtualized rows when the adaptive budget suffices
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks the transcript DOM sweep completeness contract so long virtualized transcripts are never silently truncated.
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/extension/transcriptScrollCompleteness.test.ts
+    name: collectTranscriptRowsByScroll reports an incomplete budget sweep instead of silently truncating
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks the transcript DOM sweep completeness contract so long virtualized transcripts are never silently truncated.
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/extension/transcriptScrollCompleteness.test.ts
+    name: collectTranscriptRowsByScroll completes a list without real overflow in a single pass
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks the transcript DOM sweep completeness contract so long virtualized transcripts are never silently truncated.
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/extension/transcriptScrollCompleteness.test.ts
+    name: collectTranscriptRowsByScroll skips scrolling when the DOM already holds every row
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks the transcript DOM sweep completeness contract so long virtualized transcripts are never silently truncated.
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/extension/transcriptScrollCompleteness.test.ts
+    name: collectTranscriptRowsByScroll reports step_cap when the scroll step limit is reached
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks the transcript DOM sweep completeness contract so long virtualized transcripts are never silently truncated.
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/extension/transcriptScrollCompleteness.test.ts
+    name: collectTranscriptRowsByScroll reports stalled when the container refuses to scroll
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks the transcript DOM sweep completeness contract so long virtualized transcripts are never silently truncated.
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/extension/transcriptScrollCompleteness.test.ts
+    name: collectTranscriptRowsByScroll reports stalled when the container has no measurable viewport
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks the transcript DOM sweep completeness contract so long virtualized transcripts are never silently truncated.
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/extension/transcriptScrollCompleteness.test.ts
+    name: collectTranscriptRowsByScroll never skips rows when rows hydrate one snapshot late
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks the transcript DOM sweep completeness contract so long virtualized transcripts are never silently truncated.
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/extension/transcriptScrollCompleteness.test.ts
+    name: collectTranscriptRowsByScroll restores the caller's original scroll position
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks the transcript DOM sweep completeness contract so long virtualized transcripts are never silently truncated.
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/extension/transcriptScrollCompleteness.test.ts
+    name: computeTranscriptScrollBudgetMs scales past the old fixed 10s budget
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks the transcript DOM sweep completeness contract so long virtualized transcripts are never silently truncated.
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
+  - file: tests/extension/transcriptScrollCompleteness.test.ts
+    name: computeTranscriptScrollBudgetMs clamps between 15s and 90s
+    category: unit
+    validity: reasonable
+    owner: shadowing-team
+    reason: Locks the transcript DOM sweep completeness contract so long virtualized transcripts are never silently truncated.
+    lastReviewedOn: 2026-11-03
+    reviewBy: 2027-05-03
   - file: tests/components/virtualWindow.test.ts
     name: computeWindowAroundIndex centers a viewport-sized window on the target row
     category: unit

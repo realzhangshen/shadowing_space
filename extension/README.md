@@ -37,7 +37,8 @@ Settings are stored in `chrome.storage.sync`.
 
 - **youtube-main.js** (MAIN world): reads `ytInitialPlayerResponse` and its fallbacks (`ytplayer.config.args.player_response`, `ytd-watch-flexy.__data`), then fetches the selected caption track using the user's own YouTube session.
   - DOM fallback: when the timedtext endpoint returns no usable captions, the script reads the on-page Transcript panel instead. It supports both panel variants — legacy `ytd-transcript-segment-renderer` rows and modern `transcript-segment-view-model` rows (`.ytAttributedStringHost` / `.ytwTranscriptSegmentViewModelTimestamp`) — and ignores spoken-time accessibility labels.
-  - Completeness pass: because YouTube may virtualize rows, the reader scrolls the list's scroll container from top to bottom in viewport-sized steps (short waits, hard step/budget caps), accumulates rows in a `startMs|text` map to dedupe re-rendered rows, then restores the original scroll position and sorts the transcript by start time. Short videos without overflow are read in a single pass.
+  - Completeness pass: because YouTube may virtualize rows, the reader scrolls the list's scroll container from top to bottom in viewport-sized steps (with overlap, never skipping ahead), accumulates rows in a `startMs|text` map to dedupe re-rendered rows, then restores the original scroll position and sorts the transcript by start time. Short videos without overflow are read in a single pass, and lists whose rows are already fully rendered in the DOM skip scrolling entirely.
+  - **Completeness contract:** the reader only reports success when it actually reached the bottom of the list and two consecutive passes added no new rows. The time budget is adaptive — `clamp(estimatedSteps × stepDelay × 1.5 + 2s, 15s, 90s)` — instead of a fixed 10s, and the bridge waits up to 120s for the result. If a long or virtualized transcript cannot be proven complete within the budget (or the panel is not visible/measurable), extraction fails with an explicit error (rows collected, scroll metrics, reason) and tells the user to close/reopen the Transcript panel or refresh the tab. Partial rows are never imported silently.
 - **youtube-bridge.js** (ISOLATED world): mediates between the popup's `chrome.tabs.sendMessage` and the MAIN-world script's window events.
 - **popup.js**: drives the UX — track listing, action buttons, status line, debug log, and delivery/download.
 - **background.js**: install hint only. The popup owns the work because MV3 service workers suspend aggressively and losing state mid-delivery would hide errors.
@@ -47,7 +48,8 @@ Settings are stored in `chrome.storage.sync`.
 1. Open the popup → click **Debug log** to see a time-stamped record of every step.
 2. Right-click the popup → `Inspect` to open DevTools on the popup itself; look at the Console for `[SS]` logs.
 3. If the popup reports "Content script unreachable", refresh the YouTube tab — SPA navigation can occasionally leave the bridge inactive.
-4. If delivery keeps looping: open the Shadowing Space import tab in DevTools and check the Network tab + console for the delivery handshake.
+4. If the popup reports that the transcript panel did not finish loading, the video's transcript is long or virtualized and the completeness budget ran out. Close and reopen the Transcript panel (or refresh the tab) and retry. This is intentional: the importer refuses to hand over a silently truncated transcript.
+5. If delivery keeps looping: open the Shadowing Space import tab in DevTools and check the Network tab + console for the delivery handshake.
 
 ## Files
 
